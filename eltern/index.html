@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#d6e8fb">
+<title>Silbenzauber für Eltern</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main id="app"></main>
+<script src="config.js"></script>
+<script type="module">
+import { mount } from "./app.js";
+mount(document.getElementById("app"), { base: window.SILBENFLUG_API || "", storage: window.localStorage });
+</script>
+</body>
+</html>
