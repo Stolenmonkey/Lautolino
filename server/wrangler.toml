@@ -6,7 +6,7 @@ compatibility_date = "2026-10-01"
 binding = "DB"
 database_name = "lautolino-db"
 database_id = "7381d8ff-0128-4b65-99fa-bdacdf0c0936"
-migrations_dir = "../../db/migrations"
+migrations_dir = "../db/migrations"
 
 [vars]
 ALLOWED_ORIGINS = "https://stolenmonkey.github.io" 
