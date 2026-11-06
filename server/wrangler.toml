@@ -1,15 +1,12 @@
-# Silbenflug-Server (Cloudflare Worker + D1). Die mit <...> markierten Werte trägst du nach dem Anlegen des Accounts ein.
-name = "silbenflug-api"
+name = "lautolino-api"
 main = "src/worker.ts"
 compatibility_date = "2026-10-01"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "silbenflug-db"
-database_id = "<DATENBANK-ID>"
+database_id = "7381d8ff-0128-4b65-99fa-bdacdf0c0936"
 migrations_dir = "../../db/migrations"
 
 [vars]
-ALLOWED_ORIGINS = ""   # später: Adresse der Oberfläche, z. B. https://silbenflug.pages.dev
-
-# Geheimnis (nicht in diese Datei schreiben):  npx wrangler secret put PEPPER   (mindestens 32 zufällige Zeichen)
+ALLOWED_ORIGINS = "https://stolenmonkey.github.io" 
