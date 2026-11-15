@@ -1,0 +1,6 @@
+{
+  "name": "@silbenflug/server", "version": "0.1.0", "private": true, "type": "module", "main": "src/worker.ts",
+  "scripts": { "dev": "tsx scripts/dev-local.ts", "admin-sql": "tsx scripts/make-admin-sql.ts" },
+  "dependencies": { "hono": "^4.6.0" },
+  "devDependencies": { "@hono/node-server": "^1.13.0", "tsx": "^4.19.0" }
+}
