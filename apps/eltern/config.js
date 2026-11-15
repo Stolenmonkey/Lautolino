@@ -1,2 +1,2 @@
 // Adresse des silbenflug-Servers (Cloudflare Worker). Leer lassen, wenn die Seite vom selben Server ausgeliefert wird.
-window.SILBENFLUG_API = "";
+window.SILBENFLUG_API = "https://lautolino-api.lautolino.workers.dev";
