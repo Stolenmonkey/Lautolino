@@ -36,7 +36,7 @@ label{display:flex;align-items:center;gap:8px;margin-top:16px;color:var(--sub);f
 </div>
 <label><input type="checkbox" id="nt" checked> Links in neuem Tab öffnen</label>
 <div class="row">
-  <a href="https://lautolino-api.lautolino.workers.dev/config" target="_blank" rel="noopener">Server: /config</a>
+  <a href="https://lautolino-api.lautolino.workers.dev/health" target="_blank" rel="noopener">Server: /health</a>
   <a href="https://dash.cloudflare.com/" target="_blank" rel="noopener">Cloudflare</a>
   <a href="https://github.com/stolenmonkey/Lautolino" target="_blank" rel="noopener">GitHub</a>
 </div>
@@ -49,7 +49,7 @@ label{display:flex;align-items:center;gap:8px;margin-top:16px;color:var(--sub);f
   function apply(){tiles.forEach(function(a){if(nt.checked){a.target="_blank";a.rel="noopener";}else{a.removeAttribute("target");}});try{localStorage.setItem("sf-nt",nt.checked?"1":"0");}catch(e){}}
   nt.addEventListener("change",apply);apply();
   var st=document.getElementById("st");
-  fetch("https://lautolino-api.lautolino.workers.dev/config").then(function(r){
+  fetch("https://lautolino-api.lautolino.workers.dev/health").then(function(r){
     st.textContent=r.ok?"Server erreichbar (HTTP "+r.status+").":"Server antwortet mit HTTP "+r.status+".";
     st.className=r.ok?"ok":"bad";
   }).catch(function(){st.textContent="Server nicht erreichbar oder von dieser Adresse aus blockiert.";st.className="bad";});
