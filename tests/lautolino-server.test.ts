@@ -123,7 +123,7 @@ describe("Lautolino (Server und Oberfläche)", () => {
     it("ältere gespeicherte Konfigurationen ohne Lernstufen-Werte funktionieren (Standardwerte werden ergänzt)", async () => {
       const old: any = JSON.parse(JSON.stringify(DEFAULT_CONFIG)); delete old.stages; delete old.security.invite_hours; delete old.security.parent_session_days;
       raw.exec("UPDATE config_versions SET is_active=0"); raw.prepare("INSERT INTO config_versions(json,valid_from,changed_by,change_note,is_active) VALUES(?,?,?,?,1)").run(JSON.stringify(old), new Date(clock).toISOString(), "t", "alt");
-      const c = (await call("GET", "/config", adm)).json.config; expect(c.stages).toEqual({ enabled: 1, review_percent: 15 }); expect(c.security.invite_hours).toBe(72);
+      const c = (await call("GET", "/config", adm)).json.config; expect(c.stages).toMatchObject({ enabled: 1, review_percent: 15, mode: 2, gate_percent: 80 }); expect(c.security.invite_hours).toBe(72);
       expect((await call("GET", "/student/plan", await kidTok(codeA))).json.training.focus.length).toBe(9);
     });
   });
@@ -343,7 +343,7 @@ describe("Lautolino (Server und Oberfläche)", () => {
       const r = a.root.querySelector("#syl"); expect(r).not.toBeNull();
     }, 20000);
     it("Mehrsilbige Wörter haben je Sprechsilbe einen eigenen Bogen (MAMA: zwei, WAR: einer)", async () => {
-      await rounds(await kidTok(codeA), KV, 10, 1, "kv");   // Stufe 1 sicher: das Training enthält nun auch Wörter aus zwei Sprechsilben
+      await rounds(await kidTok(codeA), KV, 10, 1, "kv"); await rounds(await kidTok(codeA), [2, 3].flatMap((n) => buildSyllables(LETTERS, n)).filter((x) => classifySyllable(x).stage === 3), 10, 1, "vk");   // Stufen 1 und 3 sicher: das Training enthält nun auch Wörter aus zwei Sprechsilben
       const a = mountK(codeA); await a.ready; await flush(); (a.root.querySelector("#code") as HTMLInputElement).value = codeA; click(a.root, "Anmelden"); await flush(); click(a.root, "Übung starten");
       let found2 = false;
       for (let i = 0; i < 20 && !found2; i++) { const l = label(a.root).cur.toLowerCase(); if (l.length === 4 && /^[^aeiou][aeiou][^aeiou][aeiou]$/.test(l)) { found2 = true; expect(a.root.querySelectorAll("#syl .cur .arc").length).toBe(2); expect(a.root.querySelectorAll("#syl .cur .sy").length).toBe(2); } clock += 1200; click(a.root, "Weiter"); }

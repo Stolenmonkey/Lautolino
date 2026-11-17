@@ -1,6 +1,6 @@
 // Lernlogik der Kinder-App: reine Funktionen auf core und engine (unverändert). Kein Zugriff auf Oberfläche oder Netz.
-import { stagedTasks, randomCase, countSyllables } from "@silbenflug/core";
-import { autoAdjust, autoParams, comboKey, recordSyl, roundParams, sdFromLen, startVal, sylStat, sylTimeParams } from "@silbenflug/engine";
+import { stagedTasks, groupedTasks, randomCase, countSyllables, buildSyllables } from "@silbenflug/core";
+import { autoAdjust, autoParams, comboKey, recordSyl, roundParams, sdFromLen, startVal, sylStat, sylTimeParams, syllablePlan } from "@silbenflug/engine";
 import type { AutoState } from "@silbenflug/engine";
 import type { Rng, SilbenflugConfig } from "@silbenflug/shared";
 
@@ -35,7 +35,14 @@ export function prepareRound(plan: Plan, cfg: SilbenflugConfig, st: LocalState, 
   const sylAvg: Record<string, number | null> = {};
   Object.keys(st.sylTimes).forEach((s) => { sylAvg[s] = sylStat(st.sylTimes[s], sylTimeParams(cfg)).avg; });
   const st2 = cfg.stages, useStages = !st2 || st2.enabled !== 0;   // ältere Konfigurationen kennen Lernstufen nicht: dann gilt die Auswahl wie bisher
-  const tasks = stagedTasks(letters, lens, cfg.round.letter_frequency_default, cfg.round.task_count, bal, sylAvg, sd, useStages && plan.training ? plan.training : null, st2 ? st2.review_percent : 0, rng, roundParams(cfg));
+  // Auswahl je Silbe (stages.mode 2): Freischaltung und Gruppen aus den lokalen Silbenzeiten, Mix aus der Konfiguration
+  let tasks: string[] | null = null;
+  if (st2 && st2.enabled !== 0 && st2.mode === 2) {
+    const sp = syllablePlan(lens.flatMap((L) => buildSyllables(letters, L)), st.sylTimes, cfg);
+    if (sp.fresh.length + sp.building.length + sp.weak.length + sp.solid.length >= cfg.round.min_pool)
+      tasks = groupedTasks(lens, cfg.round.task_count, bal, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, roundParams(cfg));
+  }
+  if (!tasks) tasks = stagedTasks(letters, lens, cfg.round.letter_frequency_default, cfg.round.task_count, bal, sylAvg, sd, useStages && plan.training ? plan.training : null, st2 ? st2.review_percent : 0, rng, roundParams(cfg));
   return { key: comboKey(letters, lens), letters, lens, bal, sd, tasks, shown: tasks.map((s) => randomCase(s, rng)) };
 }
 // Rundenende: Silbenzeiten und Rundenzeit merken, Automatik anpassen. Ergebnis: neuer Stand und der Automatik-Wert, der zum Server geschickt wird.

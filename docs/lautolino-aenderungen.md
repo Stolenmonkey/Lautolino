@@ -75,3 +75,9 @@ Nicht getestet: echter Versand über Resend (kein Konto/Schlüssel hier) und die
 6. **Elterncode**: Format (12 Zeichen) und "kein Ablauf" sind mein Vorschlag; Anmeldung der Eltern 90 Tage.
 7. **E-Mail-Anbieter** Resend ist ein Vorschlag; Passwortwechsel im eingeloggten Zustand hat weiterhin keine Oberfläche.
 8. Silben-Zug (PDF) benutzt dasselbe Stufenfenster.
+
+## Silbenbasierte Auswahl (stages.mode 2)
+- Konfiguration `stages`: `mode` (2 = je Silbe, 1 = altes Buchstaben-Fenster), `gate_percent` (80), `mix_new_percent` / `mix_weak_percent` / `mix_review_percent` (45/30/25, Summe 100). Alle im Verwaltungsbereich unter „Konfiguration → Lernstufen“ einstellbar.
+- Freischaltung je Silbe (`engine/syllablePlan.ts`): In jeder Vorstufe müssen mindestens `gate_percent` der Silben aus den Buchstaben dieser Silbe sicher sein (Stufe 2 = Anlautwechsel). Silben mit Messungen bleiben offen.
+- Gruppen: neu, angefangen, schwach, sicher. Rundenaufbau `core/stagedRound.ts: groupedTasks`. Berechnung in der Kinder-App aus den lokalen Silbenzeiten (`apps/kids/src/logic.ts`).
+- Lehrer-Stufenansicht und Silben-Zug nutzen weiter das alte Fenster (noch nicht angepasst).
