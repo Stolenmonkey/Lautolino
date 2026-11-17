@@ -50,8 +50,8 @@ export function evaluationRoutes() {
     const plan = stagePlan(all), master = (s: string) => isMastered(tr.times[s], cfg, s).status === "mastered";
     const stages = plan.map((g) => {
       const total = g.syllables.length, mastered = g.syllables.filter(master).length, processed = g.syllables.filter((s) => (tr.times[s] || []).length > 0).length;
-      const anyActive = !!win && win.letters.some((l) => l.stages.find((x) => x.stage === g.stage)?.status === "active");
-      return { stage: g.stage, name: g.name, structure: g.structure, status: !total ? "empty" : mastered === total ? "done" : anyActive ? "active" : "locked", total, processed, mastered, open: total - mastered,
+      const activeLetters = (win ? win.letters : []).filter((l) => l.stages.find((x) => x.stage === g.stage)?.status === "active").map((l) => l.letter), anyActive = activeLetters.length > 0;
+      return { stage: g.stage, name: g.name, structure: g.structure, status: !total ? "empty" : mastered === total ? "done" : anyActive ? "active" : "locked", activeLetters, total, processed, mastered, open: total - mastered,
         subs: g.subs.map((u) => ({ id: u.id, name: u.name, total: u.syllables.length, mastered: u.syllables.filter(master).length })) };
     });
     const letters = (win ? win.letters : []).map((l, i) => ({ letter: l.letter, order: i + 1, current: l.current, window: l.window, stages: l.stages as StageRow[] }));
