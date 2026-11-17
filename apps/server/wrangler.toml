@@ -11,5 +11,6 @@ migrations_dir = "../../db/migrations"
 
 [vars]
 ALLOWED_ORIGINS = "https://stolenmonkey.github.io"   # später: Adresse der Oberfläche, z. B. https://silbenflug.pages.dev
-
+APP_URL = "https://stolenmonkey.github.io/Lautolino/apps/web/"
+MAIL_FROM = "Lautolino <lautolino@gmx.de>"
 # Geheimnis (nicht in diese Datei schreiben):  npx wrangler secret put PEPPER   (mindestens 32 zufällige Zeichen)
