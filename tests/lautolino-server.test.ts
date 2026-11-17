@@ -337,11 +337,11 @@ describe("Lautolino (Server und Oberfläche)", () => {
         a.root.querySelectorAll("#syl .nx").forEach((n, k) => expect(n.querySelectorAll(".arc").length).toBe(splitSyllables(now.next[k]).length));
         if (i > 0) { expect(now.cur).toBe(prev.next[0]); expect(now.next[0] ?? undefined).toBe(prev.next[1]); }              // die Vorschau war die Wahrheit
         if (i === 0) expect((a.root.querySelector("#syl .cur") as HTMLElement).previousElementSibling).toBeNull();
-        prev = now; clock += 1200; if (i < 19) click(a.root, "Weiter");
+        prev = now; clock += 1200; if (i < 19) { click(a.root, "Weiter"); await new Promise((r) => setTimeout(r, 340)); }
       }
       expect(new Set(seq.map((x) => x.toLowerCase())).size).toBeGreaterThan(1);
       const r = a.root.querySelector("#syl"); expect(r).not.toBeNull();
-    });
+    }, 20000);
     it("Mehrsilbige Wörter haben je Sprechsilbe einen eigenen Bogen (MAMA: zwei, WAR: einer)", async () => {
       await rounds(await kidTok(codeA), KV, 10, 1, "kv");   // Stufe 1 sicher: das Training enthält nun auch Wörter aus zwei Sprechsilben
       const a = mountK(codeA); await a.ready; await flush(); (a.root.querySelector("#code") as HTMLInputElement).value = codeA; click(a.root, "Anmelden"); await flush(); click(a.root, "Übung starten");
