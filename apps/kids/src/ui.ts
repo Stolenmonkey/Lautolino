@@ -122,14 +122,42 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     (root.querySelector("#next") as HTMLElement).onclick = next;
     if (setup) paintTask();
   }
-  function paintTask(): void {
+  function paintTask(slide = false): void {
     const s = setup as RoundSetup, n = s.tasks.length, syl = root.querySelector("#syl") as HTMLElement;
+    const old = slide ? captureSlide(syl) : null;
     (root.querySelector("#prog") as HTMLElement).textContent = "Aufgabe " + (idx + 1) + " von " + n;
     // Hauptsilbe (etwas nach links) mit Silbenbögen, rechts daneben klein und hellgrau die tatsächlich nächsten zwei Silben (am Rundenende weniger)
     const nxt = s.shown.slice(idx + 1, idx + 3);
     syl.innerHTML = '<span class="cur">' + renderWordWithArcs(s.shown[idx]) + "</span>" + (nxt.length ? '<span class="nxt" aria-hidden="true">' + nxt.map((w) => '<span class="nx">' + renderWordWithArcs(w) + "</span>").join("") + "</span>" : "");
-    syl.setAttribute("aria-label", s.shown[idx] + (nxt.length ? ", danach " + nxt.join(", ") : "")); restart(syl.querySelector(".cur") as Element, "pop", 420);
-    fit(syl);
+    syl.setAttribute("aria-label", s.shown[idx] + (nxt.length ? ", danach " + nxt.join(", ") : "")); if (!old) restart(syl.querySelector(".cur") as Element, "pop", 420);
+    fit(syl); curCenter(syl); if (old) slideIn(syl, old);
+  }
+  type Slide = { cur: DOMRect; nx: DOMRect[]; clone: HTMLElement };
+  const calm = (): boolean => !!(typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  function captureSlide(syl: HTMLElement): Slide | null {
+    const cur = syl.querySelector(".cur") as HTMLElement | null; if (!cur || calm() || !cur.animate) return null;
+    return { cur: cur.getBoundingClientRect(), nx: Array.prototype.map.call(syl.querySelectorAll(".nx"), (e: Element) => e.getBoundingClientRect()) as DOMRect[], clone: cur.cloneNode(true) as HTMLElement };
+  }
+  // Mittelpunkt der Hauptsilbe relativ zum Sternen-Feld (Ursprung der Sterne)
+  function curCenter(syl: HTMLElement): void {
+    const sp = root.querySelector("#spark") as HTMLElement | null, c = syl.querySelector(".cur") as HTMLElement | null; if (!sp || !c) return;
+    const a = sp.getBoundingClientRect(), r = c.getBoundingClientRect();
+    sp.style.setProperty("--ox", Math.round(r.left + r.width / 2 - a.left - 15) + "px"); sp.style.setProperty("--oy", Math.round(r.top + r.height / 2 - a.top - 15) + "px");
+  }
+  // Hauptsilbe fährt nach links raus, Vorschau-Silben rücken nach, neue Vorschau kommt von rechts
+  function slideIn(syl: HTMLElement, old: Slide): void {
+    const stage = (syl.closest(".stage") as HTMLElement).getBoundingClientRect(), box = syl.getBoundingClientRect(), D = 520, E = "cubic-bezier(.45,0,.2,1)";
+    const c = old.clone; c.classList.remove("pop"); c.classList.add("out"); c.setAttribute("aria-hidden", "true");
+    c.style.left = old.cur.left - box.left + "px"; c.style.top = old.cur.top - box.top + "px"; syl.appendChild(c);
+    c.animate([{ transform: "translateX(0)", opacity: 1 }, { transform: "translateX(" + -(old.cur.right - stage.left + 24) + "px)", opacity: 0 }], { duration: D, easing: E }).onfinish = () => c.remove();
+    const move = (el: Element | null, from: DOMRect | undefined, rightIn: boolean): void => {
+      if (!el || !(el as HTMLElement).animate) return; const n = el.getBoundingClientRect();
+      const f = from ? "translate(" + (from.left - n.left) + "px," + (from.top - n.top) + "px) scale(" + (n.width ? from.width / n.width : 1) + ")" : "translateX(" + (stage.right - n.left + 24) + "px)";
+      (el as HTMLElement).style.transformOrigin = "0 0";
+      (el as HTMLElement).animate([{ transform: f, opacity: from ? 1 : (rightIn ? 1 : 0) }, { transform: "none", opacity: 1 }], { duration: D, easing: E });
+    };
+    const nx = syl.querySelectorAll(".nx");
+    move(syl.querySelector(".cur"), old.nx[0], false); move(nx[0] || null, old.nx[1], true); move(nx[1] || null, undefined, true);
   }
   // Passt die Schriftgröße an, falls Hauptsilbe und Vorschau breiter als der Rahmen sind (kleine Telefone)
   function fit(el: HTMLElement): void {
@@ -139,13 +167,13 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     const need = kids.reduce((a, k) => a + k.offsetWidth, 0) + gap * Math.max(0, kids.length - 1), avail = stage.clientWidth - 52;
     if (need > avail && need > 0) el.style.setProperty("--fit", (Math.max(0.4, avail / need)).toFixed(3));
   }
-  function showTask(): void { const t = now(); if (idx === 0) roundStart = t; sylStart = t; shownAt = t; paintTask(); }
+  function showTask(slide = false): void { const t = now(); if (idx === 0) roundStart = t; sylStart = t; shownAt = t; paintTask(slide); }
   function restart(el: Element, cls: string, ms: number): void { el.classList.remove(cls); void (el as HTMLElement).offsetWidth; el.classList.add(cls); setTimeout(() => el.classList.remove(cls), ms); }
   function burst(): void {
     const sp = root.querySelector("#spark"); if (!sp) return;
     Array.prototype.forEach.call(sp.children, (el: HTMLElement) => {
       const a = rng() * 2 * Math.PI, r = 70 + rng() * 80; el.style.setProperty("--dx", Math.round(Math.cos(a) * r) + "px"); el.style.setProperty("--dy", Math.round(Math.sin(a) * r * .8) + "px");
-      el.style.setProperty("--rot", Math.round((rng() - .5) * 500) + "deg"); el.style.animationDelay = (rng() * .08).toFixed(2) + "s";
+      el.style.setProperty("--rot", Math.round((rng() - .5) * 500) + "deg"); el.style.animationDelay = (.3 + rng() * .08).toFixed(2) + "s";
     });
     restart(sp, "go", 1100); const o = root.querySelector("#pbarOwl"); if (o) restart(o, "act", 800);
   }
@@ -153,7 +181,7 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     if (!setup || now() - shownAt < 400) return;   // Schutz vor Doppeltippen
     times.push({ s: setup.tasks[idx], sec: Math.round((now() - sylStart) / 100) / 10 });
     if (idx >= setup.tasks.length - 1) { finish(); return; }
-    idx++; showTask(); burst();
+    idx++; showTask(true); burst();
   }
   function finish(): void {
     const d = data as Data, s = setup as RoundSetup, cfg = d.config as SilbenflugConfig;
