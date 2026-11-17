@@ -124,7 +124,8 @@ describe("Kinder-App gegen echten Server", () => {
   it("Übung: 20 Aufgaben, Zeit am Rundenende, Runde und Automatik kommen beim Server an; Sitzung bleibt nach Neustart", async () => {
     const a = mount(); await a.ready; await flush(); (a.root.querySelector("#code") as HTMLInputElement).value = code; click(a.root, "Anmelden"); await flush();
     click(a.root, "Übung starten"); expect(a.root.querySelector("#prog")!.textContent).toBe("Aufgabe 1 von 20");
-    clock += 1500; click(a.root, "Weiter"); expect(a.root.querySelector("#prog")!.textContent).toBe("Aufgabe 2 von 20");
+    clock += 1500; click(a.root, "Weiter"); expect(a.root.querySelector("#prog")!.textContent).toBe("Aufgabe 1 von 20");   // erst Sterne, dann Übergang
+    await new Promise((r) => setTimeout(r, 400)); expect(a.root.querySelector("#prog")!.textContent).toBe("Aufgabe 2 von 20");
     play(a.root, 19); await flush();
     expect(a.root.textContent).toContain("Herzlichen Glückwunsch, Mia!"); expect(a.root.textContent).toMatch(/Deine Zeit\s*\d+ Sekunden/);
     expect(roundsOnServer()).toBe(1);
