@@ -1,8 +1,9 @@
 // Messwerte, Bewertung sicher beherrschter Silben und Auszeichnungen.
 // Einziger Messwert ist die Zeit bis „Weiter“. Die Bewertung ist zeitbasiert und kein Nachweis der Lesekorrektheit.
 import { Hono } from "hono";
-import { buildSyllables, makeRound, randomCase, countSyllables, sylProbs } from "@silbenflug/core";
-import { trainingWindow } from "@silbenflug/engine";
+import { buildSyllables, groupedTasks, makeRound, randomCase, countSyllables, sylProbs } from "@silbenflug/core";
+import { syllablePlan, trainingWindow } from "@silbenflug/engine";
+import type { SyllablePlan } from "@silbenflug/engine";
 import { pickWeighted } from "../train";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
 import { isMastered, letterProgress, newAwards, highestLevel, autoParams, comboKey, roundParams, sdFromLen, startVal, sylStat, sylTimeParams } from "@silbenflug/engine";
@@ -50,6 +51,13 @@ export async function studentTraining(d: Deps, studentId: string, cfg: Silbenflu
   const win = trainingWindow(scopes, times, cfg, cfg.round.min_pool);
   if (!cfg.stages.enabled) win.restricted = false;   // Schalter in der Konfiguration: ohne Lernstufen wie bisher
   return { st, scopes, times, maxSeq, win };
+}
+
+// Silbenbasierte Auswahl (stages.mode 2): Gruppen und Freischaltung je Silbe aus dem Silbenumfang aller Buchstaben und den Zeiten; null = altes Fenster (mode 1 oder Stufen aus)
+export function studentSylPlan(tr: { scopes: Record<string, string[]>; times: Record<string, number[]> }, cfg: SilbenflugConfig): SyllablePlan | null {
+  if (!cfg.stages || !cfg.stages.enabled || cfg.stages.mode !== 2) return null;
+  const all = [...new Set(Object.values(tr.scopes).flat())];
+  return all.length ? syllablePlan(all, tr.times, cfg) : null;
 }
 
 // Stand je Buchstabe (für Lehrkräfte; Kinder sehen nur die Stufe)
@@ -214,7 +222,10 @@ export function progressRoutes() {
       fKeys.forEach((k2) => { probs[k2] = (probs0[k2] / tot) * (1 - rvShare); });
       rvList.forEach((k2) => { probs[k2] = rvShare / rvList.length; });
     } else Object.assign(probs, focus.length ? Object.fromEntries(Object.entries(probs0).filter(([k2]) => focus.indexOf(k2) >= 0)) : probs0);
-    const syllables = weight > 1 || focus.length
+    const sp = studentSylPlan(tr, cfg), st2 = cfg.stages, openAll = sp ? sp.fresh.length + sp.building.length + sp.weak.length + sp.solid.length : 0;
+    const byGroups = sp && openAll >= cfg.round.min_pool
+      ? groupedTasks(lens, 20, bal, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, rp) : null;
+    const syllables = byGroups ? byGroups : weight > 1 || focus.length
       ? pickWeighted(probs, 20, (s2) => (isMastered(times[s2], cfg, s2).status === "mastered" ? 1 : weight), rng)
       : makeRound(st.letters, lens, cfg.round.letter_frequency_default, 20, bal, sylAvg, sd, null, rng, rp);
     const stu = await d.db.first<{ display_name: string }>("SELECT display_name FROM students WHERE id=?", [id]);

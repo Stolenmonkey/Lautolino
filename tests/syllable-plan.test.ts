@@ -70,3 +70,11 @@ describe("groupedTasks: Rundenmix", () => {
     expect(only.length).toBe(10);
   });
 });
+
+describe("Silben-Zug und Lehrer-Ansicht im Modus 2", () => {
+  it("Stufenansicht: gesperrte Silben werden als gesperrt geliefert, Hinweistext nennt Gate und Mix", async () => {
+    const { readFileSync } = await import("node:fs");
+    const ui = readFileSync("apps/web/js/views/auswertung.js", "utf8"), st = readFileSync("apps/web/js/views/stufen.js", "utf8");
+    expect(ui).toContain("gatePercent"); expect(st).toContain("noch nicht freigeschaltet");
+  });
+});

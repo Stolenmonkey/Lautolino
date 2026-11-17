@@ -110,11 +110,11 @@ describe("Lautolino (Server und Oberfläche)", () => {
       expect(plan.training.focus).toContain("mal"); expect(plan.training.focus).toContain("ama"); expect(plan.training.focus).not.toContain("ma"); expect(plan.training.focus).not.toContain("plam"); expect(plan.training.focus).not.toContain("alma");
       expect(plan.training.review.sort()).toEqual(KV.slice().sort());
       const ev = (await call("GET", `/students/${kA}/evaluation`, teacher)).json;
-      expect(ev.stages.map((s: any) => s.status)).toEqual(["done", "done", "active", "active", "locked", "empty", "locked"]);
-      expect(ev.letters.find((l: any) => l.letter === "m")).toMatchObject({ current: 3, window: [3, 4] });
-      // die Übungsrunde (Silben-Zug) folgt demselben Fenster: Stufe 3 und 4 plus Wiederholung
+      expect(ev.stages.map((s: any) => s.status)).toEqual(["done", "done", "active", "locked", "locked", "empty", "locked"]);   // Modus 2: Stufe 4 erst, wenn Stufe 3 zu 80 % sicher ist
+      expect(ev.letters.find((l: any) => l.letter === "m")).toMatchObject({ current: 3, window: [3] });
+      // die Übungsrunde (Silben-Zug) folgt der Freischaltung je Silbe: nur Stufe 3 (neu) und Stufe 1 (Wiederholung), nichts Gesperrtes
       const z = (await call("GET", `/students/${kA}/syllable-train?seed=3`, teacher)).json.syllables as string[];
-      expect(z.every((s) => plan.training.focus.includes(s) || plan.training.review.includes(s))).toBe(true); expect(z.some((s) => plan.training.focus.includes(s))).toBe(true);
+      expect(z.every((s) => classifySyllable(s).stage <= 3)).toBe(true); expect(z.some((s) => classifySyllable(s).stage === 3)).toBe(true); expect(z.some((s) => KV.includes(s))).toBe(true);
     });
     it("Schalter stages.enabled = 0: Silbenauswahl wie bisher ohne Lernstufen", async () => {
       expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0, review_percent: 15 } } })).status).toBe(201);
@@ -142,13 +142,13 @@ describe("Lautolino (Server und Oberfläche)", () => {
       expect(times.length).toBe(12); expect(row("pe").avg).toBe(sylStat(times, sylTimeParams(DEFAULT_CONFIG)).avg);   // Ø stimmt mit den gespeicherten Messwerten überein
       expect(row("pe").successful).toBe(times.filter((x) => x <= DEFAULT_CONFIG.mastery.time_limit_seconds["2"]!).length);
       await rounds(tok, ["ma"], 1, 1, "d"); ev = (await call("GET", `/students/${kA}/evaluation`, teacher)).json; expect(row("ma")).toMatchObject({ count: 10, status: "mastered" });
-      expect(ev.minMeasurements).toBe(10); expect(Object.keys(ev.syllables[0]).sort()).toEqual(["avg", "contrast", "count", "length", "letters", "limit", "parts", "stage", "status", "structure", "stored", "sub", "subName", "successful", "syllable"].sort());
+      expect(ev.minMeasurements).toBe(10); expect(Object.keys(ev.syllables[0]).sort()).toEqual(["avg", "contrast", "count", "length", "letters", "limit", "locked", "parts", "stage", "status", "structure", "stored", "sub", "subName", "successful", "syllable"].sort());
     });
     it("Stufen- und Buchstabenstand pro Kind und alle Silben einer Stufe (auch noch nicht geübte)", async () => {
       const tok = await kidTok(codeA); await rounds(tok, KV, 10, 1, "kv"); await rounds(tok, ["mal", "pal"], 3, 1, "k3");
       const ev = (await call("GET", `/students/${kA}/evaluation`, teacher)).json;
       expect(ev.stages[0]).toMatchObject({ stage: 1, status: "done", total: 9, processed: 9, mastered: 9, open: 0 }); expect(ev.stages[2]).toMatchObject({ stage: 3, status: "active", processed: 2, mastered: 0 });
-      const st = ev.letters.find((l: any) => l.letter === "p"); expect(st.stages.map((s: any) => s.status)).toEqual(["done", "done", "active", "active", "locked", "empty", "locked"]);
+      const st = ev.letters.find((l: any) => l.letter === "p"); expect(st.stages.map((s: any) => s.status)).toEqual(["done", "done", "active", "locked", "locked", "empty", "locked"]);
       const d = (await call("GET", `/students/${kA}/stages/3`, teacher)).json; expect(d.total).toBe(36); expect(d.syllables.find((x: any) => x.syllable === "mal")).toMatchObject({ count: 3, status: "unrated" });
       expect(d.syllables.find((x: any) => x.syllable === "lop")).toMatchObject({ count: 0, avg: null, status: "unrated" });
       expect((await call("GET", `/students/${kA}/stages/8`, teacher)).status).toBe(400);

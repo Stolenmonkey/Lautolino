@@ -5,7 +5,7 @@ export const STATUS_TXT = { done: "abgeschlossen", active: "wird geübt", locked
 export const SYL_STATUS = { mastered: "sicher beherrscht", not_mastered: "noch nicht sicher", unrated: "noch nicht bewertet" };
 export const stageChip = (status, text) => h("span", { class: "stage st-" + (status === "skipped" ? "locked" : status), title: STATUS_TXT[status] }, text ?? STATUS_TXT[status]);
 const up = (a) => a.map((x) => x.toUpperCase()).join(", ");
-const gesamtStatus = (s) => s.status === "active" && s.activeLetters?.length ? stageChip("active", "aktiv für: " + up(s.activeLetters)) : s.status === "locked" && s.mastered > 0 ? stageChip("skipped", `übersprungen (${s.mastered}/${s.total} sicher)`) : stageChip(s.status);
+const gesamtStatus = (s) => s.status === "active" && s.unlocked ? stageChip("active", `aktiv (${s.unlocked} Silben freigeschaltet)`) : s.status === "active" && s.activeLetters?.length ? stageChip("active", "aktiv für: " + up(s.activeLetters)) : s.status === "locked" && s.mastered > 0 ? stageChip("skipped", `übersprungen (${s.mastered}/${s.total} sicher)`) : stageChip(s.status);
 export const sylText = (parts) => parts.join("-").toUpperCase();
 const sec = (v) => (v === null || v === undefined ? "–" : v.toFixed(1).replace(".", ",") + " s");
 
@@ -34,7 +34,7 @@ export function silbenTabelle(rows, min) {
   return h("div", { class: "tablewrap" }, table(["Silbe", "Stufe", "Ø Lesezeit", "Abfragen", "Innerhalb der Zeitvorgabe", "Status"], rows.map((r) => [
     h("strong", { class: "mono" }, sylText(r.parts)), `${r.sub} ${r.subName}${r.contrast ? " (auch Stufe 2)" : ""}`, sec(r.avg), r.count,
     r.limit === null || !r.stored ? "–" : `${r.successful} von ${r.stored} (Vorgabe ${String(r.limit).replace(".", ",")} s)`,
-    h("span", { class: "stage st-" + (r.status === "mastered" ? "done" : r.status === "not_mastered" ? "active" : "locked") }, r.status === "unrated" && r.stored ? `noch nicht bewertet (${r.stored} von ${min})` : SYL_STATUS[r.status]),
+    h("span", { class: "stage st-" + (r.status === "mastered" ? "done" : r.status === "not_mastered" ? "active" : "locked") }, r.locked ? "noch nicht freigeschaltet" : r.status === "unrated" && r.stored ? `noch nicht bewertet (${r.stored} von ${min})` : SYL_STATUS[r.status]),
   ])));
 }
 export function filterRows(rows, f) {

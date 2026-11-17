@@ -80,4 +80,4 @@ Nicht getestet: echter Versand über Resend (kein Konto/Schlüssel hier) und die
 - Konfiguration `stages`: `mode` (2 = je Silbe, 1 = altes Buchstaben-Fenster), `gate_percent` (80), `mix_new_percent` / `mix_weak_percent` / `mix_review_percent` (45/30/25, Summe 100). Alle im Verwaltungsbereich unter „Konfiguration → Lernstufen“ einstellbar.
 - Freischaltung je Silbe (`engine/syllablePlan.ts`): In jeder Vorstufe müssen mindestens `gate_percent` der Silben aus den Buchstaben dieser Silbe sicher sein (Stufe 2 = Anlautwechsel). Silben mit Messungen bleiben offen.
 - Gruppen: neu, angefangen, schwach, sicher. Rundenaufbau `core/stagedRound.ts: groupedTasks`. Berechnung in der Kinder-App aus den lokalen Silbenzeiten (`apps/kids/src/logic.ts`).
-- Lehrer-Stufenansicht und Silben-Zug nutzen weiter das alte Fenster (noch nicht angepasst).
+- Lehrer-Stufenansicht (`routes/evaluation.ts`, `web/js/views/stufen.js`, `auswertung.js`) und Silben-Zug (`routes/progress.ts`, `studentSylPlan`) folgen im Modus 2 derselben Freischaltung: Stufenstatus nach freigeschalteten Silben, gesperrte Silben als „noch nicht freigeschaltet“, Hinweistext mit Gate und Mix. Modus 1 bleibt wie bisher.
