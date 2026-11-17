@@ -54,7 +54,7 @@ describe("groupedTasks: Rundenmix", () => {
   const mix = { fresh: 45, weak: 30, review: 25 };
   it("20 Aufgaben im Verhältnis 45/30/25, Platz 1 nie aus der Wiederholung, keine direkten Wiederholer", () => {
     for (let seed = 1; seed <= 20; seed++) {
-      const t = groupedTasks([2, 3], 20, 50, g, mix, info, mulberry32(seed));
+      const t = groupedTasks(20, g, mix, info, mulberry32(seed));
       expect(t.length).toBe(20);
       expect(t.filter((s) => ["la", "le", "lo"].includes(s)).length).toBe(9);
       expect(t.filter((s) => s === "ol" || s === "ul").length).toBe(6);
@@ -64,9 +64,9 @@ describe("groupedTasks: Rundenmix", () => {
     }
   });
   it("leere Gruppen: Anteil geht an neu/schwach, nicht an die Wiederholung", () => {
-    const t = groupedTasks([2], 20, 50, { fresh: ["la", "le"], building: [], weak: [], solid: ["al", "el"] }, mix, info, mulberry32(3));
+    const t = groupedTasks(20, { fresh: ["la", "le"], building: [], weak: [], solid: ["al", "el"] }, mix, info, mulberry32(3));
     expect(t.filter((s) => ["al", "el"].includes(s)).length).toBe(5);
-    const only = groupedTasks([2], 10, 50, { fresh: [], building: [], weak: [], solid: ["al", "el"] }, mix, info, mulberry32(3));
+    const only = groupedTasks(10, { fresh: [], building: [], weak: [], solid: ["al", "el"] }, mix, info, mulberry32(3));
     expect(only.length).toBe(10);
   });
 });

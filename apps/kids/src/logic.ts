@@ -40,7 +40,7 @@ export function prepareRound(plan: Plan, cfg: SilbenflugConfig, st: LocalState, 
   if (st2 && st2.enabled !== 0 && st2.mode === 2) {
     const sp = syllablePlan(lens.flatMap((L) => buildSyllables(letters, L)), st.sylTimes, cfg);
     if (sp.fresh.length + sp.building.length + sp.weak.length + sp.solid.length >= cfg.round.min_pool)
-      tasks = groupedTasks(lens, cfg.round.task_count, bal, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, roundParams(cfg));
+      tasks = groupedTasks(cfg.round.task_count, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, roundParams(cfg));
   }
   if (!tasks) tasks = stagedTasks(letters, lens, cfg.round.letter_frequency_default, cfg.round.task_count, bal, sylAvg, sd, useStages && plan.training ? plan.training : null, st2 ? st2.review_percent : 0, rng, roundParams(cfg));
   return { key: comboKey(letters, lens), letters, lens, bal, sd, tasks, shown: tasks.map((s) => randomCase(s, rng)) };

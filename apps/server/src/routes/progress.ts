@@ -224,7 +224,7 @@ export function progressRoutes() {
     } else Object.assign(probs, focus.length ? Object.fromEntries(Object.entries(probs0).filter(([k2]) => focus.indexOf(k2) >= 0)) : probs0);
     const sp = studentSylPlan(tr, cfg), st2 = cfg.stages, openAll = sp ? sp.fresh.length + sp.building.length + sp.weak.length + sp.solid.length : 0;
     const byGroups = sp && openAll >= cfg.round.min_pool
-      ? groupedTasks(lens, 20, bal, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, rp) : null;
+      ? groupedTasks(20, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, rp) : null;
     const syllables = byGroups ? byGroups : weight > 1 || focus.length
       ? pickWeighted(probs, 20, (s2) => (isMastered(times[s2], cfg, s2).status === "mastered" ? 1 : weight), rng)
       : makeRound(st.letters, lens, cfg.round.letter_frequency_default, 20, bal, sylAvg, sd, null, rng, rp);

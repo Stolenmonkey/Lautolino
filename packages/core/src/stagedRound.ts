@@ -2,7 +2,7 @@
 // dazu gelegentlich Wiederholungen früherer Stufen. Ohne Stufen-Angaben verhält sich alles wie bisher.
 import type { Rng } from "@silbenflug/shared";
 import { buildSyllables } from "./syllables";
-import { lenWeights, makeRound, SILBENZAUBER_ROUND_PARAMS, type RoundParams, type SylAvg } from "./round";
+import { makeRound, SILBENZAUBER_ROUND_PARAMS, type RoundParams, type SylAvg } from "./round";
 import { classifySyllable } from "./stages";
 
 export interface Training { focus: string[]; review: string[] }
@@ -52,27 +52,24 @@ function quotas(n: number, mix: SylMix, has: [boolean, boolean, boolean]): [numb
   return [q[0], q[1], q[2]];
 }
 
-// Gewichte einer Teilmenge: Längenverteilung (bal) und Faktor je Silbe; Summe = 1
-function weigh(list: string[], lw: Record<number, number>, f: (s: string) => number): Array<[string, number]> {
-  const nL: Record<number, number> = {};
-  list.forEach((s) => { nL[s.length] = (nL[s.length] || 0) + 1; });
-  let w = list.map((s) => ((lw[s.length] ?? 1) / nL[s.length]) * f(s));
-  let t = w.reduce((a, b) => a + b, 0);
+// Gewichte einer Teilmenge: Faktor je Silbe, Summe = 1 (keine Längenverteilung, keine Silbenschwierigkeit)
+function weigh(list: string[], f: (s: string) => number): Array<[string, number]> {
+  let w = list.map((s) => f(s)), t = w.reduce((a, b) => a + b, 0);
   if (!(t > 0)) { w = list.map(() => 1); t = list.length; }
   return list.map((s, i) => [s, w[i] / t] as [string, number]);
 }
 
 // Runde aus den Gruppen: A (neu/angefangen: je zur Hälfte, neue nach niedriger Stufe, angefangene nach fehlenden Messungen), B (schwach: nach Ø/Zeitvorgabe), C (sicher, gleichverteilt).
 // Plätze zufällig, Platz 1 nie aus C, solange es etwas anderes gibt; keine direkten Wiederholer, Wiederholungen werden gedämpft.
-export function groupedTasks(lens: number[], n: number, bal: number | null | undefined, g: SylGroups, mix: SylMix, info: SylInfo, rng: Rng, p: RoundParams = SILBENZAUBER_ROUND_PARAMS): string[] {
-  const lw = lenWeights(lens, bal), a = [...g.fresh, ...g.building];
+export function groupedTasks(n: number, g: SylGroups, mix: SylMix, info: SylInfo, rng: Rng, p: RoundParams = SILBENZAUBER_ROUND_PARAMS): string[] {
+  const a = [...g.fresh, ...g.building];
   const q = quotas(n, mix, [a.length > 0, g.weak.length > 0, g.solid.length > 0]);
   const minStage = g.fresh.length ? Math.min(...g.fresh.map((s) => classifySyllable(s).stage)) : 1;
   const aw: Array<[string, number]> = [];
-  const fw = weigh(g.fresh, lw, (s) => 1 / (1 + classifySyllable(s).stage - minStage)), bw = weigh(g.building, lw, (s) => Math.max(1, info.minMeasure - (info.count[s] || 0)) + 1);
+  const fw = weigh(g.fresh, (s) => 1 / (1 + classifySyllable(s).stage - minStage)), bw = weigh(g.building, (s) => Math.max(1, info.minMeasure - (info.count[s] || 0)) + 1);
   const fs = g.fresh.length && g.building.length ? 0.5 : 1;
   fw.forEach(([s, w]) => aw.push([s, w * fs])); bw.forEach(([s, w]) => aw.push([s, w * (g.fresh.length ? 0.5 : 1)]));
-  const bwk = weigh(g.weak, lw, (s) => Math.max(0.1, info.ratio[s] ?? 1)), cw = weigh(g.solid, lw, () => 1);
+  const bwk = weigh(g.weak, (s) => Math.max(0.1, info.ratio[s] ?? 1)), cw = weigh(g.solid, () => 1);
   const pools = [aw, bwk, cw];
   const labels: number[] = []; q.forEach((c, i) => { for (let k = 0; k < c; k++) labels.push(i); });
   for (let i = labels.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [labels[i], labels[j]] = [labels[j], labels[i]]; }
