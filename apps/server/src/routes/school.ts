@@ -1,7 +1,7 @@
 // Schul- und Lehrerbereich: Schuljahre, Klassen, Zugänge, Kinder. Alle Zugriffe werden pro Schule, Klasse und Kind serverseitig geprüft.
 import { Hono } from "hono";
 import type { Env } from "../context";
-import { issueStudentCode } from "../codes";
+import { issueParentCode, issueStudentCode } from "../codes";
 import { authenticate, requireStaff } from "../middleware";
 import { canAccessClass, canAccessSchool, canAccessStudent, isAdmin } from "../permissions";
 import { createStaff } from "../staff";
@@ -73,21 +73,21 @@ export function schoolRoutes() {
     if (!a.ok) throw fail(404, "nicht gefunden");
     return c.json(await d.db.all("SELECT k.id, k.display_name, k.active FROM students k JOIN student_class_history h ON h.student_id=k.id AND h.to_date IS NULL WHERE h.class_id=? ORDER BY k.display_name", [c.req.param("cid")]));
   });
-  // Legt Kinder an und gibt die Merkschlüssel genau einmal zurück (danach nur noch neu erzeugen).
+  // Legt Kinder an und gibt Schülercode und Elterncode genau einmal zurück (danach nur noch neu erzeugen).
   r.post("/classes/:cid/students", async (c) => {
     const d = c.get("deps"), p = c.get("p"), cid = c.req.param("cid"), a = await canAccessClass(d.db, p, cid);
     if (!a.ok) throw fail(404, "nicht gefunden");
     await assertSchoolWritable(d, a.schoolId!);
     const b = await body(c), names: unknown[] = Array.isArray(b.names) ? b.names : [];
     if (!names.length || names.length > 40) throw fail(400, "names: 1 bis 40 Namen erwartet");
-    const out: Array<{ id: string; displayName: string; code: string }> = [];
+    const out: Array<{ id: string; displayName: string; code: string; parentCode: string }> = [];
     for (const n of names) {
       const name = str(n, "Name", 60), id = newId(), at = nowIso(d);
       await d.db.batch([
         { sql: "INSERT INTO students(id,school_id,display_name,active,created_at,updated_at) VALUES(?,?,?,1,?,?)", params: [id, a.schoolId!, name, at, at] },
         { sql: "INSERT INTO student_class_history(id,student_id,class_id,from_date,to_date) VALUES(?,?,?,?,NULL)", params: [newId(), id, cid, at] },
       ]);
-      out.push({ id, displayName: name, code: await issueStudentCode(d, id) });
+      out.push({ id, displayName: name, code: await issueStudentCode(d, id), parentCode: await issueParentCode(d, id) });
     }
     await audit(d, p.id, "students_created", cid, { count: out.length });
     return c.json(out, 201);

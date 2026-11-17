@@ -23,14 +23,23 @@ input[type=text]:focus{outline:none;border-color:#4a8fe0}
 .lt svg:not(.medal){display:inline-block;height:1.4em;width:.64em;vertical-align:-.3em;overflow:visible}
 .lt:nth-child(4n+1).on{background:#ffe3e6}.lt:nth-child(4n+2).on{background:#fff1d2}.lt:nth-child(4n+3).on{background:#dff5e1}.lt:nth-child(4n+4).on{background:#e6e0fa}
 .lt.off{background:#f1f5fa;opacity:.4}
-.medal{position:absolute;right:-4px;bottom:-6px;width:30px;height:33px}.medal.big{position:static;width:54px;height:59px}
+.lt{flex-direction:column;padding-bottom:12px}
+.medal{position:absolute;right:-6px;top:-8px;width:32px;height:35px}
+.pips{position:absolute;left:0;right:0;bottom:3px;display:flex;justify-content:center;gap:4px}.pip{display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid #1f2a44;background:#fff;opacity:.35}.pip.got{opacity:1}
+.legend{display:flex;justify-content:center;gap:16px;margin:12px 0 0;font-size:1rem;color:#4b5b7a}.legend span{display:inline-flex;align-items:center;gap:6px}
+.medal.big{position:static}.medal.big{position:static;width:54px;height:59px}
 .foot{text-align:center;font-size:1rem;color:#4b5b7a;margin:0}
 .link{font:inherit;font-size:1rem;color:#2f5f9a;background:none;border:0;text-decoration:underline;cursor:pointer;padding:12px 8px}
 .pbar{display:flex;align-items:center;justify-content:space-between;gap:12px}.prog{text-align:center;font-size:1.3rem;color:#4b5b7a}
 .stage{position:relative;border:6px solid #ffd93d;min-height:240px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:1}
 .sylwrap{position:relative}
-.big{font-size:clamp(3.4rem,18vw,9rem);line-height:1.5;white-space:nowrap;letter-spacing:.03em}
-.big svg{display:inline-block;height:1.4em;width:.64em;vertical-align:-.3em;overflow:visible}
+.big{--fit:1;font-size:calc(clamp(2.6rem,11vw,6.5rem) * var(--fit));line-height:1.5;white-space:nowrap;letter-spacing:.03em;display:flex;align-items:flex-start;justify-content:center;gap:.45em}
+.big .cur{display:inline-block}.big .nxt{display:inline-flex;gap:.35em;font-size:.42em;line-height:1.5;margin-top:.5em;align-items:flex-start}
+.big .nxt svg .s{stroke:#c3cad6}.big .nxt svg .d{fill:#c3cad6}.big .nxt .arc path{stroke:#dde2ea}
+.sy{display:inline-block;position:relative;padding-bottom:.18em;margin:0 .06em}
+.arc{position:absolute;left:.03em;right:.03em;bottom:0;width:calc(100% - .06em);height:.2em;overflow:visible}
+.arc path{fill:none;stroke:#2f7fd8;stroke-width:5;stroke-linecap:round}
+.big svg:not(.arc){display:inline-block;height:1.4em;width:.64em;vertical-align:-.3em;overflow:visible}
 svg .s{fill:none;stroke:#1f2a44;stroke-width:12;stroke-linecap:round;stroke-linejoin:round}svg .d{fill:#1f2a44}
 .end{text-align:center;display:flex;flex-direction:column;gap:12px}.end h2{font-size:1.7rem;margin:6px 0}
 .bigmascot{width:110px;height:119px;margin:0 auto;overflow:visible}

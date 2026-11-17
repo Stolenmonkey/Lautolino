@@ -1,4 +1,4 @@
-// Elternansicht (nur lesen): Kopplung mit Aktivierungscode, dann Buchstaben mit Bronze/Silber/Gold und Rundenzeiten des eigenen Kindes.
+// Elternansicht (nur lesen): Anmeldung mit dem Elterncode (keine Geräte-Kopplung), dann Buchstaben mit Bronze/Silber/Gold und Rundenzeiten des eigenen Kindes.
 const TOKEN_KEY = "silbenflug.eltern.token", NAME_KEY = "silbenflug.eltern.name";
 const COLORS = { bronze: "#cd7f32", silber: "#b9c3d1", gold: "#ffc928" }, NAMES = { bronze: "Bronze", silber: "Silber", gold: "Gold" };
 const SVG = "http://www.w3.org/2000/svg";
@@ -34,14 +34,14 @@ export function mount(root, deps) {
   function frame(...kids) { root.replaceChildren(h("h1", {}, "Silbenzauber für Eltern"), ...kids); }
 
   function activation() {
-    const inp = h("input", { type: "text", id: "code", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", placeholder: "z. B. K7QM-4TXD-9HRP", "aria-label": "Aktivierungscode" });
+    const inp = h("input", { type: "text", id: "code", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", placeholder: "z. B. K7QM-4TXD-9HRP", "aria-label": "Elterncode" });
     const go = async () => {
-      const code = inp.value.trim(); if (!code) { msg = "Bitte den Aktivierungscode eingeben."; activation(); return; }
-      try { const r = await call("POST", "/parent/activate", { code }); token = r.token; deps.storage.setItem(TOKEN_KEY, token); deps.storage.setItem(NAME_KEY, r.student.displayName); msg = ""; await view(); }
+      const code = inp.value.trim(); if (!code) { msg = "Bitte den Elterncode eingeben."; activation(); return; }
+      try { const r = await call("POST", "/parent/login", { code }); token = r.token; deps.storage.setItem(TOKEN_KEY, token); deps.storage.setItem(NAME_KEY, r.student.displayName); msg = ""; await view(); }
       catch (e) { msg = e.message; activation(); }
     };
     inp.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
-    frame(h("div", { class: "card" }, h("p", {}, "Mit dem Aktivierungscode der Schule koppelst du dieses Gerät einmalig mit deinem Kind. Danach siehst du hier den Lernstand (nur lesen)."), inp, h("div", { class: "msg", role: "alert" }, msg), h("button", { type: "button", class: "primary", onclick: go }, "Koppeln")));
+    frame(h("div", { class: "card" }, h("p", {}, "Gib den Elterncode ein, den du von der Schule für dein Kind bekommen hast. Danach siehst du hier den Lernstand (nur lesen)."), inp, h("div", { class: "msg", role: "alert" }, msg), h("button", { type: "button", class: "primary", onclick: go }, "Anmelden")));
     msg = "";
   }
 
@@ -52,9 +52,9 @@ export function mount(root, deps) {
         h("div", { class: "card" }, h("h3", {}, "Buchstaben"), h("div", { class: "lgrid", id: "lgrid" }, lt.letters.map((x) => h("div", { class: "lt " + (x.released ? "on" : "off"), "data-letter": x.letter }, h("div", { class: "l" }, x.letter.toUpperCase() + x.letter), x.level ? h("div", { class: "st" }, h("span", { class: "dot", style: "background:" + COLORS[x.level] }), NAMES[x.level]) : h("div", { class: "st muted" }, x.released ? "geübt wird" : "")))),
           h("p", { class: "muted" }, "Bronze, Silber und Gold zeigen, wie sicher und schnell die Silben eines Buchstabens gelesen werden. Das ist zeitbasiert und kein Nachweis der Lesekorrektheit.")),
         h("div", { class: "card" }, h("h3", {}, "Rundenzeiten"), rounds.length ? [h("div", { class: "chartbox" }, rundenDiagramm(rounds)), h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Nr."), h("th", {}, "Datum"), h("th", {}, "Zeit"))), h("tbody", {}, rounds.slice(-20).reverse().map((r, i) => h("tr", {}, h("td", {}, rounds.length - i), h("td", {}, fmt(r.played_at)), h("td", {}, Math.round(r.seconds) + " s")))))] : h("p", { class: "muted" }, "Noch keine Runde gespielt.")),
-        h("p", {}, h("button", { type: "button", id: "unlink", onclick: () => { deps.storage.removeItem(TOKEN_KEY); deps.storage.removeItem(NAME_KEY); token = null; msg = ""; activation(); } }, "Dieses Gerät trennen")));
+        h("p", {}, h("button", { type: "button", id: "unlink", onclick: () => { deps.storage.removeItem(TOKEN_KEY); deps.storage.removeItem(NAME_KEY); token = null; msg = ""; activation(); } }, "Abmelden")));
     } catch (e) {
-      if (e.status === 401 || e.status === 403) { deps.storage.removeItem(TOKEN_KEY); token = null; msg = "Dieses Gerät ist nicht mehr gekoppelt. Bitte bei der Schule einen neuen Code holen."; activation(); }
+      if (e.status === 401 || e.status === 403) { deps.storage.removeItem(TOKEN_KEY); token = null; msg = "Du bist nicht mehr angemeldet. Bitte gib den Elterncode noch einmal ein (bei Bedarf bei der Schule einen neuen holen)."; activation(); }
       else frame(h("div", { class: "card" }, h("div", { class: "msg", role: "alert" }, e.message), h("button", { type: "button", class: "primary", onclick: () => view() }, "Noch einmal versuchen")));
     }
   }

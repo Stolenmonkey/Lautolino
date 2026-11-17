@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { DEFAULT_CONFIG, validateConfig, type SilbenflugConfig } from "@silbenflug/shared";
+import { DEFAULT_CONFIG, validateConfig, withDefaults, type SilbenflugConfig } from "@silbenflug/shared";
 import type { Env, Deps } from "./context";
 import { isWritable, type SchoolLicense } from "./license";
 
@@ -33,12 +33,12 @@ export async function activeConfig(d: Deps): Promise<{ version: number; config: 
     await d.db.run("INSERT INTO config_versions(json,valid_from,changed_by,change_note,is_active) SELECT ?,?,?,?,1 WHERE NOT EXISTS (SELECT 1 FROM config_versions WHERE is_active=1)", [JSON.stringify(DEFAULT_CONFIG), nowIso(d), "system", "Standardkonfiguration"]);
     row = await d.db.first("SELECT version, json FROM config_versions WHERE is_active=1");
   }
-  return { version: row!.version, config: JSON.parse(row!.json) as SilbenflugConfig };
+  return { version: row!.version, config: withDefaults(JSON.parse(row!.json)) };
 }
 export function parseConfig(input: unknown): SilbenflugConfig {
-  const c = input as SilbenflugConfig;
-  if (!c || typeof c !== "object") throw fail(400, "config: Objekt erwartet");
-  for (const k of ["syl_time", "auto", "round", "mastery", "award", "unlock", "retention", "security", "train"] as const) if (!c[k] || typeof c[k] !== "object") throw fail(400, `config.${k} fehlt`);
+  if (!input || typeof input !== "object") throw fail(400, "config: Objekt erwartet");
+  for (const k of ["syl_time", "auto", "round", "mastery", "award", "unlock", "retention", "security", "train"] as const) if (!(input as any)[k] || typeof (input as any)[k] !== "object") throw fail(400, `config.${k} fehlt`);
+  const c = withDefaults(input as Partial<SilbenflugConfig>);   // neue Abschnitte (z. B. stages) dürfen fehlen und werden ergänzt
   const errs = validateConfig(c);
   if (errs.length) throw new HTTPException(400, { message: errs.join("; ") });
   return c;

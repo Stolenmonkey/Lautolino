@@ -8,9 +8,9 @@ Installierbare Web-App im Silbenzauber-Design. Läuft nur im Browser.
 3. Den Ordner `apps/kids` als statische Seite ausliefern (z. B. Cloudflare Pages). Auf dem Tablet "Zum Startbildschirm hinzufügen".
 
 ## Ablauf
-- Anmeldung mit dem Merkschlüssel (z. B. Tiger-Sonne-47), Schreibweise egal.
-- Übersicht: alle 26 Buchstaben, freigegebene hervorgehoben, Bronze/Silber/Gold als Medaille, keine Prozentwerte.
-- Übung: 20 Silben, Weiter-Taste, Zeit je Silbe und Zeit der Runde. Eine Runde nutzt immer alle für das Kind freigegebenen Buchstaben und die Silbenlängen der Klasse.
+- Anmeldung mit dem Schülercode (z. B. SonneWald7, ohne Umlaute und Bindestrich), Schreibweise egal. Ältere Codes wie Tiger-Sonne-47 gelten weiter.
+- Übersicht: alle 26 Buchstaben, freigegebene hervorgehoben, je freigegebenem Buchstaben Bronze/Silber/Gold als Medaille der höchsten Stufe plus drei Punkte (erreichte Stufen farbig, noch offene grau) und eine Legende, keine Prozentwerte.
+- Übung: 20 Silben. Die Hauptsilbe steht etwas links, rechts daneben klein und hellgrau die tatsächlich nächsten zwei Silben. Unter jeder Sprechsilbe steht ein Silbenbogen (WAR ein Bogen, MAMA zwei). Weiter-Taste, Zeit je Silbe und Zeit der Runde. Eine Runde nutzt immer alle für das Kind freigegebenen Buchstaben und die Silbenlängen der Klasse.
 - Automatik (immer an): Schwierigkeit je Buchstabenkombination, Zielzeit aus der Konfiguration. Neue Kombination startet leichter als die ähnlichste bekannte.
 - Rundenende: "Deine Zeit" in Sekunden. Glückwunsch-Popup nur für die höchste neu erreichte Stufe je Buchstabe.
 
@@ -21,7 +21,10 @@ Installierbare Web-App im Silbenzauber-Design. Läuft nur im Browser.
 
 ## Bekannte Grenzen
 - Die Bestätigung des Popups quittiert beim Server alle offenen Auszeichnungen auf einmal.
-- Vorlesen, Silben-Vorschau und Sperren aus Silbenzauber sind nicht übernommen.
+- Vorlesen und Sperren aus Silbenzauber sind nicht übernommen.
 
 ## Abgleich mehrerer Geräte
 Sind alle gemerkten Runden gesendet, übernimmt das Gerät Silbenzeiten, Rundenzeiten und Automatik-Stand vom Server (`GET /student/sync-data`, `/student/auto-state`). So hat ein Kind auf jedem Gerät denselben Stand. Solange noch Runden im Puffer liegen, gilt der lokale Stand.
+
+## Lernstufen
+Der Plan vom Server (`GET /student/plan`) enthält `training.focus` (Silben der aktuellen Lernstufen) und `training.review` (früher Gelerntes zur Wiederholung). Die Runde besteht aus Silben des Fensters, dazu `stages.review_percent` Prozent Wiederholungen. Fehlen die Angaben (älterer Server, Lernstufen aus), gilt die Auswahl wie bisher. Ein Stufenwechsel wird nach dem nächsten Abgleich wirksam.

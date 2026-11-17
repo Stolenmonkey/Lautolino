@@ -1,5 +1,5 @@
 // Oberfläche der Kinder-App im Silbenzauber-Design: Anmeldung, Buchstabenübersicht, Übung, Rundenende, Glückwunsch-Popup.
-import { renderWord } from "@silbenflug/core";
+import { renderWord, renderWordWithArcs } from "@silbenflug/core";
 import type { AwardLevel, Rng, SilbenflugConfig } from "@silbenflug/shared";
 import { ApiError, createKidsApi, flushQueue, newRoundId } from "./api";
 import type { FetchFn, KV, QueuedRound } from "./api";
@@ -33,6 +33,13 @@ function medal(level: AwardLevel | null, big = false): string {
   return '<svg class="medal' + (big ? " big" : "") + '" viewBox="0 0 40 44" role="img" aria-label="' + LEVEL_NAME[level] + '"><path d="M12 2L20 18L28 2Z" fill="#e8505b"/><circle cx="20" cy="27" r="14" fill="' + LEVEL_COLOR[level] + '" stroke="#1f2a44" stroke-width="2"/><path d="M20 19l2.6 5.4 5.9.8-4.3 4.1 1 5.9L20 32.4l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z" fill="#fff" opacity=".85"/></svg>';
 }
 const pair = (l: string): string => renderWord(l.toUpperCase()) + renderWord(l.toLowerCase());
+const LEVELS: AwardLevel[] = ["bronze", "silber", "gold"];
+// Leistungsstatus eines Buchstabens: drei Punkte (Bronze, Silber, Gold), erreichte Stufen sind farbig, dazu die Medaille der höchsten Stufe
+function pips(level: AwardLevel | null): string {
+  const n = level ? LEVELS.indexOf(level) + 1 : 0;
+  return '<span class="pips" aria-hidden="true">' + LEVELS.map((lv, i) => '<i class="pip' + (i < n ? " got" : "") + '" style="' + (i < n ? "background:" + LEVEL_COLOR[lv] : "") + '"></i>').join("") + "</span>";
+}
+const LEGEND = '<p class="legend" aria-label="Medaillen">' + LEVELS.map((lv) => '<span><i class="pip got" style="background:' + LEVEL_COLOR[lv] + '"></i>' + LEVEL_NAME[lv] + "</span>").join("") + "</p>";
 
 export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void> } {
   const api = createKidsApi({ base: deps.base, fetchFn: deps.fetchFn }), rng: Rng = deps.rng || Math.random, now = deps.now || (() => Date.now());
@@ -78,7 +85,7 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
   function head(): string { return '<header class="head">' + owl("mascot owl calm") + "<h1>" + TITLE + "</h1></header>"; }
 
   function renderLogin(): void {
-    root.innerHTML = head() + '<section class="card enter"><label for="code">Dein Merkschlüssel</label><input id="code" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="z. B. Tiger-Sonne-47"><div class="msg" id="msg" role="alert">' + esc(msg) + '</div><button class="btn" id="login" type="button" style="margin-top:12px">Anmelden</button></section>' + LAWN;
+    root.innerHTML = head() + '<section class="card enter"><label for="code">Dein Merkschlüssel</label><input id="code" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="z. B. SonneWald7"><div class="msg" id="msg" role="alert">' + esc(msg) + '</div><button class="btn" id="login" type="button" style="margin-top:12px">Anmelden</button></section>' + LAWN;
     const inp = root.querySelector("#code") as HTMLInputElement;
     const doLogin = async (): Promise<void> => {
       const code = inp.value.trim(); if (!code) { msg = "Bitte gib deinen Merkschlüssel ein."; render(); return; }
@@ -95,10 +102,10 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
   function renderHome(): void {
     const d = data as Data, aw = d.awards, rel = new Set(d.plan ? d.plan.letters : []);
     const lv: Record<string, AwardLevel | null> = {}; (aw ? aw.letters : []).forEach((x) => { lv[x.letter] = x.level; });
-    const grid = "abcdefghijklmnopqrstuvwxyz".split("").map((l) => '<div class="lt ' + (rel.has(l) ? "on" : "off") + '" data-letter="' + l + '">' + pair(l) + medal(lv[l] || null) + "</div>").join("");
+    const grid = "abcdefghijklmnopqrstuvwxyz".split("").map((l) => '<div class="lt ' + (rel.has(l) ? "on" : "off") + '" data-letter="' + l + '"' + (rel.has(l) ? ' title="' + (lv[l] ? LEVEL_NAME[lv[l] as AwardLevel] : "noch keine Medaille") + '"' : "") + '>' + pair(l) + medal(lv[l] || null) + (rel.has(l) ? pips(lv[l] || null) : "") + "</div>").join("");
     const ok = !!(d.plan && d.config && canPractice(d.plan, d.config)), loading = !d.plan || !d.config;
     const info = loading ? "Einen Moment …" : !rel.size ? "Noch keine Buchstaben freigegeben. Frag deine Lehrerin oder deinen Lehrer." : !ok ? "Mit diesen Buchstaben gibt es noch zu wenige Silben." : "";
-    root.innerHTML = head() + '<section class="card enter"><p class="hello">Hallo' + (session ? ", " + esc(session.name) : "") + '!</p><div class="lgrid" id="lgrid">' + grid + '</div><div class="msg" id="msg" role="alert">' + esc(msg || info) + '</div><button class="btn" id="start" type="button"' + (ok ? "" : " disabled") + '>Übung starten</button></section>' +
+    root.innerHTML = head() + '<section class="card enter"><p class="hello">Hallo' + (session ? ", " + esc(session.name) : "") + '!</p><div class="lgrid" id="lgrid">' + grid + '</div>' + (rel.size ? LEGEND : "") + '<div class="msg" id="msg" role="alert">' + esc(msg || info) + '</div><button class="btn" id="start" type="button"' + (ok ? "" : " disabled") + '>Übung starten</button></section>' +
       '<p class="foot">' + (d.queue.length ? "Gemerkt, wird später gesendet: " + d.queue.length + " · " : "") + '<button type="button" class="link" id="logout">Abmelden</button></p>' + LAWN;
     (root.querySelector("#start") as HTMLElement).onclick = startPractice;
     (root.querySelector("#logout") as HTMLElement).onclick = () => logout();
@@ -118,7 +125,19 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
   function paintTask(): void {
     const s = setup as RoundSetup, n = s.tasks.length, syl = root.querySelector("#syl") as HTMLElement;
     (root.querySelector("#prog") as HTMLElement).textContent = "Aufgabe " + (idx + 1) + " von " + n;
-    syl.innerHTML = renderWord(s.shown[idx]); syl.setAttribute("aria-label", s.shown[idx]); restart(syl, "pop", 420);
+    // Hauptsilbe (etwas nach links) mit Silbenbögen, rechts daneben klein und hellgrau die tatsächlich nächsten zwei Silben (am Rundenende weniger)
+    const nxt = s.shown.slice(idx + 1, idx + 3);
+    syl.innerHTML = '<span class="cur">' + renderWordWithArcs(s.shown[idx]) + "</span>" + (nxt.length ? '<span class="nxt" aria-hidden="true">' + nxt.map((w) => '<span class="nx">' + renderWordWithArcs(w) + "</span>").join("") + "</span>" : "");
+    syl.setAttribute("aria-label", s.shown[idx] + (nxt.length ? ", danach " + nxt.join(", ") : "")); restart(syl.querySelector(".cur") as Element, "pop", 420);
+    fit(syl);
+  }
+  // Passt die Schriftgröße an, falls Hauptsilbe und Vorschau breiter als der Rahmen sind (kleine Telefone)
+  function fit(el: HTMLElement): void {
+    el.style.removeProperty("--fit"); const stage = el.closest(".stage") as HTMLElement | null;
+    if (!stage || !stage.clientWidth) return;
+    const kids = Array.prototype.slice.call(el.children) as HTMLElement[], gap = parseFloat(getComputedStyle(el).columnGap) || 0;
+    const need = kids.reduce((a, k) => a + k.offsetWidth, 0) + gap * Math.max(0, kids.length - 1), avail = stage.clientWidth - 52;
+    if (need > avail && need > 0) el.style.setProperty("--fit", (Math.max(0.4, avail / need)).toFixed(3));
   }
   function showTask(): void { const t = now(); if (idx === 0) roundStart = t; sylStart = t; shownAt = t; paintTask(); }
   function restart(el: Element, cls: string, ms: number): void { el.classList.remove(cls); void (el as HTMLElement).offsetWidth; el.classList.add(cls); setTimeout(() => el.classList.remove(cls), ms); }

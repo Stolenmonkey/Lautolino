@@ -29,7 +29,7 @@ async function schulen(root, api, msg) {
       }, load) }, "Ausführen")),
       h("div", { class: "row" }, mail, h("button", { type: "button", onclick: () => act(out, async () => {
         const r = await api.post("/admin/staff", { role: "schulleitung", schoolId: s.id, email: mail.value.trim() });
-        clear(out).append(notice(`Zugang angelegt für ${r.email}. Startpasswort (nur jetzt sichtbar): ${r.initialPassword}`, "ok"));
+        clear(out).append(notice(r.emailSent ? `Zugang angelegt für ${r.email}. Eine E-Mail mit dem Einladungslink zur Passwortvergabe wurde gesendet.` : `Zugang angelegt für ${r.email}. Der E-Mail-Versand ist nicht eingerichtet oder fehlgeschlagen. Startpasswort (nur jetzt sichtbar): ${r.initialPassword}`, "ok"));
       }) }, "Schulleitung anlegen")), out);
     clear(detailBox).append(card);
   };
@@ -42,7 +42,7 @@ async function schulen(root, api, msg) {
 }
 
 // Konfiguration: aus der aktiven Konfiguration wird automatisch ein Formular erzeugt. Speichern erzeugt eine neue Version.
-const LABELS = { syl_time: "Silbenzeit", auto: "Automatik", round: "Aufgabenverteilung", mastery: "Bewertung sicher beherrschter Silben", award: "Auszeichnungen (Prozentgrenzen)", unlock: "Freischaltung", retention: "Löschfristen (Tage)", security: "Sicherheit" };
+const LABELS = { syl_time: "Silbenzeit", auto: "Automatik", round: "Aufgabenverteilung", mastery: "Bewertung sicher beherrschter Silben", award: "Auszeichnungen (Prozentgrenzen)", unlock: "Freischaltung", retention: "Löschfristen (Tage)", security: "Sicherheit", train: "Silben-Zug", stages: "Lernstufen" };
 async function konfiguration(root, api, msg) {
   const cur = await api.get("/config"), inputs = [], form = h("div");
   const walk = (o, path, into) => {

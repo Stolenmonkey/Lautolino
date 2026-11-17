@@ -2,8 +2,10 @@
 import { h, clear, table, notice, act, fmtDate } from "../dom.js";
 import { auswertung } from "./auswertung.js";
 import { elternPanel } from "./eltern.js";
+import { uebersicht } from "./uebersicht.js";
+import { silbenPanel } from "./silben.js";
 
-export const schoolTabs = (role) => ({ schueler: "Schüler", auswertung: "Auswertung", lernplan: "Lernplan", ...(role === "schulleitung" ? { klassen: "Klassen und Schuljahre", zugaenge: "Lehrerzugänge" } : {}) });
+export const schoolTabs = (role) => ({ schueler: "Schüler", auswertung: "Auswertung", uebersicht: "Klassenübersicht", lernplan: "Lernplan", ...(role === "schulleitung" ? { klassen: "Klassen und Schuljahre", zugaenge: "Lehrerzugänge" } : {}) });
 const state = { classId: null };
 
 export async function schoolView(tab, root, { api, user }) {
@@ -16,7 +18,7 @@ export async function schoolView(tab, root, { api, user }) {
   const sel = h("select", { "aria-label": "Klasse", onchange: () => { state.classId = sel.value; schoolView(tab, root, { api, user }); } }, classes.map((c) => h("option", { value: c.id, selected: c.id === state.classId }, c.name)));
   root.append(h("div", { class: "row" }, h("label", {}, "Klasse ", sel)));
   const body = h("div"); root.append(body);
-  await (tab === "lernplan" ? lernplan : tab === "auswertung" ? auswertung : schueler)(body, api, state.classId, classes, msg);
+  await (tab === "lernplan" ? lernplan : tab === "auswertung" ? auswertung : tab === "uebersicht" ? uebersicht : schueler)(body, api, state.classId, classes, msg);
 }
 
 async function schueler(root, api, cid, classes, msg) {
@@ -29,10 +31,11 @@ async function schueler(root, api, cid, classes, msg) {
       classes.length > 1 ? h("select", { "aria-label": "Verschieben", onchange: (e) => e.target.value && act(msg, () => api.post(`/students/${s.id}/move`, { classId: e.target.value }), load) },
         h("option", { value: "" }, "Verschieben …"), classes.filter((c) => c.id !== cid).map((c) => h("option", { value: c.id }, c.name))) : null)])) : h("p", { class: "muted" }, "Noch keine Kinder in dieser Klasse."));
   };
-  const showCodes = (rows, text) => clear(codes).append(h("div", { class: "card" }, h("p", {}, text + " Die Schlüssel sind nur jetzt sichtbar und werden nicht im Klartext gespeichert."),
-    table(["Name", "Merkschlüssel"], rows.map((r) => [r.displayName, h("span", { class: "code" }, r.code)])), h("button", { type: "button", class: "noprint", onclick: () => window.print() }, "Drucken")));
+  const showCodes = (rows, text) => { const withParent = rows.some((r) => r.parentCode); clear(codes).append(h("div", { class: "card" }, h("p", {}, text + " Die Codes sind nur jetzt sichtbar und werden nicht im Klartext gespeichert."),
+    table(["Name", ...(rows.some((r) => r.code) ? ["Schülercode (Merkschlüssel)"] : []), ...(withParent ? ["Elterncode"] : [])], rows.map((r) => [r.displayName, ...(rows.some((x) => x.code) ? [h("span", { class: "code" }, r.code || "")] : []), ...(withParent ? [h("span", { class: "code" }, r.parentCode || "")] : [])])), h("button", { type: "button", class: "noprint", onclick: () => window.print() }, "Drucken"))); };
   const names = h("textarea", { placeholder: "Ein Name pro Zeile" });
-  root.append(h("h2", {}, "Schüler"), list, codes, parents, h("h3", {}, "Kinder hinzufügen"), names, h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
+  root.append(h("h2", {}, "Schüler"), list, codes, parents,
+    h("div", { class: "row" }, h("button", { type: "button", id: "missingParent", onclick: () => act(msg, async () => { const r = await api.post(`/classes/${cid}/parent-codes/missing`); if (!r.length) clear(msg).append(notice("Alle aktiven Kinder haben schon einen Elterncode.", "ok")); else showCodes(r.map((x) => ({ displayName: x.displayName, parentCode: x.code })), `${r.length} Elterncodes erzeugt.`); }) }, "Elterncodes für Kinder ohne Code erzeugen")), h("h3", {}, "Kinder hinzufügen"), names, h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
     const list2 = names.value.split("\n").map((x) => x.trim()).filter(Boolean); if (!list2.length) return;
     const r = await api.post(`/classes/${cid}/students`, { names: list2 }); names.value = ""; showCodes(r, `${r.length} Kinder angelegt.`);
   }, load) }, "Anlegen")));
@@ -56,6 +59,7 @@ async function lernplan(root, api, cid, classes, msg) {
           const r = await api.post(`/classes/${cid}/releases`, { letters: (start.value.toLowerCase().match(/[a-z]/g) || []) }); clear(msg).append(notice(`Freigegeben: ${r.released.map((x) => x.letter.toUpperCase() + " (" + x.syllableCount + " Silben)").join(", ")}.`, "ok"));
         }, reload) }, "Startbuchstaben freigeben"))),
     h("p", { class: "muted" }, "Eine Freigabe kann nicht zurückgenommen werden, weil der Silbenumfang dauerhaft festgelegt wird."));
+  if (plan.releases.length) { const box = h("div"); root.append(box); await klassenSilben(box, api, cid); }
   if (plan.releases.length && students.length) {
     root.append(h("h3", {}, "Ausnahmen einzelner Kinder"), h("p", { class: "muted" }, "Haken = dieses Kind übt den Buchstaben (noch) nicht. Gilt nur für die Freigabe, nicht für Zeitpläne."),
       table(["Kind", ...plan.releases.map((r) => r.letter.toUpperCase()), ""], students.map((s) => {
@@ -64,6 +68,8 @@ async function lernplan(root, api, cid, classes, msg) {
       })));
   }
 }
+
+async function klassenSilben(root, api, cid) { await silbenPanel(root, api, cid); }
 
 async function klassen(root, api, sid, classes, msg, reload) {
   const years = await api.get(`/schools/${sid}/years`);
@@ -80,5 +86,5 @@ async function zugaenge(root, api, sid, classes, msg, reload) {
     const ids = (u.class_ids || "").split(",").filter(Boolean), boxes = classes.map((c) => h("label", {}, h("input", { type: "checkbox", value: c.id, checked: ids.includes(c.id) }), c.name));
     return [u.email, u.role === "lehrer" ? "Lehrkraft" : "Schulleitung", u.role === "lehrer" ? h("div", { class: "row" }, boxes, h("button", { type: "button", onclick: () => act(msg, async () => { await api.put(`/schools/${sid}/staff/${u.id}/classes`, { classIds: boxes.map((l) => l.firstChild).filter((b) => b.checked).map((b) => b.value) }); clear(msg).append(notice("Klassen gespeichert.", "ok")); }) }, "Speichern")) : "alle", u.active ? "aktiv" : "deaktiviert",
       u.role === "lehrer" ? h("button", { type: "button", onclick: () => act(msg, () => api.patch(`/schools/${sid}/staff/${u.id}`, { active: !u.active }), reload) }, u.active ? "Deaktivieren" : "Aktivieren") : ""];
-  })), h("h3", {}, "Lehrkraft anlegen"), h("div", { class: "row" }, mail, h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => { const r = await api.post(`/schools/${sid}/staff`, { email: mail.value.trim() }); clear(out).append(notice(`Zugang für ${r.email} angelegt. Startpasswort (nur jetzt sichtbar): ${r.initialPassword}`, "ok")); mail.value = ""; }) }, "Anlegen")), out);
+  })), h("h3", {}, "Lehrkraft anlegen"), h("div", { class: "row" }, mail, h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => { const r = await api.post(`/schools/${sid}/staff`, { email: mail.value.trim() }); clear(out).append(notice(r.emailSent ? `Zugang für ${r.email} angelegt. Eine E-Mail mit dem Einladungslink zur Passwortvergabe wurde gesendet.` : `Zugang für ${r.email} angelegt. Der E-Mail-Versand ist nicht eingerichtet oder fehlgeschlagen. Startpasswort (nur jetzt sichtbar): ${r.initialPassword}`, "ok")); mail.value = ""; }) }, "Anlegen")), out);
 }

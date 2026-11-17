@@ -28,3 +28,6 @@ Schutz-Kopfzeilen, Größenbegrenzung und Umzug-Wächter: `tests/phase7.test.ts`
 
 ## Elternzugang (Phase 6, Teil 2)
 Siehe `apps/eltern/README.md`.
+
+## Lautolino-Weiterentwicklung (Phase 8)
+Lernstufen, Silbenbögen, Auswertung je Silbe, Klassenübersicht, Passwort-Links per E-Mail, Elterncode statt Geräte-Kopplung: siehe `docs/lautolino-aenderungen.md` (Änderungen, Datenbank, Schnittstellen, Einrichtung des E-Mail-Versands, Tests, offene Punkte). Neue Migration: `db/migrations/0004_lautolino.sql`.

@@ -17,10 +17,10 @@ export const authenticate: MiddlewareHandler<Env> = async (c, next) => {
       "SELECT k.id, k.school_id FROM student_sessions s JOIN students k ON k.id=s.student_id WHERE s.token_hash=? AND s.expires_at>? AND k.active=1", [th, now]);
     if (sv) p = { kind: "student", id: sv.id, schoolId: sv.school_id };
   }
-  if (!p) {   // Elterngerät: bleibt gekoppelt, bis die Schule es widerruft (kein Ablaufdatum)
+  if (!p) {   // Eltern: Anmeldung mit dem Elterncode (endet, wenn die Schule den Code neu erzeugt)
     const pd = await d.db.first<{ id: string; sid: string; school_id: string }>(
-      "SELECT d.id, k.id AS sid, k.school_id FROM parent_devices d JOIN students k ON k.id=d.student_id WHERE d.device_token_hash=? AND d.revoked_at IS NULL AND k.active=1", [th]);
-    if (pd) p = { kind: "parent", id: pd.sid, schoolId: pd.school_id, deviceId: pd.id };
+      "SELECT s.id, k.id AS sid, k.school_id FROM parent_sessions s JOIN students k ON k.id=s.student_id WHERE s.token_hash=? AND s.expires_at>? AND k.active=1", [th, now]);
+    if (pd) p = { kind: "parent", id: pd.sid, schoolId: pd.school_id, sessionId: pd.id };
   }
   if (!p) throw fail(401, "Anmeldung abgelaufen oder ungültig");
   c.set("p", p);

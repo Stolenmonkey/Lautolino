@@ -37,13 +37,13 @@ export function randomInt(max: number): number { // gleichverteilt (Rejection Sa
 const PW_ALPHA = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export function randomPassword(len = 12): string { let s = ""; for (let i = 0; i < len; i++) s += PW_ALPHA[randomInt(PW_ALPHA.length)]; return s; }
 
-// Schülercode: zwei kurze, kindgerechte Wörter plus Zahl, z. B. Tiger-Sonne-47
-export const CODE_WORDS = ["Tiger","Sonne","Mond","Stern","Wolke","Regen","Blume","Baum","Wiese","Bach","Fisch","Vogel","Eule","Fuchs","Hase","Igel","Bär","Maus","Katze","Hund",
-  "Pferd","Kuh","Schaf","Ente","Frosch","Biene","Käfer","Apfel","Birne","Nuss","Brot","Kuchen","Honig","Milch","Ball","Boot","Zug","Auto","Haus","Turm",
-  "Berg","See","Wind","Schnee","Eis","Feuer","Gold","Silber","Rot","Blau","Grün","Gelb","Lustig","Mutig","Schnell","Leise","Bunt","Klein","Groß","Froh"];
+// Schülercode: zwei kurze, kindgerechte Wörter ohne Umlaute, ohne Bindestrich, dazu eine ein- oder zweistellige Zahl, z. B. SonneWald7
+export const CODE_WORDS = ["Tiger","Sonne","Mond","Stern","Wolke","Regen","Blume","Baum","Wiese","Bach","Fisch","Vogel","Eule","Fuchs","Hase","Igel","Reh","Maus","Katze","Hund",
+  "Pferd","Kuh","Schaf","Ente","Frosch","Biene","Apfel","Birne","Nuss","Brot","Kuchen","Honig","Milch","Ball","Boot","Zug","Auto","Haus","Turm","Berg",
+  "See","Wind","Schnee","Eis","Feuer","Gold","Silber","Rot","Blau","Gelb","Lustig","Mutig","Schnell","Leise","Bunt","Klein","Hoch","Froh","Wolf","Dachs"];
 export function generateStudentCode(): string {
   const a = randomInt(CODE_WORDS.length); let b = randomInt(CODE_WORDS.length - 1); if (b >= a) b++;
-  return `${CODE_WORDS[a]}-${CODE_WORDS[b]}-${10 + randomInt(90)}`;
+  return `${CODE_WORDS[a]}${CODE_WORDS[b]}${1 + randomInt(99)}`;
 }
 // Aktivierungscode für Eltern: 12 Zeichen ohne verwechselbare Zeichen, in Dreiergruppen zu je 4, z. B. K7QM-4TXD-9HRP
 const PARENT_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -53,4 +53,13 @@ export function generateParentCode(): string {
 }
 export function normalizeCode(s: string): string {
   return s.normalize("NFC").trim().toLowerCase().replace(/[\s\-_.]+/g, "-");
+}
+
+// Schreibweisen-Toleranz: ohne Trennzeichen (neue Schülercodes wie SonneWald7, auch bei Eingabe "Sonne Wald 7") und mit Trennzeichen (ältere Codes wie Tiger-Sonne-47).
+export function compactCode(s: string): string { return s.normalize("NFC").trim().toLowerCase().replace(/[\s\-_.]+/g, ""); }
+export function studentCodeCandidates(s: string): string[] { return [...new Set([normalizeCode(s), compactCode(s)])]; }
+// Elterncode: 12 Zeichen in Dreiergruppen; auch ohne Bindestriche und in Kleinbuchstaben eingebbar.
+export function normalizeParentCode(s: string): string {
+  const c = compactCode(s);
+  return c.length === 12 ? c.replace(/(.{4})(?=.)/g, "$1-") : normalizeCode(s);
 }

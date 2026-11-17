@@ -24,3 +24,6 @@ Taucht neue SQLite-Eigenheit im Code auf, schlägt der Wächtertest an; dann hie
 - Das Geheimnis `PEPPER` muss beim Umzug **unverändert** mitgenommen werden, sonst gelten alle Schülercodes und Elterncodes nicht mehr.
 - Daten übertragen: Tabellen in der Reihenfolge der Fremdschlüssel kopieren (schools, school_years, classes, staff_users, students, …, rounds, awards). Auszeichnungen und `letter_syllable_scope` dürfen dabei nicht verändert werden.
 - Danach: Anzahl je Tabelle vergleichen und einen Testlauf der Kinder-App gegen den neuen Server machen.
+
+## Ergänzung Phase 8
+Neue Tabellen (Migration 0004): `staff_tokens`, `rate_events`, `parent_codes`, `parent_sessions`. `PEPPER` wird auch für Elterncodes und Zähler verwendet und muss unverändert bleiben. Für den E-Mail-Versand werden `RESEND_API_KEY`, `MAIL_FROM` und `APP_URL` am neuen Ort ebenfalls gebraucht.

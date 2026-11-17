@@ -5,6 +5,7 @@ import { HTTPException } from "hono/http-exception";
 import type { Deps, Env } from "./context";
 import { authenticate } from "./middleware";
 import { adminRoutes } from "./routes/admin";
+import { evaluationRoutes } from "./routes/evaluation";
 import { authRoutes } from "./routes/auth";
 import { parentRoutes } from "./routes/parent";
 import { planRoutes } from "./routes/plan";
@@ -46,6 +47,7 @@ export function createApp(deps: Deps) {
   app.route("/", schoolRoutes());
   app.route("/", planRoutes());
   app.route("/", progressRoutes());
+  app.route("/", evaluationRoutes());
   app.route("/", parentRoutes());
   return app;
 }

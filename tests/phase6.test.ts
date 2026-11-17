@@ -115,17 +115,19 @@ describe("Server und Oberfläche", () => {
     expect((await train(kA, lead)).status).toBe(200);
   });
   it("Silben-Zug: Automatik-Stand bestimmt die Schwierigkeit (Länge)", async () => {
+    expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0, review_percent: 15 } }, note: "ohne Lernstufen (alte Auswahl)" })).status).toBe(201);   // Lernstufen sind in diesem Test mit nur 2 Buchstaben nicht gemeint
     const tok = await kidToken(0), all = [...buildSyllables(["o", "l"], 2), ...buildSyllables(["o", "l"], 3)];
     const post = (bal: number, id: string) => call("POST", "/student/rounds", tok, { clientRoundId: id, seconds: 40, syllables: all.map((x) => ({ s: x, sec: 1 })), letters: ["o", "l"], lengths: [2, 3], autoState: { key: "lo|2,3", bal, sd: bal } });
     expect((await post(0, "a1")).status).toBe(201); expect((await train(kA, teacher, "?seed=1")).json.syllables.every((x: string) => x.length === 2)).toBe(true);
     expect((await post(100, "a2")).status).toBe(201); expect((await train(kA, teacher, "?seed=1")).json.syllables.every((x: string) => x.length === 3)).toBe(true);
   });
   it("Silben-Zug: nicht sicher beherrschte Silben kommen etwa doppelt so oft vor, Faktor ist einstellbar", async () => {
+    expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0, review_percent: 15 } }, note: "ohne Lernstufen (alte Auswahl)" })).status).toBe(201);
     const tok = await kidToken(0), all = [...buildSyllables(["o", "l"], 2), ...buildSyllables(["o", "l"], 3)], fast = (x: string) => x.startsWith("o");
     for (let i = 0; i < 10; i++) expect((await call("POST", "/student/rounds", tok, { clientRoundId: "w" + i, seconds: 40, syllables: all.map((x) => ({ s: x, sec: fast(x) ? 1 : 10 })), letters: ["o", "l"], lengths: [2, 3], autoState: { key: "lo|2,3", bal: 25, sd: 50 } })).status).toBe(201);   // Schwierigkeit neutral (50 %), damit nur die Bevorzugung wirkt
     const share = async () => { let un = 0, tot = 0; for (let seed = 1; seed <= 30; seed++) (await train(kA, teacher, `?seed=${seed}`)).json.syllables.forEach((x: string) => { tot++; if (!fast(x)) un++; }); return un / tot; };
     const w2 = await share();
-    const set = await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, train: { unmastered_weight: 1 } }, note: "Silben-Zug ohne Bevorzugung" }); expect(set.json.version).toBeGreaterThan(1);
+    const set = await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0, review_percent: 15 }, train: { unmastered_weight: 1 } }, note: "Silben-Zug ohne Bevorzugung" }); expect(set.json.version).toBeGreaterThan(1);
     const w1 = await share(); expect(w2).toBeGreaterThan(w1 + 0.07);
     expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, train: { unmastered_weight: 0.5 } } })).status).toBe(400);
   });

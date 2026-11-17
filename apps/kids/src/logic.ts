@@ -1,10 +1,10 @@
 // Lernlogik der Kinder-App: reine Funktionen auf core und engine (unverändert). Kein Zugriff auf Oberfläche oder Netz.
-import { makeRound, randomCase, countSyllables } from "@silbenflug/core";
+import { stagedTasks, randomCase, countSyllables } from "@silbenflug/core";
 import { autoAdjust, autoParams, comboKey, recordSyl, roundParams, sdFromLen, startVal, sylStat, sylTimeParams } from "@silbenflug/engine";
 import type { AutoState } from "@silbenflug/engine";
 import type { Rng, SilbenflugConfig } from "@silbenflug/shared";
 
-export interface Plan { classId: string | null; letters: string[]; lengths: number[] }
+export interface Plan { classId: string | null; letters: string[]; lengths: number[]; training?: { focus: string[]; review: string[] } }   // training: Silben der aktuellen Lernstufen und zur Wiederholung (leer: alles wie bisher)
 export interface AutoValue { bal: number | null; sd: number | null }
 // Alles, was das Gerät für ein Kind merkt (Silbenzeiten und Automatik-Stand; der Server hat die maßgebliche Kopie der Auszeichnungen).
 export interface LocalState {
@@ -34,7 +34,8 @@ export function prepareRound(plan: Plan, cfg: SilbenflugConfig, st: LocalState, 
   const sd = lens.length > 1 ? sdFromLen(bal, ap) : startVal(list, letters, lens, "sd", cfg.auto.default_syl_difficulty, ap.newComboDiscount);
   const sylAvg: Record<string, number | null> = {};
   Object.keys(st.sylTimes).forEach((s) => { sylAvg[s] = sylStat(st.sylTimes[s], sylTimeParams(cfg)).avg; });
-  const tasks = makeRound(letters, lens, cfg.round.letter_frequency_default, cfg.round.task_count, bal, sylAvg, sd, null, rng, roundParams(cfg));
+  const st2 = cfg.stages, useStages = !st2 || st2.enabled !== 0;   // ältere Konfigurationen kennen Lernstufen nicht: dann gilt die Auswahl wie bisher
+  const tasks = stagedTasks(letters, lens, cfg.round.letter_frequency_default, cfg.round.task_count, bal, sylAvg, sd, useStages && plan.training ? plan.training : null, st2 ? st2.review_percent : 0, rng, roundParams(cfg));
   return { key: comboKey(letters, lens), letters, lens, bal, sd, tasks, shown: tasks.map((s) => randomCase(s, rng)) };
 }
 // Rundenende: Silbenzeiten und Rundenzeit merken, Automatik anpassen. Ergebnis: neuer Stand und der Automatik-Wert, der zum Server geschickt wird.

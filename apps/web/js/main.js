@@ -1,6 +1,7 @@
 import { createApi } from "./api.js";
 import { h, clear } from "./dom.js";
 import { loginView } from "./views/login.js";
+import { forgotView, setPasswordView } from "./views/passwort.js";
 import { adminTabs, adminView } from "./views/admin.js";
 import { schoolTabs, schoolView } from "./views/school.js";
 
@@ -20,11 +21,14 @@ function signedIn(u) {
   user = u; tab = null; $("who").textContent = `${u.email} (${{ admin: "Administration", schulleitung: "Schulleitung", lehrer: "Lehrkraft" }[u.role]})`; $("logout").classList.remove("hidden"); show();
 }
 function signOut() {
-  user = null; api.token = null; $("who").textContent = ""; $("logout").classList.add("hidden"); tabs.classList.add("hidden"); loginView(clear(main), { api, onLogin: signedIn });
+  user = null; api.token = null; $("who").textContent = ""; $("logout").classList.add("hidden"); tabs.classList.add("hidden"); loginView(clear(main), { api, onLogin: signedIn, onForgot: () => forgotView(clear(main), { api, onBack: signOut }) });
 }
 $("logout").addEventListener("click", async () => { await api.logout(); signOut(); });
 
 (async () => {
+  // Link aus der E-Mail: #einladung=... oder #passwort-neu=... (der Token steht nur im Fragment und wird nicht an den Webserver gesendet)
+  const m = /^#(einladung|passwort-neu)=([0-9a-f]{32,128})$/.exec(location.hash || "");
+  if (m) { history.replaceState(null, "", location.pathname + location.search); return setPasswordView(clear(main), { api, token: m[2], mode: m[1], onDone: signOut }); }
   if (api.token) {
     try { const me = await api.get("/auth/me"); if (me.principal.kind === "staff") { const p = me.principal; return signedIn({ id: p.id, role: p.role, schoolId: p.schoolId, email: "angemeldet" }); } } catch { /* Anmeldung nötig */ }
   }

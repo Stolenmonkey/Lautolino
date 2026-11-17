@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../context";
 import { PBKDF2_ITERATIONS, hashPassword, hmacHex, normalizeCode, randomToken, sha256Hex, verifyPassword } from "../crypto";
 import { authenticate } from "../middleware";
+import { rateAdd, rateCount, rateKey, sendReset } from "../staffTokens";
 import { activeConfig, audit, body, email, fail, newId, nowDate, nowIso, str } from "../util";
 
 let dummyHash: string | null = null; // gleicher Zeitaufwand, auch wenn die E-Mail nicht existiert
@@ -41,7 +42,43 @@ export function authRoutes() {
 
   r.post("/logout", authenticate, async (c) => {
     const d = c.get("deps"), th = await sha256Hex((c.req.header("authorization") || "").slice(7));
-    await d.db.run("DELETE FROM sessions WHERE token_hash=?", [th]); await d.db.run("DELETE FROM student_sessions WHERE token_hash=?", [th]);
+    await d.db.run("DELETE FROM sessions WHERE token_hash=?", [th]); await d.db.run("DELETE FROM student_sessions WHERE token_hash=?", [th]); await d.db.run("DELETE FROM parent_sessions WHERE token_hash=?", [th]);
+    return c.json({ ok: true });
+  });
+
+  // Passwort vergessen (Lehrkräfte und Schulleitung): Die Antwort ist immer gleich, egal ob die Adresse bekannt ist. Anfragen je Adresse und je Netz werden begrenzt.
+  r.post("/forgot-password", async (c) => {
+    const d = c.get("deps"), b = await body(c), em = email(b.email), sec = (await activeConfig(d)).config.security;
+    const ipK = await rateKey(d, "reset-ip", c.req.header("cf-connecting-ip") || "local"), emK = await rateKey(d, "reset-mail", em);
+    if ((await rateCount(d, "reset-ip", ipK)) >= sec.reset_max_per_ip_hour) throw fail(429, "Zu viele Anfragen. Bitte später noch einmal versuchen.");
+    const mailCount = await rateCount(d, "reset-mail", emK);
+    await rateAdd(d, "reset-ip", ipK); await rateAdd(d, "reset-mail", emK);
+    const generic = { ok: true, message: "Falls diese E-Mail-Adresse bei uns hinterlegt ist, haben wir dir einen Link zum Zurücksetzen geschickt." };
+    if (mailCount >= sec.reset_max_per_email_hour) return c.json(generic);   // zu oft für diese Adresse: still nichts senden (gleiche Antwort)
+    const u = await d.db.first<{ id: string; role: string }>("SELECT u.id, u.role FROM staff_users u JOIN schools s ON s.id=u.school_id WHERE u.email=? AND u.active=1 AND u.role IN ('lehrer','schulleitung') AND s.active=1", [em]);
+    if (u) {
+      try { await sendReset(d, u.id, em); await audit(d, u.id, "password_reset_requested", u.id); } catch (e) { console.error("Reset-Mail fehlgeschlagen", e instanceof Error ? e.message : e); }
+    }
+    return c.json(generic);
+  });
+
+  // Neues Passwort über den Einladungs- oder Zurücksetz-Link (Einmal-Token). Danach sind alle bisherigen Anmeldungen der Person beendet.
+  r.post("/set-password", async (c) => {
+    const d = c.get("deps"), b = await body(c), token = str(b.token, "token", 200), np = str(b.newPassword, "newPassword", 200), now = nowDate(d);
+    const ipK = await rateKey(d, "token-ip", c.req.header("cf-connecting-ip") || "local");
+    if ((await rateCount(d, "token-ip", ipK)) >= 30) throw fail(429, "Zu viele Versuche. Bitte später noch einmal versuchen.");
+    if (np.length < 10) throw fail(400, "Das neue Passwort braucht mindestens 10 Zeichen");
+    const row = await d.db.first<{ id: string; uid: string; role: string; purpose: string }>(
+      "SELECT t.id, u.id AS uid, u.role, t.purpose FROM staff_tokens t JOIN staff_users u ON u.id=t.staff_user_id WHERE t.token_hash=? AND t.used_at IS NULL AND t.expires_at>? AND u.active=1 AND u.role IN ('lehrer','schulleitung')", [await sha256Hex(token), now.toISOString()]);
+    if (!row) { await rateAdd(d, "token-ip", ipK); throw fail(400, "Dieser Link ist ungültig oder abgelaufen. Bitte auf der Anmeldeseite „Passwort vergessen“ wählen."); }
+    const used = await d.db.run("UPDATE staff_tokens SET used_at=? WHERE id=? AND used_at IS NULL", [now.toISOString(), row.id]);
+    if (!used.changes) throw fail(400, "Dieser Link ist ungültig oder abgelaufen. Bitte auf der Anmeldeseite „Passwort vergessen“ wählen.");   // gleichzeitig schon benutzt
+    await d.db.batch([
+      { sql: "UPDATE staff_users SET password_hash=?, failed_logins=0, locked_until=NULL, updated_at=? WHERE id=?", params: [await hashPassword(np, d.iterations ?? PBKDF2_ITERATIONS), now.toISOString(), row.uid] },
+      { sql: "UPDATE staff_tokens SET used_at=? WHERE staff_user_id=? AND used_at IS NULL", params: [now.toISOString(), row.uid] },
+      { sql: "DELETE FROM sessions WHERE staff_user_id=?", params: [row.uid] },
+    ]);
+    await audit(d, row.uid, row.purpose === "invite" ? "password_set_by_invite" : "password_reset_done", row.uid);
     return c.json({ ok: true });
   });
 

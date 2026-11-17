@@ -12,8 +12,12 @@ export interface SilbenflugConfig {
   award: { bronze_percent: number | null; silver_percent: number | null; gold_percent: number | null };
   unlock: { rules: unknown | null };
   retention: { after_use_days: number | null; after_leaving_days: number | null };
-  security: { max_failed_logins: number; lock_minutes: number; code_max_attempts_per_hour: number; parent_code_days: number };
+  security: {
+    max_failed_logins: number; lock_minutes: number; code_max_attempts_per_hour: number; parent_code_days: number;
+    invite_hours: number; reset_minutes: number; reset_max_per_email_hour: number; reset_max_per_ip_hour: number; parent_session_days: number;
+  };
   train: { unmastered_weight: number };   // Silben-Zug: Wie viel häufiger noch nicht sicher beherrschte Silben vorkommen (1 = nicht bevorzugt)
+  stages: { enabled: number; review_percent: number };      // Lernstufen: enabled 1 = Silbenauswahl nach Lernstufen, 0 = wie bisher ohne Stufen. review_percent: Anteil der Aufgaben pro Runde, in denen sicher beherrschte Silben früherer Stufen wiederholt werden (0 = keine Wiederholung)
 }
 
 // Startwerte laut geprüftem Entwurf (Abschnitt 5). Das alte Silbenzauber-Verhalten entspricht window 12, drop_longest 2, min_keep 3, max_seconds 30.
@@ -28,8 +32,12 @@ export const DEFAULT_CONFIG: SilbenflugConfig = {
   award: { bronze_percent: 50, silver_percent: 75, gold_percent: 95 },
   unlock: { rules: null },
   retention: { after_use_days: null, after_leaving_days: null },
-  security: { max_failed_logins: 5, lock_minutes: 15, code_max_attempts_per_hour: 10, parent_code_days: 30 },
+  security: {
+    max_failed_logins: 5, lock_minutes: 15, code_max_attempts_per_hour: 10, parent_code_days: 30,
+    invite_hours: 72, reset_minutes: 60, reset_max_per_email_hour: 3, reset_max_per_ip_hour: 10, parent_session_days: 90,
+  },
   train: { unmastered_weight: 2 },
+  stages: { enabled: 1, review_percent: 15 },
 };
 
 // Prüft eine Konfiguration. Leere Liste = gültig. Der Server speichert nur gültige Versionen.
@@ -67,5 +75,16 @@ export function validateConfig(c: SilbenflugConfig): string[] {
   int(c.security.max_failed_logins, 1, 100, "security.max_failed_logins"); int(c.security.lock_minutes, 1, 1440, "security.lock_minutes");
   int(c.security.code_max_attempts_per_hour, 1, 1000, "security.code_max_attempts_per_hour"); int(c.security.parent_code_days, 1, 365, "security.parent_code_days");
   num(c.train.unmastered_weight, 1, 10, "train.unmastered_weight");
+  int(c.security.invite_hours, 1, 720, "security.invite_hours"); int(c.security.reset_minutes, 5, 1440, "security.reset_minutes");
+  int(c.security.reset_max_per_email_hour, 1, 100, "security.reset_max_per_email_hour"); int(c.security.reset_max_per_ip_hour, 1, 1000, "security.reset_max_per_ip_hour");
+  int(c.security.parent_session_days, 1, 730, "security.parent_session_days");
+  int(c.stages.enabled, 0, 1, "stages.enabled"); num(c.stages.review_percent, 0, 50, "stages.review_percent");
   return e;
+}
+
+// Ältere gespeicherte Konfigurationsversionen kennen neue Abschnitte und Werte noch nicht: fehlende Werte werden mit den Standardwerten ergänzt (gespeicherte Versionen bleiben unverändert).
+export function withDefaults(c: Partial<SilbenflugConfig>): SilbenflugConfig {
+  const out: any = { ...c };
+  for (const k of Object.keys(DEFAULT_CONFIG) as Array<keyof SilbenflugConfig>) out[k] = { ...(DEFAULT_CONFIG as any)[k], ...((c as any)[k] || {}) };
+  return out as SilbenflugConfig;
 }

@@ -104,7 +104,7 @@ describe("Rechte: Schule, Klasse, Kind", () => {
     await call("PUT", `/schools/${A.id}/staff/${t2.id}/classes`, A.lead, { classIds: [k2.id] });
     const T1 = (await login("t1@a.de", t1.initialPassword)).json.token, T2 = (await login("t2@a.de", t2.initialPassword)).json.token;
     const kids = (await call("POST", `/classes/${k1.id}/students`, T1, { names: ["Mia", "Ben"] })).json;
-    expect(kids.length).toBe(2); expect(kids[0].code).toMatch(/^[^-]+-[^-]+-\d\d$/);
+    expect(kids.length).toBe(2); expect(kids[0].code).toMatch(/^[A-Z][a-z]+[A-Z][a-z]+\d{1,2}$/);
     expect((await call("GET", `/schools/${A.id}/classes`, T1)).json.map((x: any) => x.name)).toEqual(["1a"]);
     expect((await call("GET", `/classes/${k1.id}/students`, T2)).status).toBe(404);          // Lehrer 2 sieht Klasse 1 nicht
     expect((await call("POST", `/classes/${k1.id}/students`, T2, { names: ["X"] })).status).toBe(404);
