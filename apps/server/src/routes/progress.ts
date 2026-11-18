@@ -5,7 +5,7 @@ import { groupedTasks, randomCase, sylProbs } from "@silbenflug/core";
 import { secureTasks, syllablePlan } from "@silbenflug/engine";
 import type { SyllablePlan } from "@silbenflug/engine";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
-import { isMastered, letterProgress, newAwards, highestLevel, roundParams } from "@silbenflug/engine";
+import { isMastered, letterProgress, levelProgress, newAwards, highestLevel, roundParams } from "@silbenflug/engine";
 import type { AwardLevel, SilbenflugConfig } from "@silbenflug/shared";
 import type { Deps, Env } from "../context";
 import { authenticate, requireStaff } from "../middleware";
@@ -130,11 +130,17 @@ export function progressRoutes() {
     const d = c.get("deps"), p = c.get("p");
     if (p.kind !== "student") throw fail(403, "Keine Berechtigung");
     const st = await studentLetters(d.db, p.id), held = await heldAwards(d, p.id);
+    // Fortschritt zur nächsten Medaille nur als Segmente (0 bis 4), keine Prozentwerte
+    const seg: Record<string, { next: AwardLevel; segments: number } | null> = {};
+    if (st.classId && st.letters.length) {
+      const cfg = (await activeConfig(d)).config, scopes = await loadScopes(d, st.classId, st.letters), { times } = await loadTimes(d, p.id);
+      st.letters.forEach((l) => { seg[l] = levelProgress(highestLevel(held[l] || []), letterProgress(scopes[l], times, cfg).percent, cfg); });
+    }
     const pending = await d.db.all<{ aid: string; letter: string; level: AwardLevel }>("SELECT a.id AS aid, a.letter, a.level FROM awards a JOIN award_popups o ON o.award_id=a.id WHERE a.student_id=? AND o.shown_at IS NULL", [p.id]);
     const byLetter: Record<string, AwardLevel[]> = {};
     pending.forEach((x) => { (byLetter[x.letter] ||= []).push(x.level); });
     return c.json({
-      letters: "abcdefghijklmnopqrstuvwxyz".split("").map((l) => ({ letter: l, released: st.letters.includes(l), level: highestLevel(held[l] || []) })),
+      letters: "abcdefghijklmnopqrstuvwxyz".split("").map((l) => ({ letter: l, released: st.letters.includes(l), level: highestLevel(held[l] || []), progress: seg[l] || null })),
       pending: Object.keys(byLetter).map((l) => ({ letter: l, level: highestLevel(byLetter[l]) })), // Glückwunsch nur für die höchste neue Stufe
     });
   });

@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite");
 import { readFileSync } from "node:fs";
 import { DEFAULT_CONFIG, validateConfig, type SilbenflugConfig } from "@silbenflug/shared";
-import { isMastered, letterProgress, levelsReached, newAwards, highestLevel, syllableScope } from "@silbenflug/engine";
+import { isMastered, letterProgress, levelProgress, levelsReached, newAwards, highestLevel, syllableScope } from "@silbenflug/engine";
 
 const clone = (): SilbenflugConfig => JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
@@ -59,6 +59,18 @@ describe("Fortschritt und Auszeichnungen", () => {
     expect(newAwards(["bronze", "silber"], 10, cfg)).toEqual([]);
     expect(newAwards(["bronze"], 96, cfg)).toEqual(["silber", "gold"]);
     expect(highestLevel(["bronze", "silber"])).toBe("silber");
+  });
+  it("Fortschritt in 4 Segmenten bis zur nächsten Medaille, nach jeder Medaille wieder bei 0, nach Gold keine Anzeige", () => {
+    expect(levelProgress(null, 0, cfg)).toEqual({ next: "bronze", segments: 0 });
+    expect(levelProgress(null, 25, cfg)).toEqual({ next: "bronze", segments: 2 });
+    expect(levelProgress(null, 49, cfg)).toEqual({ next: "bronze", segments: 3 });
+    expect(levelProgress("bronze", 50, cfg)).toEqual({ next: "silber", segments: 0 });
+    expect(levelProgress("bronze", 62.5, cfg)).toEqual({ next: "silber", segments: 2 });
+    expect(levelProgress("silber", 75, cfg)).toEqual({ next: "gold", segments: 0 });
+    expect(levelProgress("silber", 90, cfg)).toEqual({ next: "gold", segments: 3 });
+    expect(levelProgress("silber", 95, cfg)).toEqual({ next: "gold", segments: 4 });
+    expect(levelProgress("bronze", 10, cfg)).toEqual({ next: "silber", segments: 0 });
+    expect(levelProgress("gold", 100, cfg)).toBeNull();
   });
   it("ohne festgelegte Grenzen keine Auszeichnung", () => {
     const c = clone(); c.award = { bronze_percent: null, silver_percent: null, gold_percent: null };

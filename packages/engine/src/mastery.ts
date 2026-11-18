@@ -53,3 +53,16 @@ export function highestLevel(levels: AwardLevel[]): AwardLevel | null {
   ORDER.forEach((l) => { if (levels.indexOf(l) >= 0) h = l; });
   return h;
 }
+
+// Fortschritt zum nächsten Medaillen-Schritt in 4 Segmenten (0 bis 4). Der Weg läuft von der Grenze der bisherigen Medaille (ohne Medaille: 0) bis zur Grenze der nächsten.
+// Nach Gold oder bei ausgeschalteter Auszeichnung: null (keine Anzeige). Ändert keine Bewertung, nur Anzeige.
+export function levelProgress(held: AwardLevel | null, percent: number, cfg: SilbenflugConfig): { next: AwardLevel; segments: number } | null {
+  const a = cfg.award;
+  if (a.bronze_percent === null || a.silver_percent === null || a.gold_percent === null) return null;
+  const lim: Record<AwardLevel, number> = { bronze: a.bronze_percent, silber: a.silver_percent, gold: a.gold_percent };
+  const i = held ? ORDER.indexOf(held) + 1 : 0;
+  if (i >= ORDER.length) return null;
+  const next = ORDER[i], lo = held ? lim[held] : 0, hi = lim[next];
+  const seg = hi > lo ? Math.floor(((percent - lo) / (hi - lo)) * 4 + 1e-9) : 4;
+  return { next, segments: Math.max(0, Math.min(4, seg)) };
+}
