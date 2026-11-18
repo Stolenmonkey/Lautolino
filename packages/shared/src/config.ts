@@ -86,5 +86,6 @@ export function validateConfig(c: SilbenflugConfig): string[] {
 export function withDefaults(c: Partial<SilbenflugConfig>): SilbenflugConfig {
   const out: any = { ...c };
   for (const k of Object.keys(DEFAULT_CONFIG) as Array<keyof SilbenflugConfig>) out[k] = { ...(DEFAULT_CONFIG as any)[k], ...((c as any)[k] || {}) };
+  out.mastery.time_limit_seconds = { ...DEFAULT_CONFIG.mastery.time_limit_seconds, ...((c.mastery as any)?.time_limit_seconds || {}) };   // verschachtelt: ältere Versionen kennen neue Stufen nicht
   return out as SilbenflugConfig;
 }
