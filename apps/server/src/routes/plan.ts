@@ -57,8 +57,24 @@ export function planRoutes() {
       group = [l];
     }
     const { version, config } = await activeConfig(d), at = nowIso(d), known = prev.map((x) => x.letter), sp = scopeParams(config);
-    const groupSyl = prev.length ? [] : groupScope(group, sp);
-    const scopes = group.map((l) => ({ letter: l, syl: prev.length ? syllableScope(known, l, sp) : groupSyl }));
+    // Der Silbenumfang wird im Browser berechnet (Free-Plan: nur 10 ms CPU je Anfrage) und hier nur geprüft und gespeichert.
+    // Ohne "scopes" im Body rechnet der Server selbst (Paid-Plan, Tests).
+    let scopes: Array<{ letter: string; syl: string[] }>;
+    if (b.scopes !== undefined) {
+      const given = Array.isArray(b.scopes) ? b.scopes : [];
+      const allowed = new Set([...known, ...group]);
+      scopes = group.map((l) => {
+        const e = given.find((x: any) => x && norm(x.letter) === l), arr = e && Array.isArray(e.syllables) ? e.syllables : null;
+        if (!arr || arr.length > 3000) throw fail(400, "scopes: Silbenliste je Buchstabe erwartet");
+        const syl: string[] = [...new Set<string>(arr.map((x: unknown) => String(x)))];
+        const okLetters = prev.length ? allowed : new Set(group);
+        if (syl.some((w) => !/^[a-z]{1,30}$/.test(w) || [...w].some((ch) => !okLetters.has(ch)) || (prev.length > 0 && !w.includes(l)))) throw fail(400, "scopes: ungültige Silbe");
+        return { letter: l, syl };
+      });
+    } else {
+      const groupSyl = prev.length ? [] : groupScope(group, sp);
+      scopes = group.map((l) => ({ letter: l, syl: prev.length ? syllableScope(known, l, sp) : groupSyl }));
+    }
     if (!prev.length && !scopes.some((x) => x.syl.length)) throw fail(400, "Mit diesen Buchstaben lassen sich keine Silben bilden. Bitte auch einen Vokal wählen.");
     const stmts: Array<{ sql: string; params: Array<string | number> }> = [];
     scopes.forEach((sc, i) => {

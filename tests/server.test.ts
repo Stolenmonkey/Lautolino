@@ -229,6 +229,17 @@ describe("Klassenlernplan", () => {
     const kids = (await call("POST", `/classes/${k.id}/students`, T, { names: ["Mia", "Ben"] })).json;
     return { adm, A, k, T, kids };
   }
+  it("Freigabe mit im Browser berechnetem Umfang: Server prüft nur und speichert", async () => {
+    const { k, T } = await setupPlan();
+    const bad = [{ letter: "o", syllables: ["ol", "xx"] }, { letter: "l", syllables: ["lo"] }];
+    expect((await call("POST", `/classes/${k.id}/releases`, T, { letters: ["o", "l"], scopes: bad })).status).toBe(400); // x nicht freigegeben
+    expect((await call("POST", `/classes/${k.id}/releases`, T, { letters: ["o", "l"], scopes: [{ letter: "o", syllables: ["ol"] }] })).status).toBe(400); // l fehlt
+    const ok = [{ letter: "o", syllables: ["ol", "lo"] }, { letter: "l", syllables: ["ol", "lo"] }];
+    expect((await call("POST", `/classes/${k.id}/releases`, T, { letters: ["o", "l"], scopes: ok })).status).toBe(201);
+    expect((await call("POST", `/classes/${k.id}/releases`, T, { letter: "e", scopes: [{ letter: "e", syllables: ["ol"] }] })).status).toBe(400); // enthält e nicht
+    expect((await call("POST", `/classes/${k.id}/releases`, T, { letter: "e", scopes: [{ letter: "e", syllables: ["le", "eo"] }] })).status).toBe(201);
+    expect((await call("GET", `/classes/${k.id}/releases/e/scope`, T)).json).toEqual(["eo", "le"]);
+  });
   it("erste Freigabe braucht mindestens 2 Buchstaben (Startgruppe); Umfang wird einmalig gespeichert", async () => {
     const { k, T } = await setupPlan();
     for (const bad of [{ letter: "o" }, { letters: ["o"] }, { letters: ["o", "o"] }, { letters: ["o", "ä"] }, { letters: ["m", "n"] }]) expect((await call("POST", `/classes/${k.id}/releases`, T, bad)).status).toBe(400);

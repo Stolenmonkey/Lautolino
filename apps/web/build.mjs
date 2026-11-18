@@ -3,3 +3,4 @@ import { build } from "esbuild";
 import { fileURLToPath } from "node:url";
 const here = fileURLToPath(new URL(".", import.meta.url));
 await build({ entryPoints: [here + "src/zug.ts"], outfile: here + "js/zug.bundle.js", bundle: true, format: "esm", target: "es2020", minify: true, tsconfig: here + "../../tsconfig.json", logLevel: "info" });
+await build({ entryPoints: [here + "src/scope.ts"], outfile: here + "js/scope.bundle.js", bundle: true, format: "esm", target: "es2020", minify: true, tsconfig: here + "../../tsconfig.json", logLevel: "info" });
