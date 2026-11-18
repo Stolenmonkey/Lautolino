@@ -1,4 +1,4 @@
-// Silbenbasierte Auswahl (stages.mode 2): Freischaltung je Silbe, Gruppen, Rundenmix, Konfiguration.
+// Silbenbasierte Auswahl : Freischaltung je Silbe, Gruppen, Rundenmix, Konfiguration.
 import { describe, expect, it } from "vitest";
 import { buildSyllables, classifySyllable, groupedTasks } from "@silbenflug/core";
 import { syllablePlan } from "@silbenflug/engine";
@@ -11,13 +11,13 @@ const stage1 = (l: string[]) => pool(l).filter((s) => classifySyllable(s).stage 
 
 describe("Standardwerte und Prüfung", () => {
   it("Standard: 80 % Gate, Mix 45/30/25, gültig; Mix muss 100 ergeben", () => {
-    expect(cfg.stages).toMatchObject({ mode: 2, gate_percent: 80, mix_new_percent: 45, mix_weak_percent: 30, mix_review_percent: 25 });
+    expect(cfg.stages).toMatchObject({ gate_percent: 80, mix_new_percent: 45, mix_weak_percent: 30, mix_review_percent: 25 });
     expect(validateConfig(cfg)).toEqual([]);
     expect(validateConfig({ ...cfg, stages: { ...cfg.stages, mix_new_percent: 50 } }).join()).toMatch(/100/);
     expect(validateConfig({ ...cfg, stages: { ...cfg.stages, gate_percent: 120 } }).length).toBe(1);
   });
   it("ältere gespeicherte Konfiguration bekommt die neuen Werte ergänzt", () => {
-    expect(withDefaults({ stages: { enabled: 1, review_percent: 15 } as any }).stages.gate_percent).toBe(80);
+    expect(withDefaults({ stages: { enabled: 1 } as any }).stages.gate_percent).toBe(80);
   });
 });
 

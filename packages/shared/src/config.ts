@@ -16,8 +16,7 @@ export interface SilbenflugConfig {
     max_failed_logins: number; lock_minutes: number; code_max_attempts_per_hour: number; parent_code_days: number;
     invite_hours: number; reset_minutes: number; reset_max_per_email_hour: number; reset_max_per_ip_hour: number; parent_session_days: number;
   };
-  train: { unmastered_weight: number };   // Silben-Zug: Wie viel häufiger noch nicht sicher beherrschte Silben vorkommen (1 = nicht bevorzugt)
-  stages: { enabled: number; review_percent: number; mode: number; gate_percent: number; mix_new_percent: number; mix_weak_percent: number; mix_review_percent: number };      // Lernstufen: enabled 1 = Silbenauswahl nach Lernstufen, 0 = wie bisher ohne Stufen. review_percent: Anteil der Aufgaben pro Runde, in denen sicher beherrschte Silben früherer Stufen wiederholt werden (0 = keine Wiederholung). mode 2 = Auswahl je Silbe: gate_percent = Anteil sicherer Vorstufen-Silben, ab dem eine Silbe freigeschaltet wird; mix_*_percent = Anteil neuer/angefangener, schwacher und sicherer Silben (Wiederholung) pro Runde (Summe 100); mode 1 = altes Buchstaben-Fenster
+  stages: { enabled: number; gate_percent: number; mix_new_percent: number; mix_weak_percent: number; mix_review_percent: number };      // Lernstufen (Auswahl je Silbe): enabled 1 = ein, 0 = alte Aufgabenverteilung ohne Stufen; gate_percent = Anteil sicherer Vorstufen-Silben, ab dem eine Silbe freigeschaltet wird; mix_*_percent = Anteil neuer/angefangener, schwacher und sicher beherrschter Silben (Wiederholung) pro Runde, Summe 100
 }
 
 // Startwerte laut geprüftem Entwurf (Abschnitt 5). Das alte Silbenzauber-Verhalten entspricht window 12, drop_longest 2, min_keep 3, max_seconds 30.
@@ -36,8 +35,7 @@ export const DEFAULT_CONFIG: SilbenflugConfig = {
     max_failed_logins: 5, lock_minutes: 15, code_max_attempts_per_hour: 10, parent_code_days: 30,
     invite_hours: 72, reset_minutes: 60, reset_max_per_email_hour: 3, reset_max_per_ip_hour: 10, parent_session_days: 90,
   },
-  train: { unmastered_weight: 2 },
-  stages: { enabled: 1, review_percent: 15, mode: 2, gate_percent: 80, mix_new_percent: 45, mix_weak_percent: 30, mix_review_percent: 25 },
+  stages: { enabled: 1, gate_percent: 80, mix_new_percent: 45, mix_weak_percent: 30, mix_review_percent: 25 },
 };
 
 // Prüft eine Konfiguration. Leere Liste = gültig. Der Server speichert nur gültige Versionen.
@@ -74,12 +72,11 @@ export function validateConfig(c: SilbenflugConfig): string[] {
   } else if (set.some((x) => x !== null)) e.push("award: Bronze, Silber und Gold müssen gemeinsam festgelegt oder gemeinsam leer sein");
   int(c.security.max_failed_logins, 1, 100, "security.max_failed_logins"); int(c.security.lock_minutes, 1, 1440, "security.lock_minutes");
   int(c.security.code_max_attempts_per_hour, 1, 1000, "security.code_max_attempts_per_hour"); int(c.security.parent_code_days, 1, 365, "security.parent_code_days");
-  num(c.train.unmastered_weight, 1, 10, "train.unmastered_weight");
   int(c.security.invite_hours, 1, 720, "security.invite_hours"); int(c.security.reset_minutes, 5, 1440, "security.reset_minutes");
   int(c.security.reset_max_per_email_hour, 1, 100, "security.reset_max_per_email_hour"); int(c.security.reset_max_per_ip_hour, 1, 1000, "security.reset_max_per_ip_hour");
   int(c.security.parent_session_days, 1, 730, "security.parent_session_days");
-  int(c.stages.enabled, 0, 1, "stages.enabled"); num(c.stages.review_percent, 0, 50, "stages.review_percent");
-  int(c.stages.mode, 1, 2, "stages.mode"); num(c.stages.gate_percent, 0, 100, "stages.gate_percent");
+  int(c.stages.enabled, 0, 1, "stages.enabled");
+  num(c.stages.gate_percent, 0, 100, "stages.gate_percent");
   num(c.stages.mix_new_percent, 0, 100, "stages.mix_new_percent"); num(c.stages.mix_weak_percent, 0, 100, "stages.mix_weak_percent"); num(c.stages.mix_review_percent, 0, 100, "stages.mix_review_percent");
   if (Math.abs(c.stages.mix_new_percent + c.stages.mix_weak_percent + c.stages.mix_review_percent - 100) > 0.001) e.push("stages: mix_new_percent + mix_weak_percent + mix_review_percent müssen zusammen 100 ergeben");
   return e;

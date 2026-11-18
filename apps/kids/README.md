@@ -27,4 +27,4 @@ Installierbare Web-App im Silbenzauber-Design. Läuft nur im Browser.
 Sind alle gemerkten Runden gesendet, übernimmt das Gerät Silbenzeiten, Rundenzeiten und Automatik-Stand vom Server (`GET /student/sync-data`, `/student/auto-state`). So hat ein Kind auf jedem Gerät denselben Stand. Solange noch Runden im Puffer liegen, gilt der lokale Stand.
 
 ## Lernstufen
-Der Plan vom Server (`GET /student/plan`) enthält `training.focus` (Silben der aktuellen Lernstufen) und `training.review` (früher Gelerntes zur Wiederholung). Die Runde besteht aus Silben des Fensters, dazu `stages.review_percent` Prozent Wiederholungen. Fehlen die Angaben (älterer Server, Lernstufen aus), gilt die Auswahl wie bisher. Ein Stufenwechsel wird nach dem nächsten Abgleich wirksam.
+Die Runde wird in der App je Silbe zusammengestellt (`syllablePlan` + `groupedTasks`): Freischaltung nach `stages.gate_percent`, Mix aus `stages.mix_*_percent`, berechnet aus den lokalen Silbenzeiten. Ohne Lernstufen (`stages.enabled = 0`) oder bei zu wenigen Silben gilt die Aufgabenverteilung wie in Silbenzauber.

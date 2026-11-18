@@ -2,9 +2,8 @@
 // Einziger Messwert ist die Zeit bis „Weiter“. Die Bewertung ist zeitbasiert und kein Nachweis der Lesekorrektheit.
 import { Hono } from "hono";
 import { buildSyllables, groupedTasks, makeRound, randomCase, countSyllables, sylProbs } from "@silbenflug/core";
-import { syllablePlan, trainingWindow } from "@silbenflug/engine";
+import { syllablePlan } from "@silbenflug/engine";
 import type { SyllablePlan } from "@silbenflug/engine";
-import { pickWeighted } from "../train";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
 import { isMastered, letterProgress, newAwards, highestLevel, autoParams, comboKey, roundParams, sdFromLen, startVal, sylStat, sylTimeParams } from "@silbenflug/engine";
 import type { AutoState } from "@silbenflug/engine";
@@ -42,20 +41,16 @@ async function heldAwards(d: Deps, studentId: string): Promise<Record<string, Aw
   return out;
 }
 
-// Lernstufen: Silben der aktuellen Stufen (focus) und Silben früherer Stufen zur Wiederholung (review) aus dem festen Silbenumfang der Buchstaben und den Silbenzeiten.
-// Alles wird aus vorhandenen Daten berechnet, es wird nichts zusätzlich gespeichert.
+// Daten eines Kindes für die Lernstufen: fester Silbenumfang der Buchstaben und Silbenzeiten. Alles wird daraus berechnet, es wird nichts zusätzlich gespeichert.
 export async function studentTraining(d: Deps, studentId: string, cfg: SilbenflugConfig) {
   const st = await studentLetters(d.db, studentId);
-  if (!st.classId || !st.letters.length) return { st, scopes: {} as Record<string, string[]>, times: {} as Record<string, number[]>, maxSeq: {} as Record<string, number>, win: null };
+  if (!st.classId || !st.letters.length) return { st, scopes: {} as Record<string, string[]>, times: {} as Record<string, number[]>, maxSeq: {} as Record<string, number> };
   const scopes = await loadScopes(d, st.classId, st.letters), { times, maxSeq } = await loadTimes(d, studentId);
-  const win = trainingWindow(scopes, times, cfg, cfg.round.min_pool);
-  if (!cfg.stages.enabled) win.restricted = false;   // Schalter in der Konfiguration: ohne Lernstufen wie bisher
-  return { st, scopes, times, maxSeq, win };
+  return { st, scopes, times, maxSeq };
 }
 
-// Silbenbasierte Auswahl (stages.mode 2): Gruppen und Freischaltung je Silbe aus dem Silbenumfang aller Buchstaben und den Zeiten; null = altes Fenster (mode 1 oder Stufen aus)
+// Silbenbasierte Auswahl: Gruppen und Freischaltung je Silbe aus dem Silbenumfang aller Buchstaben und den Zeiten; null = altes Fenster (mode 1 oder Stufen aus)
 export function studentSylPlan(tr: { scopes: Record<string, string[]>; times: Record<string, number[]> }, cfg: SilbenflugConfig): SyllablePlan | null {
-  if (!cfg.stages || !cfg.stages.enabled || cfg.stages.mode !== 2) return null;
   const all = [...new Set(Object.values(tr.scopes).flat())];
   return all.length ? syllablePlan(all, tr.times, cfg) : null;
 }
@@ -209,24 +204,11 @@ export function progressRoutes() {
     const sd = lens.length > 1 ? sdFromLen(bal, ap) : startVal(list, st.letters, lens, "sd", cfg.auto.default_syl_difficulty, ap.newComboDiscount);
     const { times } = await loadTimes(d, id), sylAvg: Record<string, number | null> = {};
     Object.keys(times).forEach((k) => { sylAvg[k] = sylStat(times[k], sylTimeParams(cfg)).avg; });
-    // Noch nicht sicher beherrschte Silben (auch noch nicht bewertete) kommen train.unmastered_weight-mal so oft vor wie sicher beherrschte.
-    const weight = cfg.train?.unmastered_weight ?? DEFAULT_CONFIG.train.unmastered_weight, rp = roundParams(cfg);
-    // Lernstufen: nur Silben der aktuellen Stufen, dazu anteilig Wiederholungen früherer Stufen (stages.review_percent)
-    const tr = await studentTraining(d, id, cfg), focus = tr.win && tr.win.restricted ? tr.win.focus : [], review = tr.win && tr.win.restricted ? tr.win.review : [];
-    const blocked = focus.length ? (() => { const fs = new Set(focus.concat(review)); return lens.flatMap((L) => buildSyllables(st.letters, L)).filter((x) => !fs.has(x)); })() : null;
-    const probs0 = sylProbs(st.letters, lens, cfg.round.letter_frequency_default, bal, sylAvg, sd, blocked, rp);
-    const rvShare = Math.min(50, cfg.stages?.review_percent ?? DEFAULT_CONFIG.stages.review_percent) / 100, rvList = review.filter((x) => probs0[x] !== undefined);
-    const probs: Record<string, number> = {};
-    if (focus.length && rvList.length && rvShare > 0) {
-      const fKeys = Object.keys(probs0).filter((k2) => focus.indexOf(k2) >= 0), tot = fKeys.reduce((a2, k2) => a2 + probs0[k2], 0) || 1;
-      fKeys.forEach((k2) => { probs[k2] = (probs0[k2] / tot) * (1 - rvShare); });
-      rvList.forEach((k2) => { probs[k2] = rvShare / rvList.length; });
-    } else Object.assign(probs, focus.length ? Object.fromEntries(Object.entries(probs0).filter(([k2]) => focus.indexOf(k2) >= 0)) : probs0);
-    const sp = studentSylPlan(tr, cfg), st2 = cfg.stages, openAll = sp ? sp.fresh.length + sp.building.length + sp.weak.length + sp.solid.length : 0;
-    const byGroups = sp && openAll >= cfg.round.min_pool
-      ? groupedTasks(20, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, rp) : null;
-    const syllables = byGroups ? byGroups : weight > 1 || focus.length
-      ? pickWeighted(probs, 20, (s2) => (isMastered(times[s2], cfg, s2).status === "mastered" ? 1 : weight), rng)
+    // Auswahl je Silbe wie in der Kinder-App (Freischaltung, Gruppen, Mix); ohne Lernstufen oder bei zu wenigen Silben die Aufgabenverteilung wie in Silbenzauber
+    const rp = roundParams(cfg), tr = await studentTraining(d, id, cfg), sp = cfg.stages.enabled ? studentSylPlan(tr, cfg) : null, st2 = cfg.stages;
+    const openAll = sp ? sp.fresh.length + sp.building.length + sp.weak.length + sp.solid.length : 0;
+    const syllables = sp && openAll >= cfg.round.min_pool
+      ? groupedTasks(20, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, rp)
       : makeRound(st.letters, lens, cfg.round.letter_frequency_default, 20, bal, sylAvg, sd, null, rng, rp);
     const stu = await d.db.first<{ display_name: string }>("SELECT display_name FROM students WHERE id=?", [id]);
     return c.json({ student: { id, name: stu ? stu.display_name : "" }, letters: st.letters, lengths: lens, comboKey: comboKey(st.letters, lens), syllables, shown: syllables.map((x) => randomCase(x, rng)), generatedAt: nowIso(d) });

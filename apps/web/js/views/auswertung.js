@@ -63,8 +63,7 @@ function stufenBereich(api, kid, ev) {
   return [
     h("h4", {}, "Lernstufen"),
     stufenTabelle(ev.stages, open),
-    ev.mode === 2 ? h("p", { class: "muted" }, `Jede Silbe wird einzeln freigeschaltet: sobald mindestens ${ev.gatePercent} % der leichteren Silben aus ihren Buchstaben sicher sind. Pro Runde: ${ev.mix.fresh} % neue und angefangene, ${ev.mix.weak} % noch nicht sichere und ${ev.mix.review} % sicher beherrschte Silben (Wiederholung).`) :
-    ev.restricted ? h("p", { class: "muted" }, "Geübt werden die Silben der aktuell offenen Stufe und der nächsten (anfangs Stufe 1 und 2)" + (ev.extended ? `; weil dafür zu wenige Silben da wären, kommen ${ev.extended} weitere Stufe(n) dazu` : "") + `. Etwa ${ev.reviewPercent} % der Aufgaben wiederholen früher Gelerntes.`) : h("p", { class: "muted" }, "Die Silbenauswahl nach Lernstufen ist derzeit nicht aktiv (Konfiguration) oder es sind noch zu wenige Silben da."),
+    ev.enabled ? h("p", { class: "muted" }, `Jede Silbe wird einzeln freigeschaltet: sobald mindestens ${ev.gatePercent} % der leichteren Silben aus ihren Buchstaben sicher sind. Pro Runde: ${ev.mix.fresh} % neue und angefangene, ${ev.mix.weak} % noch nicht sichere und ${ev.mix.review} % sicher beherrschte Silben (Wiederholung).`) : h("p", { class: "muted" }, "Die Silbenauswahl nach Lernstufen ist derzeit nicht aktiv (Konfiguration)."),
     detail,
     h("h4", {}, "Buchstaben und Lernstufen"), buchstabenStufen(ev.letters),
     h("h4", {}, "Silben"), h("p", { class: "muted" }, `Sicher beherrscht heißt: mindestens ${ev.minMeasurements} Messungen und Durchschnitt innerhalb der Zeitvorgabe (unverändert). Abfragen = alle bisherigen Messungen; „innerhalb der Zeitvorgabe“ zählt nur die noch gespeicherten letzten Messwerte.`),

@@ -1,7 +1,6 @@
 // Lautolino: Lernstufen (Zuordnung, Fortschritt, Rundenaufbau) und Silbenbögen. Reine Logik ohne Server.
 import { describe, expect, it } from "vitest";
-import { buildSyllables, classifySyllable, contrastSet, displayParts, renderWordWithArcs, splitSyllables, stagePlan, stagedTasks, STAGES } from "@silbenflug/core";
-import { letterStages, trainingWindow } from "@silbenflug/engine";
+import { buildSyllables, classifySyllable, contrastSet, displayParts, renderWordWithArcs, splitSyllables, stagePlan, STAGES } from "@silbenflug/core";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
 import { mulberry32 } from "./helpers";
 
@@ -66,51 +65,5 @@ describe("Silbenbögen", () => {
     for (const w of pool(["l", "e", "o", "a", "m", "p"]).slice(0, 400)) {
       const parts = displayParts(w); expect(parts.join("")).toBe(w); expect((renderWordWithArcs(w).match(/class="arc"/g) || []).length).toBe(parts.length);
     }
-  });
-});
-
-describe("Lernstufen: Fortschritt, Fenster, Wiederholung", () => {
-  const scope = pool(LETTERS), con = contrastSet(scope);
-  it("am Anfang gelten Stufe 1 und 2 gemeinsam, höhere Stufen sind gesperrt", () => {
-    const l = letterStages("l", scope, con, {}, cfg);
-    expect(l.current).toBe(1); expect(l.window).toEqual([1, 2]); expect(l.stages.map((s) => s.status)).toEqual(["active", "active", "locked", "locked", "locked", "empty", "locked"]);
-    expect(l.focus.sort()).toEqual("la le lo ma me mo pa pe po".split(" ").sort()); expect(l.review).toEqual([]);
-  });
-  it("Stufe 1 sicher beherrscht: Schwerpunkt wandert zu Stufe 3 und 4, Stufe 1/2 werden Wiederholung", () => {
-    const kv = "la le lo ma me mo pa pe po".split(" "), l = letterStages("l", scope, con, fast(kv), cfg);
-    expect(l.current).toBe(3); expect(l.window).toEqual([3, 4]); expect(l.stages.slice(0, 2).map((s) => s.status)).toEqual(["done", "done"]);
-    expect(l.stages[4].status).toBe("locked"); expect(l.stages[6].status).toBe("locked");
-    expect(l.focus).not.toContain("ma"); expect(l.focus).toContain("mal"); expect(l.focus).toContain("ama"); expect(l.review.sort()).toEqual(kv.sort());
-  });
-  it("nur mit 9 statt 10 Messungen oder zu langsam ist eine Silbe nicht sicher (Bewertung unverändert)", () => {
-    const kv = "la le lo ma me mo pa pe po".split(" "), t = fast(kv); t.ma = Array(9).fill(1); t.la = Array(10).fill(9);
-    const l = letterStages("l", scope, con, t, cfg); expect(l.current).toBe(1); expect(l.stages[0].mastered).toBe(7); expect(l.stages[0].processed).toBe(9);
-  });
-  it("zu kleine Fenster werden erweitert (sonst keine Runde möglich), Einschränkung entfällt wenn auch das nicht reicht", () => {
-    const small = pool(["l", "o"]), w = trainingWindow({ l: small, o: small }, {}, cfg, 3);
-    expect(w.restricted).toBe(true); expect(w.extended).toBeGreaterThan(0); expect(w.focus.length).toBeGreaterThanOrEqual(3);
-    const tiny = trainingWindow({ a: ["ma"] }, {}, cfg, 3); expect(tiny.restricted).toBe(false); expect(tiny.focus).toEqual([]);
-  });
-  it("jeder Buchstabe hat seinen eigenen Stand: ein neuer Buchstabe beginnt wieder bei Stufe 1", () => {
-    const kv = "la le lo ma me mo pa pe po".split(" "), nScope = ["na", "no", "ne", "an", "on", "nan", "ona"];
-    const w = trainingWindow({ l: scope, n: nScope }, fast(kv), cfg, 3, [...new Set([...scope, ...nScope])]);
-    expect(w.letters.find((x) => x.letter === "l")!.current).toBe(3); expect(w.letters.find((x) => x.letter === "n")!.current).toBe(1);
-    expect(w.focus).toContain("na"); expect(w.focus).toContain("mal");
-  });
-});
-
-describe("Rundenaufbau mit Lernstufen", () => {
-  const letters = LETTERS, lens = [2, 3], focus = "la le lo ma me mo pa pe po".split(" "), review = ["al", "el", "ol", "am", "em"];
-  const f = DEFAULT_CONFIG.round.letter_frequency_default;
-  it("ohne Stufen-Angaben genau wie bisher; mit Stufen nur Silben des Fensters plus Wiederholungen", () => {
-    const a = stagedTasks(letters, lens, f, 20, 50, null, 50, null, 15, mulberry32(3)), b = stagedTasks(letters, lens, f, 20, 50, null, 50, { focus: [], review }, 15, mulberry32(3));
-    expect(b).toEqual(a); expect(new Set(a).size).toBeGreaterThan(10);
-    const t = stagedTasks(letters, lens, f, 20, 50, null, 50, { focus, review }, 15, mulberry32(4));
-    expect(t.length).toBe(20); expect(t.filter((s) => review.includes(s)).length).toBe(3); expect(t.filter((s) => focus.includes(s)).length).toBe(17);
-    expect(t.every((s) => focus.includes(s) || review.includes(s))).toBe(true); expect(t[0] && focus.includes(t[0])).toBe(true);
-    for (let i = 1; i < t.length; i++) expect(t[i]).not.toBe(t[i - 1]);
-  });
-  it("0 % Wiederholung: nur Silben des Fensters", () => {
-    const t = stagedTasks(letters, lens, f, 20, 50, null, 50, { focus, review }, 0, mulberry32(5)); expect(t.every((s) => focus.includes(s))).toBe(true);
   });
 });

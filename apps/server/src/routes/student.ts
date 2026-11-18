@@ -3,7 +3,6 @@ import type { Env } from "../context";
 import { hmacHex, randomToken, sha256Hex, studentCodeCandidates, verifyPassword } from "../crypto";
 import { authenticate } from "../middleware";
 import { studentLetters } from "./plan";
-import { studentTraining } from "./progress";
 import { activeConfig, body, fail, newId, nowDate, nowIso, str } from "../util";
 
 export function studentRoutes() {
@@ -41,9 +40,7 @@ export function studentRoutes() {
   r.get("/plan", authenticate, async (c) => {
     const p = c.get("p");
     if (p.kind !== "student") throw fail(403, "Keine Berechtigung");
-    const d = c.get("deps"), cfg = (await activeConfig(d)).config, tr = await studentTraining(d, p.id, cfg);
-    // training: Silben der aktuellen Lernstufen und Silben früherer Stufen zur Wiederholung (leer = keine Einschränkung, alles wie bisher)
-    return c.json({ ...tr.st, training: { focus: tr.win && tr.win.restricted ? tr.win.focus : [], review: tr.win && tr.win.restricted ? tr.win.review : [] } });
+    return c.json(await studentLetters(c.get("deps").db, p.id));
   });
   return r;
 }

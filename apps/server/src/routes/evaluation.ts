@@ -45,35 +45,32 @@ export function evaluationRoutes() {
     const d = c.get("deps"), id = c.req.param("id"), a = await canAccessStudent(d.db, c.get("p"), id);
     if (!a.ok) throw fail(404, "nicht gefunden");
     const cfg = (await activeConfig(d)).config, tr = await studentTraining(d, id, cfg), name = await d.db.first<{ display_name: string }>("SELECT display_name FROM students WHERE id=?", [id]);
-    const all = [...new Set(Object.values(tr.scopes).flat())], con = contrastSet(all), win = tr.win;
+    const all = [...new Set(Object.values(tr.scopes).flat())], con = contrastSet(all);
     // Gesamtstand je Stufe (alle Silben aller Buchstaben des Kindes)
     const plan = stagePlan(all), master = (s: string) => isMastered(tr.times[s], cfg, s).status === "mastered";
-    const sp = studentSylPlan(tr, cfg), openNow = sp ? new Set([...sp.fresh, ...sp.building, ...sp.weak]) : undefined;
+    const sp = studentSylPlan(tr, cfg), openNow = new Set(sp ? [...sp.fresh, ...sp.building, ...sp.weak] : []);   // freigeschaltete, noch nicht sichere Silben
     const stages = plan.map((g) => {
       const total = g.syllables.length, mastered = g.syllables.filter(master).length, processed = g.syllables.filter((s) => (tr.times[s] || []).length > 0).length;
-      const activeLetters = (win ? win.letters : []).filter((l) => l.stages.find((x) => x.stage === g.stage)?.status === "active").map((l) => l.letter), anyActive = activeLetters.length > 0;
-      const unlocked = openNow ? g.syllables.filter((x) => openNow.has(x)).length : 0;   // Modus 2: freigeschaltete, noch nicht sichere Silben dieser Stufe
-      const status = !total ? "empty" : mastered === total ? "done" : (openNow ? unlocked > 0 : anyActive) ? "active" : "locked";
-      return { stage: g.stage, name: g.name, structure: g.structure, status, activeLetters: openNow ? [] : activeLetters, unlocked, total, processed, mastered, open: total - mastered,
+      const unlocked = g.syllables.filter((x) => openNow.has(x)).length;
+      const status = !total ? "empty" : mastered === total ? "done" : unlocked > 0 ? "active" : "locked";
+      return { stage: g.stage, name: g.name, structure: g.structure, status, unlocked, total, processed, mastered, open: total - mastered,
         subs: g.subs.map((u) => ({ id: u.id, name: u.name, total: u.syllables.length, mastered: u.syllables.filter(master).length })) };
     });
     const stageRowsOf = (scope: string[]): StageRow[] => {
       const mem = new Map<number, string[]>(); for (let k = 1; k <= STAGE_COUNT; k++) mem.set(k, []);
       scope.forEach((x) => { const c = classifySyllable(x); mem.get(c.stage)!.push(x); if (con.has(x)) mem.get(2)!.push(x); });
       return [...mem.keys()].map((k) => {
-        const list = mem.get(k)!, mas = list.filter(master).length, proc = list.filter((x) => (tr.times[x] || []).length > 0).length, act = list.some((x) => openNow!.has(x));
+        const list = mem.get(k)!, mas = list.filter(master).length, proc = list.filter((x) => (tr.times[x] || []).length > 0).length, act = list.some((x) => openNow.has(x));
         return { stage: k, status: !list.length ? "empty" : mas === list.length ? "done" : act ? "active" : "locked", total: list.length, processed: proc, mastered: mas, open: list.length - mas } as StageRow;
       });
     };
-    const letters = sp ? Object.keys(tr.scopes).map((l, i) => { const rows = stageRowsOf(tr.scopes[l]), cur = rows.find((x) => x.status === "active" || x.status === "locked"); return { letter: l, order: i + 1, current: cur ? cur.stage : null, window: rows.filter((x) => x.status === "active").map((x) => x.stage), stages: rows }; })
-      : (win ? win.letters : []).map((l, i) => ({ letter: l.letter, order: i + 1, current: l.current, window: l.window, stages: l.stages as StageRow[] }));
+    const letters = Object.keys(tr.scopes).map((l, i) => { const rows = stageRowsOf(tr.scopes[l]), cur = rows.find((x) => x.status === "active" || x.status === "locked"); return { letter: l, order: i + 1, current: cur ? cur.stage : null, window: rows.filter((x) => x.status === "active").map((x) => x.stage), stages: rows }; });
     // Trainierte Silben (mindestens eine Messung), nach Stufe sortiert
     const trained = Object.keys(tr.times).map((s) => sylRow(s, tr.times, tr.maxSeq, cfg, con))
       .sort((x, y) => x.stage - y.stage || x.length - y.length || (x.syllable < y.syllable ? -1 : 1));
     return c.json({
-      student: { id, name: name ? name.display_name : "" }, extended: win ? win.extended : 0, restricted: sp ? true : win ? win.restricted : false,
-      mode: sp ? 2 : 1, gatePercent: cfg.stages.gate_percent, mix: { fresh: cfg.stages.mix_new_percent, weak: cfg.stages.mix_weak_percent, review: cfg.stages.mix_review_percent },
-      reviewPercent: cfg.stages.review_percent, minMeasurements: cfg.mastery.min_measurements, timeLimits: cfg.mastery.time_limit_seconds,
+      student: { id, name: name ? name.display_name : "" }, enabled: !!cfg.stages.enabled, gatePercent: cfg.stages.gate_percent, mix: { fresh: cfg.stages.mix_new_percent, weak: cfg.stages.mix_weak_percent, review: cfg.stages.mix_review_percent },
+      minMeasurements: cfg.mastery.min_measurements, timeLimits: cfg.mastery.time_limit_seconds,
       stages, letters, syllables: trained,
     });
   });

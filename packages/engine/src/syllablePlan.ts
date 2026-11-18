@@ -1,8 +1,11 @@
-// Silbenbasierte Auswahl (stages.mode 2): jede Silbe wird einzeln freigeschaltet und einer Gruppe zugeordnet. Alles wird aus den Silbenzeiten berechnet,
+// Silbenbasierte Auswahl: jede Silbe wird einzeln freigeschaltet und einer Gruppe zugeordnet. Alles wird aus den Silbenzeiten berechnet,
 // gespeichert wird nichts. Bewertung (isMastered) bleibt unverändert.
 import { classifySyllable, contrastSet } from "@silbenflug/core";
 import type { SilbenflugConfig } from "@silbenflug/shared";
 import { isMastered } from "./mastery";
+
+export type StageStatus = "done" | "active" | "locked" | "empty";
+export interface StageRow { stage: number; status: StageStatus; total: number; processed: number; mastered: number; open: number }
 
 export interface SyllablePlan {
   fresh: string[];      // offen, noch keine Messung

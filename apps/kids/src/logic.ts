@@ -1,10 +1,10 @@
 // Lernlogik der Kinder-App: reine Funktionen auf core und engine (unverändert). Kein Zugriff auf Oberfläche oder Netz.
-import { stagedTasks, groupedTasks, randomCase, countSyllables, buildSyllables } from "@silbenflug/core";
+import { groupedTasks, makeRound, randomCase, countSyllables, buildSyllables } from "@silbenflug/core";
 import { autoAdjust, autoParams, comboKey, recordSyl, roundParams, sdFromLen, startVal, sylStat, sylTimeParams, syllablePlan } from "@silbenflug/engine";
 import type { AutoState } from "@silbenflug/engine";
 import type { Rng, SilbenflugConfig } from "@silbenflug/shared";
 
-export interface Plan { classId: string | null; letters: string[]; lengths: number[]; training?: { focus: string[]; review: string[] } }   // training: Silben der aktuellen Lernstufen und zur Wiederholung (leer: alles wie bisher)
+export interface Plan { classId: string | null; letters: string[]; lengths: number[] }
 export interface AutoValue { bal: number | null; sd: number | null }
 // Alles, was das Gerät für ein Kind merkt (Silbenzeiten und Automatik-Stand; der Server hat die maßgebliche Kopie der Auszeichnungen).
 export interface LocalState {
@@ -34,15 +34,15 @@ export function prepareRound(plan: Plan, cfg: SilbenflugConfig, st: LocalState, 
   const sd = lens.length > 1 ? sdFromLen(bal, ap) : startVal(list, letters, lens, "sd", cfg.auto.default_syl_difficulty, ap.newComboDiscount);
   const sylAvg: Record<string, number | null> = {};
   Object.keys(st.sylTimes).forEach((s) => { sylAvg[s] = sylStat(st.sylTimes[s], sylTimeParams(cfg)).avg; });
-  const st2 = cfg.stages, useStages = !st2 || st2.enabled !== 0;   // ältere Konfigurationen kennen Lernstufen nicht: dann gilt die Auswahl wie bisher
-  // Auswahl je Silbe (stages.mode 2): Freischaltung und Gruppen aus den lokalen Silbenzeiten, Mix aus der Konfiguration
+  const st2 = cfg.stages;
+  // Auswahl je Silbe: Freischaltung und Gruppen aus den lokalen Silbenzeiten, Mix aus der Konfiguration (ohne Lernstufen oder zu wenige Silben: Aufgabenverteilung wie in Silbenzauber)
   let tasks: string[] | null = null;
-  if (st2 && st2.enabled !== 0 && st2.mode === 2) {
+  if (st2 && st2.enabled !== 0) {
     const sp = syllablePlan(lens.flatMap((L) => buildSyllables(letters, L)), st.sylTimes, cfg);
     if (sp.fresh.length + sp.building.length + sp.weak.length + sp.solid.length >= cfg.round.min_pool)
       tasks = groupedTasks(cfg.round.task_count, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, roundParams(cfg));
   }
-  if (!tasks) tasks = stagedTasks(letters, lens, cfg.round.letter_frequency_default, cfg.round.task_count, bal, sylAvg, sd, useStages && plan.training ? plan.training : null, st2 ? st2.review_percent : 0, rng, roundParams(cfg));
+  if (!tasks) tasks = makeRound(letters, lens, cfg.round.letter_frequency_default, cfg.round.task_count, bal, sylAvg, sd, null, rng, roundParams(cfg));
   return { key: comboKey(letters, lens), letters, lens, bal, sd, tasks, shown: tasks.map((s) => randomCase(s, rng)) };
 }
 // Rundenende: Silbenzeiten und Rundenzeit merken, Automatik anpassen. Ergebnis: neuer Stand und der Automatik-Wert, der zum Server geschickt wird.

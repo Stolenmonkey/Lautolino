@@ -8,7 +8,6 @@ import { migrateLocal } from "../apps/server/src/migrate";
 import { hashPassword } from "../apps/server/src/crypto";
 import { buildSyllables } from "@silbenflug/core";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
-import { pickWeighted } from "../apps/server/src/train";
 import { Page, buildPdf } from "../apps/web/src/pdf";
 import { buildZugPdf, parsePath, sheetPage, wordUnits } from "../apps/web/src/zug";
 // @ts-ignore reine JS-Module
@@ -66,16 +65,6 @@ describe("Zeitverlauf (Diagramm)", () => {
   });
 });
 
-describe("Auswahl mit Gewichten", () => {
-  it("Gewichtung wirkt, nie zweimal dieselbe Silbe hintereinander, genau n Silben", () => {
-    let t = 7; const rng = () => { t = (t + 0x6d2b79f5) >>> 0; let x = t; x = Math.imul(x ^ (x >>> 15), x | 1); x ^= x + Math.imul(x ^ (x >>> 7), x | 61); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
-    const probs: Record<string, number> = {}; for (let i = 0; i < 8; i++) probs["s" + i] = 1 / 8; let b = 0, tot = 0, b1 = 0;
-    for (let k = 0; k < 300; k++) { const r = pickWeighted(probs, 20, (x) => (x === "s0" ? 2 : 1), rng); expect(r.length).toBe(20); r.forEach((x, i) => { if (i) expect(x).not.toBe(r[i - 1]); if (x === "s0") b++; tot++; }); pickWeighted(probs, 20, () => 1, rng).forEach((x) => { if (x === "s0") b1++; }); }
-    expect(b / tot).toBeGreaterThan(b1 / tot + 0.03);   // doppeltes Gewicht: deutlich häufiger als ohne
-    expect(pickWeighted({ a: 1 }, 3, () => 1, rng)).toEqual(["a", "a", "a"]);   // einzige Silbe: Wiederholung bleibt möglich
-  });
-});
-
 describe("Server und Oberfläche", () => {
   let app: ReturnType<typeof createApp>, raw: any, clock = Date.parse("2026-11-01T10:00:00Z");
   const call = async (method: string, path: string, token?: string | null, body?: unknown) => {
@@ -115,21 +104,11 @@ describe("Server und Oberfläche", () => {
     expect((await train(kA, lead)).status).toBe(200);
   });
   it("Silben-Zug: Automatik-Stand bestimmt die Schwierigkeit (Länge)", async () => {
-    expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0, review_percent: 15 } }, note: "ohne Lernstufen (alte Auswahl)" })).status).toBe(201);   // Lernstufen sind in diesem Test mit nur 2 Buchstaben nicht gemeint
+    expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0 } }, note: "ohne Lernstufen (alte Auswahl)" })).status).toBe(201);   // Lernstufen sind in diesem Test mit nur 2 Buchstaben nicht gemeint
     const tok = await kidToken(0), all = [...buildSyllables(["o", "l"], 2), ...buildSyllables(["o", "l"], 3)];
     const post = (bal: number, id: string) => call("POST", "/student/rounds", tok, { clientRoundId: id, seconds: 40, syllables: all.map((x) => ({ s: x, sec: 1 })), letters: ["o", "l"], lengths: [2, 3], autoState: { key: "lo|2,3", bal, sd: bal } });
     expect((await post(0, "a1")).status).toBe(201); expect((await train(kA, teacher, "?seed=1")).json.syllables.every((x: string) => x.length === 2)).toBe(true);
     expect((await post(100, "a2")).status).toBe(201); expect((await train(kA, teacher, "?seed=1")).json.syllables.every((x: string) => x.length === 3)).toBe(true);
-  });
-  it("Silben-Zug: nicht sicher beherrschte Silben kommen etwa doppelt so oft vor, Faktor ist einstellbar", async () => {
-    expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0, review_percent: 15 } }, note: "ohne Lernstufen (alte Auswahl)" })).status).toBe(201);
-    const tok = await kidToken(0), all = [...buildSyllables(["o", "l"], 2), ...buildSyllables(["o", "l"], 3)], fast = (x: string) => x.startsWith("o");
-    for (let i = 0; i < 10; i++) expect((await call("POST", "/student/rounds", tok, { clientRoundId: "w" + i, seconds: 40, syllables: all.map((x) => ({ s: x, sec: fast(x) ? 1 : 10 })), letters: ["o", "l"], lengths: [2, 3], autoState: { key: "lo|2,3", bal: 25, sd: 50 } })).status).toBe(201);   // Schwierigkeit neutral (50 %), damit nur die Bevorzugung wirkt
-    const share = async () => { let un = 0, tot = 0; for (let seed = 1; seed <= 30; seed++) (await train(kA, teacher, `?seed=${seed}`)).json.syllables.forEach((x: string) => { tot++; if (!fast(x)) un++; }); return un / tot; };
-    const w2 = await share();
-    const set = await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0, review_percent: 15 }, train: { unmastered_weight: 1 } }, note: "Silben-Zug ohne Bevorzugung" }); expect(set.json.version).toBeGreaterThan(1);
-    const w1 = await share(); expect(w2).toBeGreaterThan(w1 + 0.07);
-    expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, train: { unmastered_weight: 0.5 } } })).status).toBe(400);
   });
   it("Silben-Zug: Rechte", async () => {
     expect((await train(kA, adm)).status).toBe(403); expect((await train(kA, other)).status).toBe(404); expect((await train(kA, await kidToken(0))).status).toBe(403); expect((await train(kA, null)).status).toBe(401);

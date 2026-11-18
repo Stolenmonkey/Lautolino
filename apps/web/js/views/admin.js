@@ -42,7 +42,7 @@ async function schulen(root, api, msg) {
 }
 
 // Konfiguration: aus der aktiven Konfiguration wird automatisch ein Formular erzeugt. Speichern erzeugt eine neue Version.
-const LABELS = { syl_time: "Silbenzeit", auto: "Automatik", round: "Aufgabenverteilung", mastery: "Bewertung sicher beherrschter Silben", award: "Auszeichnungen (Prozentgrenzen)", unlock: "Freischaltung", retention: "Löschfristen (Tage)", security: "Sicherheit", train: "Silben-Zug", stages: "Lernstufen" };
+const LABELS = { syl_time: "Silbenzeit", auto: "Automatik", round: "Aufgabenverteilung", mastery: "Bewertung sicher beherrschter Silben", award: "Auszeichnungen (Prozentgrenzen)", unlock: "Freischaltung", retention: "Löschfristen (Tage)", security: "Sicherheit", stages: "Lernstufen" };
 async function konfiguration(root, api, msg) {
   const cur = await api.get("/config"), inputs = [], form = h("div");
   const walk = (o, path, into) => {

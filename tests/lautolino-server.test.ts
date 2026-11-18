@@ -99,16 +99,11 @@ describe("Lautolino (Server und Oberfläche)", () => {
 
   describe("Stufenweiser Lernfortschritt", () => {
     it("am Anfang trainiert das Kind nur Stufe 1 und 2 (KV-Silben); höhere Stufen sind nicht freigeschaltet", async () => {
-      const plan = (await call("GET", "/student/plan", await kidTok(codeA))).json;
-      expect(plan.training.focus.sort()).toEqual(KV.slice().sort()); expect(plan.training.review).toEqual([]);
       const ev = (await call("GET", `/students/${kA}/evaluation`, teacher)).json;
       expect(ev.stages.map((s: any) => s.status)).toEqual(["active", "active", "locked", "locked", "locked", "empty", "locked"]); expect(ev.letters.every((l: any) => l.current === 1)).toBe(true);
     });
     it("nach sicher beherrschter Stufe 1 rückt der Schwerpunkt vor, Gelerntes wird wiederholt, Stufe 5 bis 7 bleiben gesperrt", async () => {
       const tok = await kidTok(codeA); await rounds(tok, KV, 10, 1, "kv");
-      const plan = (await call("GET", "/student/plan", tok)).json;
-      expect(plan.training.focus).toContain("mal"); expect(plan.training.focus).toContain("ama"); expect(plan.training.focus).not.toContain("ma"); expect(plan.training.focus).not.toContain("plam"); expect(plan.training.focus).not.toContain("alma");
-      expect(plan.training.review.sort()).toEqual(KV.slice().sort());
       const ev = (await call("GET", `/students/${kA}/evaluation`, teacher)).json;
       expect(ev.stages.map((s: any) => s.status)).toEqual(["done", "done", "active", "locked", "locked", "empty", "locked"]);   // Modus 2: Stufe 4 erst, wenn Stufe 3 zu 80 % sicher ist
       expect(ev.letters.find((l: any) => l.letter === "m")).toMatchObject({ current: 3, window: [3] });
@@ -117,14 +112,13 @@ describe("Lautolino (Server und Oberfläche)", () => {
       expect(z.every((s) => classifySyllable(s).stage <= 3)).toBe(true); expect(z.some((s) => classifySyllable(s).stage === 3)).toBe(true); expect(z.some((s) => KV.includes(s))).toBe(true);
     });
     it("Schalter stages.enabled = 0: Silbenauswahl wie bisher ohne Lernstufen", async () => {
-      expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0, review_percent: 15 } } })).status).toBe(201);
-      expect((await call("GET", "/student/plan", await kidTok(codeA))).json.training).toEqual({ focus: [], review: [] });
+      expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0 } } })).status).toBe(201);
+      expect((await call("GET", "/config", adm)).json.config.stages.enabled).toBe(0);
     });
     it("ältere gespeicherte Konfigurationen ohne Lernstufen-Werte funktionieren (Standardwerte werden ergänzt)", async () => {
       const old: any = JSON.parse(JSON.stringify(DEFAULT_CONFIG)); delete old.stages; delete old.security.invite_hours; delete old.security.parent_session_days;
       raw.exec("UPDATE config_versions SET is_active=0"); raw.prepare("INSERT INTO config_versions(json,valid_from,changed_by,change_note,is_active) VALUES(?,?,?,?,1)").run(JSON.stringify(old), new Date(clock).toISOString(), "t", "alt");
-      const c = (await call("GET", "/config", adm)).json.config; expect(c.stages).toMatchObject({ enabled: 1, review_percent: 15, mode: 2, gate_percent: 80 }); expect(c.security.invite_hours).toBe(72);
-      expect((await call("GET", "/student/plan", await kidTok(codeA))).json.training.focus.length).toBe(9);
+      const c = (await call("GET", "/config", adm)).json.config; expect(c.stages).toMatchObject({ enabled: 1, gate_percent: 80 }); expect(c.security.invite_hours).toBe(72);
     });
   });
 

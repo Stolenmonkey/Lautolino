@@ -37,7 +37,7 @@ export async function activeConfig(d: Deps): Promise<{ version: number; config: 
 }
 export function parseConfig(input: unknown): SilbenflugConfig {
   if (!input || typeof input !== "object") throw fail(400, "config: Objekt erwartet");
-  for (const k of ["syl_time", "auto", "round", "mastery", "award", "unlock", "retention", "security", "train"] as const) if (!(input as any)[k] || typeof (input as any)[k] !== "object") throw fail(400, `config.${k} fehlt`);
+  for (const k of ["syl_time", "auto", "round", "mastery", "award", "unlock", "retention", "security"] as const) if (!(input as any)[k] || typeof (input as any)[k] !== "object") throw fail(400, `config.${k} fehlt`);
   const c = withDefaults(input as Partial<SilbenflugConfig>);   // neue Abschnitte (z. B. stages) dürfen fehlen und werden ergänzt
   const errs = validateConfig(c);
   if (errs.length) throw new HTTPException(400, { message: errs.join("; ") });

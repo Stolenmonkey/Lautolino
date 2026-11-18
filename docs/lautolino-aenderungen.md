@@ -76,8 +76,9 @@ Nicht getestet: echter Versand über Resend (kein Konto/Schlüssel hier) und die
 7. **E-Mail-Anbieter** Resend ist ein Vorschlag; Passwortwechsel im eingeloggten Zustand hat weiterhin keine Oberfläche.
 8. Silben-Zug (PDF) benutzt dasselbe Stufenfenster.
 
-## Silbenbasierte Auswahl (stages.mode 2)
-- Konfiguration `stages`: `mode` (2 = je Silbe, 1 = altes Buchstaben-Fenster), `gate_percent` (80), `mix_new_percent` / `mix_weak_percent` / `mix_review_percent` (45/30/25, Summe 100). Alle im Verwaltungsbereich unter „Konfiguration → Lernstufen“ einstellbar.
+## Silbenbasierte Auswahl (ersetzt das Buchstaben-Fenster, Stand: Modus 1 entfernt)
+- Entfallen: `stagedTasks`, `trainingWindow`, `letterStages`, `stages.mode`, `stages.review_percent`, `train.unmastered_weight`, `training` in `GET /student/plan`, `apps/server/src/train.ts`. Die Kinder-App berechnet die Auswahl selbst aus den Silbenzeiten.
+- Konfiguration `stages`: `enabled`, `gate_percent` (80), `mix_new_percent` / `mix_weak_percent` / `mix_review_percent` (45/30/25, Summe 100). Alle im Verwaltungsbereich unter „Konfiguration → Lernstufen“ einstellbar.
 - Freischaltung je Silbe (`engine/syllablePlan.ts`): In jeder Vorstufe müssen mindestens `gate_percent` der Silben aus den Buchstaben dieser Silbe sicher sein (Stufe 2 = Anlautwechsel). Silben mit Messungen bleiben offen.
-- Gruppen: neu, angefangen, schwach, sicher. Rundenaufbau `core/stagedRound.ts: groupedTasks`. Die Automatik-Werte bal (Längenverteilung) und sd (Silbenschwierigkeit) wirken im Modus 2 nicht mehr auf die Auswahl. Berechnung in der Kinder-App aus den lokalen Silbenzeiten (`apps/kids/src/logic.ts`).
-- Lehrer-Stufenansicht (`routes/evaluation.ts`, `web/js/views/stufen.js`, `auswertung.js`) und Silben-Zug (`routes/progress.ts`, `studentSylPlan`) folgen im Modus 2 derselben Freischaltung: Stufenstatus nach freigeschalteten Silben, gesperrte Silben als „noch nicht freigeschaltet“, Hinweistext mit Gate und Mix. Modus 1 bleibt wie bisher.
+- Gruppen: neu, angefangen, schwach, sicher. Rundenaufbau `core/stagedRound.ts: groupedTasks`. Die Automatik-Werte bal (Längenverteilung) und sd (Silbenschwierigkeit) wirken nicht mehr auf die Auswahl. Berechnung in der Kinder-App aus den lokalen Silbenzeiten (`apps/kids/src/logic.ts`).
+- Lehrer-Stufenansicht (`routes/evaluation.ts`, `web/js/views/stufen.js`, `auswertung.js`) und Silben-Zug (`routes/progress.ts`, `studentSylPlan`) folgen derselben Freischaltung: Stufenstatus nach freigeschalteten Silben, gesperrte Silben als „noch nicht freigeschaltet“, Hinweistext mit Gate und Mix. 

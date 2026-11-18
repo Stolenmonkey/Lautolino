@@ -40,7 +40,7 @@ tests/          *.test.ts + helpers.ts + fixtures/silbenzauber-logic.js (alte Ap
 - `syllables.ts`: `parseLetters`, `buildSyllables(letters,len)`, `countSyllables`.
 - `syllabify.ts`: `splitSyllables(wort)`, `partPattern` (V/K), `clusterPlace`.
 - `round.ts`: `makeRound`, `sylProbs`, `lenWeights`, `randomCase`, `RoundParams`, `SILBENZAUBER_ROUND_PARAMS`.
-- `stagedRound.ts`: `stagedTasks(…)` Rundenaufbau nach Lernstufen (Fokus/Wiederholung); Typ `Training`.
+- `stagedRound.ts`: `groupedTasks(…)` Rundenaufbau nach Lernstufen (Gruppen neu/angefangen/schwach/sicher, Mix).
 - `stages.ts`: `STAGES` (7 Stufen, Unterkategorien 1.1–7.2), `classifySyllable`, `contrastSet`, `stagePlan`, `subName`.
 - `arcs.ts`: `displayParts`, `renderWordWithArcs` (Silbenbögen, SVG).
 - `glyphs.ts`: `GLYPHS` (Buchstabenpfade), `renderWord`.
@@ -50,7 +50,7 @@ tests/          *.test.ts + helpers.ts + fixtures/silbenzauber-logic.js (alte Ap
 - `automatik.ts`: `autoAdjust`, `avgLast`, `sdFromLen`, `comboKey`, `startVal`; Typen `AutoParams`, `AutoState`.
 - `mastery.ts`: `isMastered`, `letterProgress`, `levelsReached`, `newAwards`, `highestLevel`; Typ `SylStatus`.
 - `scope.ts`: `syllableScope(releasedBefore,newLetter,lens)` – Silbenumfang je Buchstabe.
-- `stages.ts`: `letterStages`, `trainingWindow`, `stageMembers` – Stufenfortschritt je Buchstabe aus Silbenzeiten.
+- `syllablePlan.ts`: `syllablePlan` – Freischaltung je Silbe (Gate) und Gruppen aus Silbenzeiten.
 - `params.ts`: Config → `sylTimeParams`/`autoParams`/`roundParams`.
 
 ### apps/server
@@ -65,13 +65,13 @@ tests/          *.test.ts + helpers.ts + fixtures/silbenzauber-logic.js (alte Ap
 - `license.ts`: Lizenzstatus-Automat (`effectiveStatus`, `isWritable`, `applyLicenseAction`).
 - `mail.ts`: `Mailer`, `resendMailer`.
 - `staff.ts`: `createStaff`. `staffTokens.ts`: Einladungs-/Reset-Tokens, `tokenLink`, Rate-Limit (`rateKey/rateCount/rateAdd`).
-- `train.ts`: `pickWeighted` (Silben-Zug). `migrate.ts`: `migrateLocal` (lokale SQLite).
+- `migrate.ts`: `migrateLocal` (lokale SQLite).
 - `util.ts`: `fail`, `body`, `str`, `email`, `audit`, `activeConfig`, `parseConfig`, `assertSchoolWritable`, `newId`, `nowIso`.
 - `routes/auth.ts`: Staff `/login /logout /forgot-password /set-password /me /change-password`.
 - `routes/admin.ts`: Schulen, Lizenz(-Ereignisse), Staff anlegen, Config-Versionen (`/config`), `/audit`.
 - `routes/school.ts`: Schuljahre, Klassen, Personal(+Klassenzuordnung), Schüler anlegen/ändern/verschieben, Schülercode neu.
 - `routes/plan.ts`: Klassenplan, Silbenlängen (`/settings`), Buchstaben-Freigaben (`/releases`), Scope, Ausschlüsse je Schüler.
-- `routes/progress.ts`: `POST /student/rounds`, Awards (+ack), auto-state, sync-data; `studentTraining`, `progressOf`; Staff: progress, rounds, `syllable-train`.
+- `routes/progress.ts`: `POST /student/rounds`, Awards (+ack), auto-state, sync-data; `studentTraining`, `studentSylPlan`, `progressOf`; Staff: progress, rounds, `syllable-train`.
 - `routes/evaluation.ts`: `/students/:id/evaluation`, `/students/:id/stages/:n`, `/classes/:cid/overview`, `/classes/:cid/syllables`; `possibleSyllables`.
 - `routes/student.ts`: Kinder-`/login` (Code), `/me`, `/plan`.
 - `routes/parent.ts`: Elterncode erzeugen/neu/sammelweise; `/parent/login`, `/parent/me|letters|rounds`.
