@@ -16,6 +16,7 @@ export interface SilbenflugConfig {
     max_failed_logins: number; lock_minutes: number; code_max_attempts_per_hour: number; parent_code_days: number;
     invite_hours: number; reset_minutes: number; reset_max_per_email_hour: number; reset_max_per_ip_hour: number; parent_session_days: number;
   };
+  scope: { cap_stage_1_4: number; cap_stage_5_7: number; freq_percent: number };   // Silbenumfang je neuem Buchstaben (gilt nur für künftige Freigaben): höchstens cap_stage_1_4 Wörter je Lernstufe 1 bis 4, cap_stage_5_7 je Lernstufe 5 bis 7; 0 = keine Begrenzung; freq_percent = Anteil der Plätze nach Häufigkeit im Deutschen (Rest fest ausgelost)
   stages: { enabled: number; gate_percent: number; mix_new_percent: number; mix_weak_percent: number; mix_review_percent: number };      // Lernstufen (Auswahl je Silbe): enabled 1 = ein, 0 = alte Aufgabenverteilung ohne Stufen; gate_percent = Anteil sicherer Vorstufen-Silben, ab dem eine Silbe freigeschaltet wird; mix_*_percent = Anteil neuer/angefangener, schwacher und sicher beherrschter Silben (Wiederholung) pro Runde, Summe 100
 }
 
@@ -35,6 +36,7 @@ export const DEFAULT_CONFIG: SilbenflugConfig = {
     max_failed_logins: 5, lock_minutes: 15, code_max_attempts_per_hour: 10, parent_code_days: 30,
     invite_hours: 72, reset_minutes: 60, reset_max_per_email_hour: 3, reset_max_per_ip_hour: 10, parent_session_days: 90,
   },
+  scope: { cap_stage_1_4: 10, cap_stage_5_7: 8, freq_percent: 100 },
   stages: { enabled: 1, gate_percent: 80, mix_new_percent: 45, mix_weak_percent: 30, mix_review_percent: 25 },
 };
 
@@ -75,6 +77,7 @@ export function validateConfig(c: SilbenflugConfig): string[] {
   int(c.security.invite_hours, 1, 720, "security.invite_hours"); int(c.security.reset_minutes, 5, 1440, "security.reset_minutes");
   int(c.security.reset_max_per_email_hour, 1, 100, "security.reset_max_per_email_hour"); int(c.security.reset_max_per_ip_hour, 1, 1000, "security.reset_max_per_ip_hour");
   int(c.security.parent_session_days, 1, 730, "security.parent_session_days");
+  int(c.scope.cap_stage_1_4, 0, 200, "scope.cap_stage_1_4"); int(c.scope.cap_stage_5_7, 0, 200, "scope.cap_stage_5_7"); num(c.scope.freq_percent, 0, 100, "scope.freq_percent");
   int(c.stages.enabled, 0, 1, "stages.enabled");
   num(c.stages.gate_percent, 0, 100, "stages.gate_percent");
   num(c.stages.mix_new_percent, 0, 100, "stages.mix_new_percent"); num(c.stages.mix_weak_percent, 0, 100, "stages.mix_weak_percent"); num(c.stages.mix_review_percent, 0, 100, "stages.mix_review_percent");

@@ -9,7 +9,7 @@ import { CODE_WORDS, generateStudentCode, hashPassword, hmacHex, normalizeCode }
 import type { Mail } from "../apps/server/src/mail";
 import { resendMailer } from "../apps/server/src/mail";
 import { buildSyllables, classifySyllable, splitSyllables, structureWords } from "@silbenflug/core";
-import { sylStat, sylTimeParams } from "@silbenflug/engine";
+import { sylStat, sylTimeParams, groupScope, scopeParams } from "@silbenflug/engine";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
 // @ts-ignore reine JS-Module
 import { createApi } from "../apps/web/js/api.js";
@@ -70,7 +70,7 @@ describe("Lautolino (Server und Oberfläche)", () => {
   describe("Silbenübersicht der Klasse", () => {
     it("zeigt alle möglichen Silben mit Stufe und Unterkategorie, ohne ungültige oder doppelte", async () => {
       const r = await call("GET", `/classes/${cid}/syllables`, teacher); expect(r.status).toBe(200);
-      const all = structureWords(LETTERS); expect(r.json.total).toBe(all.length); expect(r.json.letters).toEqual(LETTERS); expect(r.json.allowedLengths).toBeUndefined();
+      const all = groupScope(LETTERS, scopeParams(DEFAULT_CONFIG)); expect(r.json.total).toBe(all.length); expect(r.json.letters).toEqual(LETTERS); expect(r.json.allowedLengths).toBeUndefined();
       expect(r.json.stages.map((x: any) => x.stage)).toEqual([1, 2, 3, 4, 5, 6, 7]); expect(r.json.stages[0].subs.map((x: any) => x.id)).toEqual(["1.1", "1.2"]);
       expect(r.json.stages.filter((x: any) => x.stage !== 2).reduce((a: number, x: any) => a + x.total, 0)).toBe(all.length);
       const d = (await call("GET", `/classes/${cid}/syllables?stage=3`, teacher)).json, flat = d.subs.flatMap((u: any) => u.syllables);
@@ -343,7 +343,7 @@ describe("Lautolino (Server und Oberfläche)", () => {
       expect(found2).toBe(true);
     });
     it("Buchstabenübersicht zeigt je freigegebenem Buchstaben den Status Bronze, Silber, Gold (drei Punkte, Medaille, Legende)", async () => {
-      const tok = await kidTok(codeA), all = structureWords(["o", "l"]);
+      const tok = await kidTok(codeA), all = groupScope(["o", "l"], scopeParams(DEFAULT_CONFIG));
       await call("POST", `/classes/${cid2}/releases`, other, { letters: ["o", "l"] }); const k2 = (await call("POST", `/classes/${cid2}/students`, other, { names: ["Eva"] })).json[0];
       const t2 = await kidTok(k2.code); await rounds(t2, all, 10, 1, "g", ["o", "l"]);
       const a = mountK(k2.code); await a.ready; await flush(); (a.root.querySelector("#code") as HTMLInputElement).value = k2.code; click(a.root, "Anmelden"); await flush();

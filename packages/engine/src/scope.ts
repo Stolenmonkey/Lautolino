@@ -1,9 +1,48 @@
 // Fester Silbenumfang je Buchstabe. Wird bei der Freigabe EINMAL berechnet und dauerhaft gespeichert.
-import { structureWords } from "@silbenflug/core";
+import { structureWords, classifySyllable, partWeight, wordScore } from "@silbenflug/core";
+
+// Begrenzung des Umfangs (Konfiguration, Block scope): höchstens capStage14 Wörter je Lernstufe 1 bis 4 und capStage57 je Lernstufe 5 bis 7 für einen neuen Buchstaben.
+// freqPercent: Anteil der Plätze, der nach Häufigkeit im Deutschen vergeben wird (100 = nur die häufigsten, der Rest wird fest ausgelost).
+export interface ScopeParams { capStage14: number; capStage57: number; freqPercent: number }
+
+const fnv = (s: string): number => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+
+// Wählt je Lernstufe höchstens cap Wörter (cap mal mult). Die Plätze werden reihum auf die Unterkategorien der Stufe verteilt (z. B. 3.1 VK und 3.2 KVK);
+// bleibt eine Unterkategorie leer, rücken die anderen nach. Stufe 2 hat keine eigene Menge (Ableitung aus Stufe 1).
+export function limitScope(cands: string[], p: ScopeParams, mult: number, seed: string): string[] {
+  const out: string[] = [], bySub = new Map<string, string[]>();
+  for (const w of [...new Set(cands)]) { const c = classifySyllable(w); (bySub.get(c.sub) ?? bySub.set(c.sub, []).get(c.sub)!).push(w); }
+  for (let stage = 1; stage <= 7; stage++) {
+    const cap = Math.max(0, Math.round((stage <= 4 ? p.capStage14 : p.capStage57) * mult));
+    const subs = [...bySub.keys()].filter((id) => id.startsWith(stage + ".")).sort();
+    if (!subs.length || !cap) continue;
+    const ranked = new Map(subs.map((id) => [id, bySub.get(id)!.map((w) => [w, wordScore(w)] as [string, number]).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).map((x) => x[0])]));
+    const quota = new Map(subs.map((id) => [id, 0])); let total = 0;
+    for (let again = true; again && total < cap;) {
+      again = false;
+      for (const id of subs) { if (total < cap && quota.get(id)! < ranked.get(id)!.length) { quota.set(id, quota.get(id)! + 1); total++; again = true; } }
+    }
+    for (const id of subs) {
+      const list = ranked.get(id)!, n = quota.get(id)!, nf = Math.min(n, Math.round(n * p.freqPercent / 100));
+      const rest = list.slice(nf).sort((a, b) => fnv(a + seed) - fnv(b + seed) || (a < b ? -1 : 1));
+      out.push(...list.slice(0, nf), ...rest.slice(0, n - nf));
+    }
+  }
+  return out.sort((a, b) => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0));
+}
 
 // releasedBefore: bereits freigegebene Buchstaben (in Reihenfolge). Gehört zu newLetter: jedes strukturell gültige Übungswort (1 bis 3 Sprechsilben,
 // siehe structureWords), das newLetter enthält und nur aus den bis einschließlich newLetter freigegebenen Buchstaben besteht.
-export function syllableScope(releasedBefore: string[], newLetter: string): string[] {
-  const nl = newLetter.toLowerCase();
-  return structureWords(releasedBefore.map((x) => x.toLowerCase()).filter((x) => x !== nl).concat([nl]), nl);
+// Mit p: begrenzt auf die häufigsten Wörter je Lernstufe (limitScope); ohne p: alle (alte Regel).
+export function syllableScope(releasedBefore: string[], newLetter: string, p?: ScopeParams): string[] {
+  const nl = newLetter.toLowerCase(), letters = releasedBefore.map((x) => x.toLowerCase()).filter((x) => x !== nl).concat([nl]);
+  if (!p) return structureWords(letters, nl);
+  return limitScope(structureWords(letters, nl, { weight: partWeight, capPerSub: Infinity }), p, 1, nl);
+}
+
+// Umfang der Startgruppe (alle Startbuchstaben teilen sich die Menge): Obergrenze mal Anzahl der Startbuchstaben.
+export function groupScope(group: string[], p?: ScopeParams): string[] {
+  const ls = group.map((x) => x.toLowerCase());
+  if (!p) return structureWords(ls);
+  return limitScope(structureWords(ls, undefined, { weight: partWeight, capPerSub: Infinity }), p, ls.length, ls.join(""));
 }

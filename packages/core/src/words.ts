@@ -31,7 +31,11 @@ const joinOk = (parts: string[]): boolean => {
 };
 
 // required: nur Wörter mit diesem Buchstaben (Umfang eines neu freigegebenen Buchstabens). Ohne required: alle Wörter der Gruppe.
-export function structureWords(letters: string[], required?: string): string[] {
+// opts.weight: Gewicht einer Sprechsilbe (z. B. Häufigkeit). Dann werden zusätzlich die Wörter aus den gewichtigsten Silben vollständig aufgezählt (statt nur zufällig angetastet),
+// und opts.capPerSub (Standard WORD_CAP_PER_SUB; Infinity = keine Kürzung) begrenzt die mehrsilbigen Wörter je Unterkategorie.
+export interface WordOpts { weight?: (part: string) => number; capPerSub?: number }
+const TOP_ENUM = 100;
+export function structureWords(letters: string[], required?: string, opts?: WordOpts): string[] {
   const ls = [...new Set(letters.map((x) => x.toLowerCase()))], req = required?.toLowerCase();
   const parts = partsOf(ls), byPat = new Map<string, string[]>(), reqByPat = new Map<string, string[]>();
   parts.forEach((p) => {
@@ -67,7 +71,21 @@ export function structureWords(letters: string[], required?: string): string[] {
       add(seq);
     }
   });
-  const out = new Set(singles);
-  multi.forEach((set) => { [...set].sort((a, b) => fnv(a) - fnv(b) || (a < b ? -1 : 1)).slice(0, WORD_CAP_PER_SUB).forEach((w) => out.add(w)); });
+  if (opts?.weight) {
+    const wt = opts.weight, byW = (l: string[]) => [...l].sort((x, y) => wt(y) - wt(x) || (x < y ? -1 : 1));
+    const top = new Map<string, string[]>(), topReq = new Map<string, string[]>();
+    byPat.forEach((l, k) => top.set(k, byW(l))); reqByPat.forEach((l, k) => topReq.set(k, byW(l)));
+    sigs.forEach((sig) => {
+      const m = Math.max(2, Math.floor(Math.pow(TOP_ENUM, 1 / sig.length)));
+      const at = req ? sig.map((_, i) => i).filter((i) => topReq.get(sig[i])?.length) : [-1];
+      at.forEach((pos) => {
+        const lists = sig.map((k, i) => (i === pos ? topReq.get(k)! : top.get(k)!).slice(0, m));
+        const rec = (i: number, acc: string[]) => { if (i === lists.length) { add(acc); return; } lists[i].forEach((p) => rec(i + 1, acc.concat(p))); };
+        rec(0, []);
+      });
+    });
+  }
+  const cap = opts?.capPerSub ?? WORD_CAP_PER_SUB, out = new Set(singles);
+  multi.forEach((set) => { [...set].sort((a, b) => fnv(a) - fnv(b) || (a < b ? -1 : 1)).slice(0, cap).forEach((w) => out.add(w)); });
   return [...out].sort((a, b) => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0));
 }

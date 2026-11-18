@@ -1,7 +1,6 @@
 // Klassenlernplan: Buchstabenfreigabe (mit festem Silbenumfang), Ausnahmen einzelner Kinder.
 import { Hono } from "hono";
-import { structureWords } from "@silbenflug/core";
-import { syllableScope } from "@silbenflug/engine";
+import { syllableScope, groupScope, scopeParams } from "@silbenflug/engine";
 import type { Env } from "../context";
 import { authenticate, requireStaff } from "../middleware";
 import { canAccessClass, canAccessStudent } from "../permissions";
@@ -57,9 +56,9 @@ export function planRoutes() {
       if (prev.some((x) => x.letter === l)) throw fail(409, "Dieser Buchstabe ist schon freigegeben");
       group = [l];
     }
-    const { version } = await activeConfig(d), at = nowIso(d), known = prev.map((x) => x.letter);
-    const groupSyl = prev.length ? [] : structureWords(group);
-    const scopes = group.map((l) => ({ letter: l, syl: prev.length ? syllableScope(known, l) : groupSyl }));
+    const { version, config } = await activeConfig(d), at = nowIso(d), known = prev.map((x) => x.letter), sp = scopeParams(config);
+    const groupSyl = prev.length ? [] : groupScope(group, sp);
+    const scopes = group.map((l) => ({ letter: l, syl: prev.length ? syllableScope(known, l, sp) : groupSyl }));
     if (!prev.length && !scopes.some((x) => x.syl.length)) throw fail(400, "Mit diesen Buchstaben lassen sich keine Silben bilden. Bitte auch einen Vokal wählen.");
     const stmts: Array<{ sql: string; params: Array<string | number> }> = [];
     scopes.forEach((sc, i) => {
