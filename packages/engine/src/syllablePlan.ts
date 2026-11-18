@@ -2,7 +2,7 @@
 // gespeichert wird nichts. Bewertung (isMastered) bleibt unverändert.
 import { classifySyllable, contrastSet } from "@silbenflug/core";
 import type { SilbenflugConfig } from "@silbenflug/shared";
-import { isMastered } from "./mastery";
+import { isMastered, timeLimitFor } from "./mastery";
 
 export type StageStatus = "done" | "active" | "locked" | "empty";
 export interface StageRow { stage: number; status: StageStatus; total: number; processed: number; mastered: number; open: number }
@@ -51,7 +51,7 @@ export function syllablePlan(pool: string[], times: Record<string, number[]>, cf
   syls.forEach((s) => {
     const n = (times[s] || []).length, r = done.get(s)!;
     plan.count[s] = n;
-    const limit = cfg.mastery.time_limit_seconds[String(s.length) as "2" | "3" | "4"];
+    const limit = timeLimitFor(cfg.mastery.time_limit_seconds, s.length);
     if (r.avg !== null && limit) plan.ratio[s] = r.avg / limit;
     if (r.status === "mastered") plan.solid.push(s);
     else if (r.status === "not_mastered") plan.weak.push(s);

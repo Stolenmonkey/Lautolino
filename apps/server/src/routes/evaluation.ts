@@ -1,31 +1,23 @@
 // Lehrkräfte: Lernstufen und Silbenauswertung je Kind, Klassenübersicht je Buchstabe, mögliche Silben einer Klasse mit Stufenzuordnung.
 // Alles wird aus vorhandenen Daten berechnet (Silbenzeiten, fester Silbenumfang, Auszeichnungen). Die Bewertung selbst (isMastered, Schwellen) bleibt unverändert.
 import { Hono } from "hono";
-import { buildSyllables, classifySyllable, contrastSet, stagePlan, subName, STAGES, STAGE_COUNT } from "@silbenflug/core";
-import { isMastered, sylStat, sylTimeParams } from "@silbenflug/engine";
+import { classifySyllable, contrastSet, stagePlan, subName, STAGES, STAGE_COUNT } from "@silbenflug/core";
+import { isMastered, sylStat, sylTimeParams, timeLimitFor } from "@silbenflug/engine";
 import type { StageRow } from "@silbenflug/engine";
 import type { SilbenflugConfig } from "@silbenflug/shared";
 import type { Env } from "../context";
 import { authenticate, requireStaff } from "../middleware";
 import { canAccessClass, canAccessStudent } from "../permissions";
 import { activeConfig, fail } from "../util";
-import { classLens, studentLetters } from "./plan";
+import { studentLetters } from "./plan";
 import { loadScopes, studentSylPlan, studentTraining } from "./progress";
 
 const MAX_ROWS = 1500;
-const cache = new Map<string, string[]>();
-// Alle gültigen Silben der Längen 2 bis 4 für die Buchstaben (zwischengespeichert, weil die Erzeugung bei vielen Buchstaben etwas dauert)
-export function possibleSyllables(letters: string[], lens: number[]): string[] {
-  const key = letters.join("") + "|" + lens.join(",");
-  let r = cache.get(key);
-  if (!r) { r = lens.flatMap((L) => buildSyllables(letters, L)); if (cache.size > 40) cache.clear(); cache.set(key, r); }
-  return r;
-}
 const uniqLetters = (s: string): string[] => [...new Set(s.split(""))];
 const upper = (s: string): string => s.toUpperCase();
 
 function sylRow(s: string, times: Record<string, number[]>, maxSeq: Record<string, number>, cfg: SilbenflugConfig, con: Set<string>, locked?: Set<string>) {
-  const c = classifySyllable(s), t = times[s] || [], limit = cfg.mastery.time_limit_seconds[String(s.length) as "2" | "3" | "4"] ?? null;
+  const c = classifySyllable(s), t = times[s] || [], limit = timeLimitFor(cfg.mastery.time_limit_seconds, s.length);
   const m = isMastered(t, cfg, s), st = sylStat(t, sylTimeParams(cfg));
   return {
     syllable: s, parts: c.parts, structure: c.structure, length: s.length, letters: uniqLetters(s), stage: c.stage, sub: c.sub, subName: subName(c.sub), contrast: con.has(s), locked: !!locked && locked.has(s),
@@ -111,20 +103,18 @@ export function evaluationRoutes() {
     const d = c.get("deps"), cid = c.req.param("cid"), a = await canAccessClass(d.db, c.get("p"), cid);
     if (!a.ok) throw fail(404, "nicht gefunden");
     const rel = await d.db.all<{ letter: string }>("SELECT letter FROM class_letter_releases WHERE class_id=? ORDER BY release_order", [cid]), letters = rel.map((x) => x.letter);
-    const allowed = await classLens(d.db, cid), lens = [2, 3, 4];
-    const possible = letters.length ? possibleSyllables(letters, lens) : [], con = contrastSet(possible), plan = stagePlan(possible), allowedSet = new Set(allowed);
-    const trainable = (s: string) => allowedSet.has(s.length);
-    const stageQ = c.req.query("stage"), summary = plan.map((g) => ({ stage: g.stage, name: g.name, structure: g.structure, total: g.syllables.length, trainable: g.syllables.filter(trainable).length,
-      subs: g.subs.map((u) => ({ id: u.id, name: u.name, total: u.syllables.length, trainable: u.syllables.filter(trainable).length })) }));
-    if (stageQ === undefined) return c.json({ letters, allowedLengths: allowed, possibleLengths: lens, total: possible.length, trainable: possible.filter(trainable).length, stages: summary });
+    const scopeRows = await loadScopes(d, cid, letters), possible = [...new Set(Object.values(scopeRows).flat())], con = contrastSet(possible), plan = stagePlan(possible);
+    const stageQ = c.req.query("stage"), summary = plan.map((g) => ({ stage: g.stage, name: g.name, structure: g.structure, total: g.syllables.length,
+      subs: g.subs.map((u) => ({ id: u.id, name: u.name, total: u.syllables.length })) }));
+    if (stageQ === undefined) return c.json({ letters, total: possible.length, stages: summary });
     const n = Number(stageQ);
     if (!Number.isInteger(n) || n < 1 || n > STAGE_COUNT) throw fail(400, "Stufe 1 bis 7 erwartet");
-    const scopeRows = await loadScopes(d, cid, letters), inScope = new Set(Object.values(scopeRows).flat()), order = new Map(letters.map((l, i) => [l, i]));
+    const order = new Map(letters.map((l, i) => [l, i]));
     const g = plan.find((x) => x.stage === n)!, list = g.syllables.slice(0, MAX_ROWS);
-    return c.json({ stage: n, name: g.name, total: g.syllables.length, truncated: g.syllables.length > list.length, allowedLengths: allowed,
+    return c.json({ stage: n, name: g.name, total: g.syllables.length, truncated: g.syllables.length > list.length,
       subs: g.subs.map((u) => ({ id: u.id, name: u.name, syllables: u.syllables.filter((s) => list.indexOf(s) >= 0).map((s) => {
         const cl = classifySyllable(s), ls = uniqLetters(s), newest = ls.slice().sort((p1, p2) => (order.get(p2) ?? 0) - (order.get(p1) ?? 0))[0];
-        return { syllable: s, parts: cl.parts, letters: ls, newestLetter: newest, length: s.length, trainable: trainable(s), inScope: inScope.has(s), contrast: con.has(s) };
+        return { syllable: s, parts: cl.parts, letters: ls, newestLetter: newest, length: s.length, contrast: con.has(s) };
       }) })) });
   });
   return r;

@@ -7,7 +7,7 @@ import { createApp } from "../apps/server/src/app";
 import { nodeSqliteDb } from "../apps/server/src/db";
 import { migrateLocal } from "../apps/server/src/migrate";
 import { hashPassword } from "../apps/server/src/crypto";
-import { buildSyllables } from "@silbenflug/core";
+import { buildSyllables, structureWords } from "@silbenflug/core";
 import { DEFAULT_CONFIG, validateConfig } from "@silbenflug/shared";
 // @ts-ignore reine JS-Module
 import { createApi } from "../apps/web/js/api.js";
@@ -51,7 +51,7 @@ describe("Elternzugang", () => {
   const newCode = async (id = kA, tok = teacher) => (await call("POST", `/students/${id}/parent-code/regenerate`, tok)).json.code as string;
   const link = async (code: string) => (await call("POST", "/parent/login", null, { code })).json;
   const kidTok = async (i = 0) => (await call("POST", "/student/login", null, { code: codes[i] })).json.token as string;
-  const play = async (id = 0) => { const tok = await kidTok(id), all = [...buildSyllables(["o", "l"], 2), ...buildSyllables(["o", "l"], 3)]; for (let i = 0; i < 10; i++) expect((await call("POST", "/student/rounds", tok, { clientRoundId: "e" + id + "_" + i, seconds: 40 - i, syllables: all.map((x) => ({ s: x, sec: 1 })), letters: ["o", "l"], lengths: [2, 3] })).status).toBe(201); };
+  const play = async (id = 0) => { const tok = await kidTok(id), all = structureWords(["o", "l"]); for (let i = 0; i < 10; i++) expect((await call("POST", "/student/rounds", tok, { clientRoundId: "e" + id + "_" + i, seconds: 40 - i, syllables: all.map((x) => ({ s: x, sec: 1 })), letters: ["o", "l"], lengths: [2, 3] })).status).toBe(201); };
 
   it("Elterncode entsteht beim Anlegen des Kindes, hat das Format XXXX-XXXX-XXXX, Klartext steht nicht in der Datenbank", async () => {
     const kids = (await call("POST", `/classes/${classId}/students`, teacher, { names: ["Zoe"] })).json;

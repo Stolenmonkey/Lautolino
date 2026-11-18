@@ -3,6 +3,7 @@ import type { Env } from "../context";
 import { hmacHex, randomToken, sha256Hex, studentCodeCandidates, verifyPassword } from "../crypto";
 import { authenticate } from "../middleware";
 import { studentLetters } from "./plan";
+import { loadScopes } from "./progress";
 import { activeConfig, body, fail, newId, nowDate, nowIso, str } from "../util";
 
 export function studentRoutes() {
@@ -36,11 +37,12 @@ export function studentRoutes() {
     const k = await d.db.first<any>("SELECT k.id, k.display_name, h.class_id FROM students k LEFT JOIN student_class_history h ON h.student_id=k.id AND h.to_date IS NULL WHERE k.id=?", [p.id]);
     return c.json({ id: k.id, displayName: k.display_name, classId: k.class_id });
   });
-  // Freigegebene Buchstaben (Klassenplan minus Ausnahmen) und erlaubte Silbenlängen für die Kinder-App
+  // Freigegebene Buchstaben (Klassenplan minus Ausnahmen) und Übungswörter (fester Silbenumfang dieser Buchstaben) für die Kinder-App
   r.get("/plan", authenticate, async (c) => {
     const p = c.get("p");
     if (p.kind !== "student") throw fail(403, "Keine Berechtigung");
-    return c.json(await studentLetters(c.get("deps").db, p.id));
+    const d = c.get("deps"), st = await studentLetters(d.db, p.id), scopes = st.classId ? await loadScopes(d, st.classId, st.letters) : {};
+    return c.json({ ...st, syllables: [...new Set(Object.values(scopes).flat())].sort((a, b) => a.length - b.length || (a < b ? -1 : 1)) });
   });
   return r;
 }

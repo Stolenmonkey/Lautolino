@@ -1,7 +1,7 @@
 // Messwerte, Bewertung sicher beherrschter Silben und Auszeichnungen.
 // Einziger Messwert ist die Zeit bis „Weiter“. Die Bewertung ist zeitbasiert und kein Nachweis der Lesekorrektheit.
 import { Hono } from "hono";
-import { buildSyllables, groupedTasks, makeRound, randomCase, countSyllables, sylProbs } from "@silbenflug/core";
+import { FALLBACK_LENS, groupedTasks, makeRound, randomCase, sylProbs } from "@silbenflug/core";
 import { syllablePlan } from "@silbenflug/engine";
 import type { SyllablePlan } from "@silbenflug/engine";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
@@ -80,7 +80,7 @@ export function progressRoutes() {
     if (!syl.length || syl.length > 100) throw fail(400, "syllables: 1 bis 100 Einträge erwartet");
     const items = syl.map((x: any) => {
       const s = String(x?.s ?? "").toLowerCase();
-      if (!/^[a-z]{2,4}$/.test(s)) throw fail(400, "syllables: ungültige Silbe");
+      if (!/^[a-z]{1,16}$/.test(s)) throw fail(400, "syllables: ungültige Silbe");
       return { s, sec: Math.min(cfg.syl_time.max_seconds, num(x?.sec, 0, 3600, "syllables.sec")) };
     });
     const letters = Array.isArray(b.letters) ? [...new Set(b.letters.map((x: unknown) => String(x).toLowerCase()))].filter((l) => /^[a-z]$/.test(l as string)) as string[] : [];
@@ -193,8 +193,8 @@ export function progressRoutes() {
   r.get("/students/:id/syllable-train", authenticate, printers, async (c) => {
     const d = c.get("deps"), id = c.req.param("id"), a = await canAccessStudent(d.db, c.get("p"), id);
     if (!a.ok) throw fail(404, "nicht gefunden");
-    const cfg = (await activeConfig(d)).config, st = await studentLetters(d.db, id), lens = st.lengths.slice().sort((x, y) => x - y);
-    if (!st.classId || countSyllables(st.letters, lens, cfg.round.min_pool) < cfg.round.min_pool) throw fail(409, "Mit den freigegebenen Buchstaben gibt es noch zu wenige Silben.");
+    const cfg = (await activeConfig(d)).config, st = await studentLetters(d.db, id), lens = FALLBACK_LENS;
+    if (!st.classId || new Set(Object.values(await loadScopes(d, st.classId, st.letters)).flat()).size < cfg.round.min_pool) throw fail(409, "Mit den freigegebenen Buchstaben gibt es noch zu wenige Silben.");
     const seedRaw = c.req.query("seed"), seed = seedRaw !== undefined && /^\d{1,9}$/.test(seedRaw) ? Number(seedRaw) : null;
     let t = (seed ?? Math.floor(Math.random() * 2 ** 31)) >>> 0;
     const rng = () => { t = (t + 0x6d2b79f5) >>> 0; let x = t; x = Math.imul(x ^ (x >>> 15), x | 1); x ^= x + Math.imul(x ^ (x >>> 7), x | 61); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };

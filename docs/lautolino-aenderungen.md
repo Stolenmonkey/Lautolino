@@ -82,3 +82,12 @@ Nicht getestet: echter Versand über Resend (kein Konto/Schlüssel hier) und die
 - Freischaltung je Silbe (`engine/syllablePlan.ts`): In jeder Vorstufe müssen mindestens `gate_percent` der Silben aus den Buchstaben dieser Silbe sicher sein (Stufe 2 = Anlautwechsel). Silben mit Messungen bleiben offen.
 - Gruppen: neu, angefangen, schwach, sicher. Rundenaufbau `core/stagedRound.ts: groupedTasks`. Die Automatik-Werte bal (Längenverteilung) und sd (Silbenschwierigkeit) wirken nicht mehr auf die Auswahl. Berechnung in der Kinder-App aus den lokalen Silbenzeiten (`apps/kids/src/logic.ts`).
 - Lehrer-Stufenansicht (`routes/evaluation.ts`, `web/js/views/stufen.js`, `auswertung.js`) und Silben-Zug (`routes/progress.ts`, `studentSylPlan`) folgen derselben Freischaltung: Stufenstatus nach freigeschalteten Silben, gesperrte Silben als „noch nicht freigeschaltet“, Hinweistext mit Gate und Mix. 
+
+## Strukturbasierte Übungswörter, keine Silbenlängen mehr (Migration 0005)
+- Die Längenauswahl je Klasse (2/3/4 Buchstaben, `PUT /classes/:cid/settings`, Tabelle `class_learning_settings`) entfällt.
+- `packages/core/src/words.ts` erzeugt Übungswörter aus Sprechsilben (V, KV, VK, KVK, Häufungen) zu 1–3 Sprechsilben; damit sind alle 7 Stufen erreichbar (PAL-ME, MA-LA-MA).
+  Keine Doppelungen (LL), keine Vokal-Vokal-Grenze; Wort muss genau in die gewählten Sprechsilben zerfallen. Je Unterkategorie und neuem Buchstaben höchstens 30 mehrsilbige Wörter (deterministisch gewählt), einsilbige vollständig.
+- Der feste Silbenumfang bleibt unveränderlich: bestehende Klassen behalten ihre 2–4-Buchstaben-Umfänge, neue Freigaben nutzen die neue Erzeugung.
+- `GET /student/plan` liefert `syllables` (Union der festen Umfänge) statt `lengths`; die Kinder-App nutzt diese Liste. Klassenübersicht/Silben-Ansicht zeigen dieselbe Union.
+- Zeitvorgabe (`mastery.time_limit_seconds`) gilt für 2–4 Buchstaben unverändert, kürzere/längere Wörter nehmen die Vorgabe der nächstliegenden Länge (`timeLimitFor`).
+- Rückfall ohne Lernstufen (`stages.enabled = 0`) nutzt weiter Zufallssilben fester Länge (`FALLBACK_LENS` = 2, 3); `lengths` in Runden und Automatik-Schlüsseln bleibt dafür bestehen.

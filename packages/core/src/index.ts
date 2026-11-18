@@ -6,3 +6,4 @@ export * from "./syllabify";
 export * from "./stages";
 export * from "./arcs";
 export * from "./stagedRound";
+export * from "./words";

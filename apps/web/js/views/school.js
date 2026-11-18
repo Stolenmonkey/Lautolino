@@ -44,11 +44,8 @@ async function schueler(root, api, cid, classes, msg) {
 
 async function lernplan(root, api, cid, classes, msg) {
   const plan = await api.get(`/classes/${cid}/plan`), students = await api.get(`/classes/${cid}/students`), scopeBox = h("div"), reload = () => lernplan(clear(root), api, cid, classes, msg);
-  const lens = [2, 3, 4].map((n) => h("input", { type: "checkbox", value: n, checked: plan.allowedLengths.includes(n) }));
   const start = h("input", { type: "text", size: "8", style: "text-transform:uppercase", "aria-label": "Startbuchstaben" }), letter = h("input", { type: "text", maxlength: "1", size: "2", style: "text-transform:uppercase", "aria-label": "Neuer Buchstabe" });
   root.append(h("h2", {}, "Lernplan der Klasse"),
-    h("h3", {}, "Silbenlängen"), h("div", { class: "row" }, [2, 3, 4].map((n, i) => h("label", {}, lens[i], `${n} Buchstaben`)), h("button", { type: "button", onclick: () => act(msg, () => api.put(`/classes/${cid}/settings`, { allowedLengths: lens.filter((x) => x.checked).map((x) => Number(x.value)) }), reload) }, "Speichern")),
-    h("p", { class: "muted" }, "Gilt für künftige Freigaben. Der Silbenumfang bereits freigegebener Buchstaben ändert sich nie."),
     h("h3", {}, "Buchstabenfreigabe"), plan.releases.length ? table(["Nr.", "Buchstabe", "Freigegeben", "Silben im festen Umfang", ""], plan.releases.map((r) => [r.release_order, h("strong", {}, r.letter.toUpperCase()), fmtDate(r.released_at), r.syllable_count,
       h("button", { type: "button", onclick: () => act(msg, async () => { const s = await api.get(`/classes/${cid}/releases/${r.letter}/scope`); clear(scopeBox).append(h("div", { class: "card" }, h("strong", {}, `Silben von ${r.letter.toUpperCase()} (${s.length})`), h("div", { class: "chips" }, s.map((x) => h("span", {}, x.toUpperCase()))))); }) }, "Silben ansehen")])) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."), scopeBox,
     plan.releases.length

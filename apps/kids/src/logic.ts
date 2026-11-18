@@ -1,10 +1,10 @@
 // Lernlogik der Kinder-App: reine Funktionen auf core und engine (unverändert). Kein Zugriff auf Oberfläche oder Netz.
-import { groupedTasks, makeRound, randomCase, countSyllables, buildSyllables } from "@silbenflug/core";
+import { FALLBACK_LENS, groupedTasks, makeRound, randomCase } from "@silbenflug/core";
 import { autoAdjust, autoParams, comboKey, recordSyl, roundParams, sdFromLen, startVal, sylStat, sylTimeParams, syllablePlan } from "@silbenflug/engine";
 import type { AutoState } from "@silbenflug/engine";
 import type { Rng, SilbenflugConfig } from "@silbenflug/shared";
 
-export interface Plan { classId: string | null; letters: string[]; lengths: number[] }
+export interface Plan { classId: string | null; letters: string[]; syllables: string[] }   // syllables: fester Silbenumfang der freigegebenen Buchstaben (vom Server)
 export interface AutoValue { bal: number | null; sd: number | null }
 // Alles, was das Gerät für ein Kind merkt (Silbenzeiten und Automatik-Stand; der Server hat die maßgebliche Kopie der Auszeichnungen).
 export interface LocalState {
@@ -23,13 +23,13 @@ function autoList(auto: Record<string, AutoValue>): AutoState[] {
     return { key, letters: le || "", lens: (ln || "").split(",").map(Number).filter((x) => x >= 2 && x <= 4), bal: v.bal ?? undefined, sd: v.sd ?? undefined };
   });
 }
-// Ob mit den freigegebenen Buchstaben und Längen genug Silben für eine Runde entstehen (wie in Silbenzauber mindestens 3).
+// Ob der Silbenumfang genug Übungswörter für eine Runde hat (wie in Silbenzauber mindestens 3).
 export function canPractice(plan: Plan, cfg: SilbenflugConfig): boolean {
-  return plan.letters.length > 0 && countSyllables(plan.letters, plan.lengths, cfg.round.min_pool) >= cfg.round.min_pool;
+  return plan.letters.length > 0 && plan.syllables.length >= cfg.round.min_pool;
 }
 // Bereitet eine Runde vor: Schwierigkeit aus dem Automatik-Stand (neue Kombination: ähnlichste bekannte minus Abschlag), Aufgaben mit der Aufgabenverteilung aus core.
 export function prepareRound(plan: Plan, cfg: SilbenflugConfig, st: LocalState, rng: Rng): RoundSetup {
-  const letters = plan.letters.slice(), lens = plan.lengths.slice().sort((a, b) => a - b), ap = autoParams(cfg), list = autoList(st.auto);
+  const letters = plan.letters.slice(), lens = FALLBACK_LENS, ap = autoParams(cfg), list = autoList(st.auto);
   const bal = startVal(list, letters, lens, "bal", cfg.auto.default_len_balance, ap.newComboDiscount);
   const sd = lens.length > 1 ? sdFromLen(bal, ap) : startVal(list, letters, lens, "sd", cfg.auto.default_syl_difficulty, ap.newComboDiscount);
   const sylAvg: Record<string, number | null> = {};
@@ -38,7 +38,7 @@ export function prepareRound(plan: Plan, cfg: SilbenflugConfig, st: LocalState, 
   // Auswahl je Silbe: Freischaltung und Gruppen aus den lokalen Silbenzeiten, Mix aus der Konfiguration (ohne Lernstufen oder zu wenige Silben: Aufgabenverteilung wie in Silbenzauber)
   let tasks: string[] | null = null;
   if (st2 && st2.enabled !== 0) {
-    const sp = syllablePlan(lens.flatMap((L) => buildSyllables(letters, L)), st.sylTimes, cfg);
+    const sp = syllablePlan(plan.syllables, st.sylTimes, cfg);
     if (sp.fresh.length + sp.building.length + sp.weak.length + sp.solid.length >= cfg.round.min_pool)
       tasks = groupedTasks(cfg.round.task_count, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, roundParams(cfg));
   }

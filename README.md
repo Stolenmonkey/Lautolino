@@ -24,7 +24,7 @@ apps/
     js/{main,api,dom,chart}.js  js/views/{login,passwort,admin,school,auswertung,uebersicht,silben,stufen,eltern}.js
     src/{zug,pdf}.ts   js/zug.bundle.js (Build-Artefakt)
   eltern/   Elternansicht: index.html style.css config.js app.js
-db/migrations/  0001_init 0002_student_sessions 0003_parent_codes 0004_lautolino (.sql)
+db/migrations/  0001_init 0002_student_sessions 0003_parent_codes 0004_lautolino 0005_ohne_silbenlaengen (.sql)
 docs/           lautolino-aenderungen.md (Phase 8: Änderungen/Schnittstellen/Mail-Setup/offene Punkte)  umzug.md
 tests/          *.test.ts + helpers.ts + fixtures/silbenzauber-logic.js (alte App, unverändert)
 ```
@@ -37,7 +37,8 @@ tests/          *.test.ts + helpers.ts + fixtures/silbenzauber-logic.js (alte Ap
 
 ### packages/core (rein, ohne DB/UI)
 - `rules.ts`: `RULES` (Vokale, Diphthonge, Hiatus, noOnset/noCoda); `isValid(silbe)`.
-- `syllables.ts`: `parseLetters`, `buildSyllables(letters,len)`, `countSyllables`.
+- `syllables.ts`: `parseLetters`, `buildSyllables(letters,len)`, `countSyllables` (nur Paritätstests/Rückfall `makeRound`).
+- `words.ts`: `structureWords(letters, required?)` – Übungswörter aus Sprechsilben (1–3, alle 7 Stufen, je Unterkategorie höchstens `WORD_CAP_PER_SUB` mehrsilbige, deterministisch), `partsOf`, `FALLBACK_LENS`.
 - `syllabify.ts`: `splitSyllables(wort)`, `partPattern` (V/K), `clusterPlace`.
 - `round.ts`: `makeRound`, `sylProbs`, `lenWeights`, `randomCase`, `RoundParams`, `SILBENZAUBER_ROUND_PARAMS`.
 - `stagedRound.ts`: `groupedTasks(…)` Rundenaufbau nach Lernstufen (Gruppen neu/angefangen/schwach/sicher, Mix).
@@ -49,7 +50,7 @@ tests/          *.test.ts + helpers.ts + fixtures/silbenzauber-logic.js (alte Ap
 - `sylTime.ts`: `sylStat` (Ø nach Streichen längster), `recordSyl`; Typen `SylTimeParams`, `SylStat`.
 - `automatik.ts`: `autoAdjust`, `avgLast`, `sdFromLen`, `comboKey`, `startVal`; Typen `AutoParams`, `AutoState`.
 - `mastery.ts`: `isMastered`, `letterProgress`, `levelsReached`, `newAwards`, `highestLevel`; Typ `SylStatus`.
-- `scope.ts`: `syllableScope(releasedBefore,newLetter,lens)` – Silbenumfang je Buchstabe.
+- `scope.ts`: `syllableScope(releasedBefore,newLetter)` – Silbenumfang je Buchstabe (strukturbasiert, `structureWords`).
 - `syllablePlan.ts`: `syllablePlan` – Freischaltung je Silbe (Gate) und Gruppen aus Silbenzeiten.
 - `params.ts`: Config → `sylTimeParams`/`autoParams`/`roundParams`.
 
@@ -70,9 +71,9 @@ tests/          *.test.ts + helpers.ts + fixtures/silbenzauber-logic.js (alte Ap
 - `routes/auth.ts`: Staff `/login /logout /forgot-password /set-password /me /change-password`.
 - `routes/admin.ts`: Schulen, Lizenz(-Ereignisse), Staff anlegen, Config-Versionen (`/config`), `/audit`.
 - `routes/school.ts`: Schuljahre, Klassen, Personal(+Klassenzuordnung), Schüler anlegen/ändern/verschieben, Schülercode neu.
-- `routes/plan.ts`: Klassenplan, Silbenlängen (`/settings`), Buchstaben-Freigaben (`/releases`), Scope, Ausschlüsse je Schüler.
+- `routes/plan.ts`: Klassenplan, Buchstaben-Freigaben (`/releases`), Scope, Ausschlüsse je Schüler.
 - `routes/progress.ts`: `POST /student/rounds`, Awards (+ack), auto-state, sync-data; `studentTraining`, `studentSylPlan`, `progressOf`; Staff: progress, rounds, `syllable-train`.
-- `routes/evaluation.ts`: `/students/:id/evaluation`, `/students/:id/stages/:n`, `/classes/:cid/overview`, `/classes/:cid/syllables`; `possibleSyllables`.
+- `routes/evaluation.ts`: `/students/:id/evaluation`, `/students/:id/stages/:n`, `/classes/:cid/overview`, `/classes/:cid/syllables` (Union der festen Silbenumfänge).
 - `routes/student.ts`: Kinder-`/login` (Code), `/me`, `/plan`.
 - `routes/parent.ts`: Elterncode erzeugen/neu/sammelweise; `/parent/login`, `/parent/me|letters|rounds`.
 - `scripts/`: `dev-local.ts` (lokaler Node-Server), `make-admin-sql.ts` (Admin-Seed-SQL). `wrangler.toml`: Worker `lautolino-api`, D1 `lautolino_db`, Vars.

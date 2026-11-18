@@ -63,11 +63,11 @@ describe("Fortschritt und Auszeichnungen", () => {
 
 describe("Fester Silbenumfang", () => {
   it("späterer Buchstabe verändert den Umfang früherer nie", () => {
-    const first = syllableScope([], "o", [2, 3]), second = syllableScope(["o"], "l", [2, 3]), third = syllableScope(["o", "l"], "e", [2, 3]);
+    const first = syllableScope([], "o"), second = syllableScope(["o"], "l"), third = syllableScope(["o", "l"], "e");
     expect(first.length).toBe(0 + first.length);
     expect(second.every((s) => s.includes("l") && /^[ol]+$/.test(s))).toBe(true);
     expect(third.every((s) => s.includes("e") && /^[ole]+$/.test(s))).toBe(true);
-    const again = syllableScope([], "o", [2, 3]); expect(again).toEqual(first); // Neuberechnung ergibt dasselbe
+    const again = syllableScope([], "o"); expect(again).toEqual(first); // Neuberechnung ergibt dasselbe
     expect(new Set([...second, ...third]).size).toBe(second.length + third.length); // keine Silbe doppelt zugeordnet
   });
 });

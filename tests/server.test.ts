@@ -255,12 +255,13 @@ describe("Klassenlernplan", () => {
     expect((await call("POST", `/classes/${k.id}/releases`, T, { letter: "O" })).status).toBe(409);
     for (const bad of ["ä", "ab", "", "1", null]) expect((await call("POST", `/classes/${k.id}/releases`, T, { letter: bad })).status).toBe(400);
   });
-  it("Silbenlängen der Klasse bestimmen den Umfang künftiger Freigaben", async () => {
+  it("Umfang eines Buchstabens ist strukturbasiert: ein- und mehrsilbige Wörter, kein Längen-Schalter mehr", async () => {
     const { k, T } = await setupPlan();
-    await call("PUT", `/classes/${k.id}/settings`, T, { allowedLengths: [2] });
-    await call("POST", `/classes/${k.id}/releases`, T, { letters: ["o", "l"] });
-    expect(((await call("GET", `/classes/${k.id}/releases/l/scope`, T)).json as string[]).every((s) => s.length === 2)).toBe(true);
-    expect((await call("PUT", `/classes/${k.id}/settings`, T, { allowedLengths: [] })).status).toBe(400);
+    await call("POST", `/classes/${k.id}/releases`, T, { letters: ["o", "l"] }); await call("POST", `/classes/${k.id}/releases`, T, { letter: "a" });
+    const sc = (await call("GET", `/classes/${k.id}/releases/a/scope`, T)).json as string[];
+    expect(sc.every((s) => s.includes("a") && /^[ola]+$/.test(s))).toBe(true); expect(sc.some((s) => s.length >= 5)).toBe(true);
+    expect((await call("PUT", `/classes/${k.id}/settings`, T, { allowedLengths: [2] })).status).toBe(404);
+    expect((await call("GET", `/classes/${k.id}/plan`, T)).json.allowedLengths).toBeUndefined();
   });
   it("Ausnahmen: Kind bekommt einen Buchstaben nicht, Klasse bleibt unberührt; Kind sieht seinen Plan", async () => {
     const { k, T, kids } = await setupPlan();
@@ -285,7 +286,6 @@ describe("Klassenlernplan", () => {
   });
   it("große Silbenumfänge (viele Zeilen) werden vollständig gespeichert", async () => {
     const { k, T } = await setupPlan();
-    await call("PUT", `/classes/${k.id}/settings`, T, { allowedLengths: [2, 3, 4] });
     await call("POST", `/classes/${k.id}/releases`, T, { letters: ["o", "l"] }); for (const l of "emanrtis") await call("POST", `/classes/${k.id}/releases`, T, { letter: l });
     const plan2 = (await call("GET", `/classes/${k.id}/plan`, T)).json, total = plan2.releases.reduce((a: number, x: any) => a + x.syllable_count, 0);
     expect(total).toBeGreaterThan(500);
@@ -406,7 +406,7 @@ describe("Messwerte und Auszeichnungen", () => {
     expect((await post({ ...ok, clientRoundId: undefined })).status).toBe(400);
     expect((await post({ ...ok, seconds: -1 })).status).toBe(400);
     expect((await post({ ...ok, syllables: [] })).status).toBe(400);
-    expect((await post({ ...ok, syllables: [{ s: "x", sec: 1 }] })).status).toBe(400);
+    expect((await post({ ...ok, syllables: [{ s: "x1", sec: 1 }] })).status).toBe(400);
     expect((await post({ ...ok, syllables: [{ s: "ol", sec: -2 }] })).status).toBe(400);
     expect((await post({ ...ok, syllables: Array(101).fill({ s: "ol", sec: 1 }) })).status).toBe(400);
     expect((await post(ok)).status).toBe(201);

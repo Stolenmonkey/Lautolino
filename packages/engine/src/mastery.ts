@@ -5,11 +5,16 @@ import { sylStat } from "./sylTime";
 
 export type SylStatus = "unrated" | "mastered" | "not_mastered";
 
-// syllable: die Silbe selbst; ihre Länge (2, 3 oder 4 Buchstaben) bestimmt die Zeitvorgabe.
+// Zeitvorgabe nach Buchstabenzahl: 2 bis 4 wie bisher; kürzere (einzelner Vokal) und längere Wörter (mehrere Sprechsilben) nehmen die Vorgabe der nächstliegenden Länge.
+export function timeLimitFor(limits: SilbenflugConfig["mastery"]["time_limit_seconds"], len: number): number | null {
+  return limits[String(Math.min(4, Math.max(2, len))) as "2" | "3" | "4"] ?? null;
+}
+
+// syllable: die Silbe selbst; ihre Länge bestimmt die Zeitvorgabe (siehe timeLimitFor).
 export function isMastered(times: number[] | undefined, cfg: SilbenflugConfig, syllable: string): { status: SylStatus; avg: number | null } {
   const m = cfg.mastery, t = times || [];
-  const limit = m.time_limit_seconds[String(syllable.length) as "2" | "3" | "4"];
-  if (t.length < m.min_measurements || limit === undefined || limit === null) return { status: "unrated", avg: null };
+  const limit = timeLimitFor(m.time_limit_seconds, syllable.length);
+  if (t.length < m.min_measurements || limit === null) return { status: "unrated", avg: null };
   const st = sylStat(t, { window: m.window, dropLongest: m.drop_longest, minKeep: cfg.syl_time.min_keep });
   if (st.avg === null) return { status: "unrated", avg: null };
   return { status: st.avg <= limit ? "mastered" : "not_mastered", avg: st.avg };

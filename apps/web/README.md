@@ -10,7 +10,7 @@ Schlichte Oberfläche für Administration, Schulleitung und Lehrkräfte. Reines 
 ## Bereiche
 - Administration: Schulen und Lizenzen, globale Konfiguration (neue Version speichern), Protokoll
 - Schulleitung: Klassen und Schuljahre, Lehrerzugänge, Schüler, Lernplan
-- Lehrkraft: Schüler (Merkschlüssel einmalig sichtbar, druckbar), Lernplan (Buchstabenfreigabe, Silbenlängen, Ausnahmen)
+- Lehrkraft: Schüler (Merkschlüssel einmalig sichtbar, druckbar), Lernplan (Buchstabenfreigabe, Ausnahmen)
 
 ## Auf Cloudflare Pages
 Ordner `apps/web` veröffentlichen, in `config.js` die Adresse des Workers eintragen und dieselbe Adresse der Oberfläche beim Worker unter `ALLOWED_ORIGINS` angeben.

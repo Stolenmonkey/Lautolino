@@ -6,7 +6,7 @@ import { createApp } from "../apps/server/src/app";
 import { nodeSqliteDb } from "../apps/server/src/db";
 import { migrateLocal } from "../apps/server/src/migrate";
 import { hashPassword } from "../apps/server/src/crypto";
-import { buildSyllables } from "@silbenflug/core";
+import { buildSyllables, structureWords } from "@silbenflug/core";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
 import { Page, buildPdf } from "../apps/web/src/pdf";
 import { buildZugPdf, parsePath, sheetPage, wordUnits } from "../apps/web/src/zug";
@@ -98,14 +98,14 @@ describe("Server und Oberfläche", () => {
   it("Silben-Zug: 20 Silben aus den Buchstaben des Kindes, mit Seed wiederholbar", async () => {
     const a = await train(kA, teacher, "?seed=5"), b = await train(kA, teacher, "?seed=5"), c = await train(kA, teacher, "?seed=6");
     expect(a.status).toBe(200); expect(a.json.syllables.length).toBe(20); expect(a.json.shown.length).toBe(20); expect(a.json.student.name).toBe("Mia");
-    expect(a.json.syllables.every((x: string) => /^[ol]+$/.test(x) && x.length >= 2 && x.length <= 3)).toBe(true);
+    expect(a.json.syllables.every((x: string) => /^[ol]+$/.test(x) && x.length >= 1)).toBe(true);
     expect(a.json.shown.every((x: string, i: number) => x.toLowerCase() === a.json.syllables[i])).toBe(true);
     expect(b.json.syllables).toEqual(a.json.syllables); expect(c.json.syllables).not.toEqual(a.json.syllables);
     expect((await train(kA, lead)).status).toBe(200);
   });
   it("Silben-Zug: Automatik-Stand bestimmt die Schwierigkeit (Länge)", async () => {
     expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0 } }, note: "ohne Lernstufen (alte Auswahl)" })).status).toBe(201);   // Lernstufen sind in diesem Test mit nur 2 Buchstaben nicht gemeint
-    const tok = await kidToken(0), all = [...buildSyllables(["o", "l"], 2), ...buildSyllables(["o", "l"], 3)];
+    const tok = await kidToken(0), all = structureWords(["o", "l"]);
     const post = (bal: number, id: string) => call("POST", "/student/rounds", tok, { clientRoundId: id, seconds: 40, syllables: all.map((x) => ({ s: x, sec: 1 })), letters: ["o", "l"], lengths: [2, 3], autoState: { key: "lo|2,3", bal, sd: bal } });
     expect((await post(0, "a1")).status).toBe(201); expect((await train(kA, teacher, "?seed=1")).json.syllables.every((x: string) => x.length === 2)).toBe(true);
     expect((await post(100, "a2")).status).toBe(201); expect((await train(kA, teacher, "?seed=1")).json.syllables.every((x: string) => x.length === 3)).toBe(true);
@@ -121,7 +121,7 @@ describe("Server und Oberfläche", () => {
 
   it("Lehrer-Ansicht: Reiter, Buchstabenstand, Zeitverlauf mit Markierung, PDF für Kind und Klasse", async () => {
     expect(schoolTabs("lehrer").auswertung).toBe("Auswertung"); expect(schoolTabs("schulleitung").auswertung).toBeDefined();
-    const tok = await kidToken(0), all = [...buildSyllables(["o", "l"], 2), ...buildSyllables(["o", "l"], 3)];
+    const tok = await kidToken(0), all = structureWords(["o", "l"]);
     for (let i = 0; i < 3; i++) expect((await call("POST", "/student/rounds", tok, { clientRoundId: "c" + i, seconds: 60 - i * 10, syllables: all.map((x) => ({ s: x, sec: 1 })), letters: ["o", "l"], lengths: [2, 3] })).status).toBe(201);
     const api = createApi({ base: "http://x", storage: mem(), fetchFn: (u: string, o: any) => app.request(u.replace("http://x", ""), o) });
     api.token = lead;   // Schulleitung (hat dieselben Rechte für Auswertung und Druck)

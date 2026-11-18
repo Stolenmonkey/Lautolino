@@ -7,7 +7,7 @@ import { nodeSqliteDb } from "../apps/server/src/db";
 import { migrateLocal } from "../apps/server/src/migrate";
 import { hashPassword } from "../apps/server/src/crypto";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
-import { buildSyllables } from "@silbenflug/core";
+import { buildSyllables, structureWords } from "@silbenflug/core";
 import { autoAdjust, autoParams, comboKey } from "@silbenflug/engine";
 import { canPractice, emptyState, finishRound, mergeAuto, prepareRound } from "../apps/kids/src/logic";
 import { ApiError, createKidsApi, flushQueue } from "../apps/kids/src/api";
@@ -17,19 +17,19 @@ import { mulberry32 } from "./helpers";
 
 const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite");
 const cfg = DEFAULT_CONFIG;
-const plan = { classId: "k", letters: ["o", "l", "e"], lengths: [2, 3] };
+const plan = { classId: "k", letters: ["o", "l", "e"], syllables: structureWords(["o", "l", "e"]) };
 
 describe("Lernlogik der Kinder-App", () => {
   it("Runde: 20 Aufgaben aus den freigegebenen Buchstaben, Schlüssel wie in der Statistik", () => {
     const s = prepareRound(plan, cfg, emptyState(), mulberry32(1));
     expect(s.tasks.length).toBe(20); expect(s.shown.length).toBe(20);
-    expect(s.tasks.every((t) => /^[ole]+$/.test(t) && t.length >= 2 && t.length <= 3)).toBe(true);
+    expect(s.tasks.every((t) => /^[ole]+$/.test(t) && t.length >= 1)).toBe(true);
     expect(s.shown.every((x, i) => x.toLowerCase() === s.tasks[i])).toBe(true);
-    expect(s.key).toBe(comboKey(plan.letters, plan.lengths)); expect(s.bal).toBe(cfg.auto.default_len_balance);
+    expect(s.key).toBe(comboKey(plan.letters, s.lens)); expect(s.bal).toBe(cfg.auto.default_len_balance);
   });
   it("zu wenige Silben: keine Übung", () => {
-    expect(canPractice({ classId: null, letters: [], lengths: [2] }, cfg)).toBe(false);
-    expect(canPractice({ classId: null, letters: ["x", "y"], lengths: [2] }, cfg)).toBe(false);
+    expect(canPractice({ classId: null, letters: [], syllables: [] }, cfg)).toBe(false);
+    expect(canPractice({ classId: null, letters: ["x", "y"], syllables: [] }, cfg)).toBe(false);
     expect(canPractice(plan, cfg)).toBe(true);
   });
   it("Rundenende: langsamer als das Ziel macht leichter, schneller macht schwerer (wie die Automatik aus engine)", () => {
@@ -40,10 +40,6 @@ describe("Lernlogik der Kinder-App", () => {
     expect(slow.autoState.sd).toBe(Math.min(100, slow.autoState.bal * 2));   // zwei Längen: Silbenschwierigkeit folgt der Länge
     expect(Object.keys(slow.state.sylTimes).length).toBeGreaterThan(0);
     const next = prepareRound(plan, cfg, slow.state, mulberry32(3)); expect(next.bal).toBe(slow.autoState.bal);   // nächste Runde startet beim gemerkten Stand
-  });
-  it("eine Länge: nur die Silbenschwierigkeit bewegt sich", () => {
-    const p1 = { ...plan, lengths: [2] }, s = prepareRound(p1, cfg, emptyState(), mulberry32(4)), r = finishRound(emptyState(), s, { seconds: 150, syllables: s.tasks.map((t) => ({ s: t, sec: 2 })) }, cfg);
-    expect(r.autoState.bal).toBe(s.bal); expect(r.autoState.sd).toBeLessThan(s.sd);
   });
   it("Server-Stand wird übernommen, der lokale gewinnt", () => {
     const st = mergeAuto({ ...emptyState(), auto: { "eloo|2": { bal: 10, sd: 20 } } }, [{ combo_key: "elo|2,3", len_balance: 30, syl_difficulty: 60 }, { combo_key: "eloo|2", len_balance: 99, syl_difficulty: 99 }]);
@@ -98,7 +94,7 @@ describe("Kinder-App gegen echten Server", () => {
   const roundsOnServer = () => raw.prepare("SELECT COUNT(*) AS n FROM rounds").get().n as number;
   const mount = () => { const root = document.createElement("div"), storage = mem(); document.body.appendChild(root); const m = mountKids(root, { base: "http://x", storage, rng: mulberry32(7), now: () => clock, fetchFn: async (u, o) => { if (offline) throw new Error("offline"); const r = await app.request(u.replace("http://x", ""), o); return { ok: r.ok, status: r.status, text: () => r.text() }; } }); return { root, storage, ready: m.ready }; };
   async function prefill() {   // 10 schnelle Durchgänge über den ganzen Silbenumfang -> Bronze, Silber, Gold stehen als neue Auszeichnung an
-    const all = [...buildSyllables(["o", "l"], 2), ...buildSyllables(["o", "l"], 3)];
+    const all = structureWords(["o", "l"]);
     for (let i = 0; i < 10; i++) expect((await call("POST", "/student/rounds", kidTok, { clientRoundId: "pre" + i, seconds: 40, syllables: all.map((s) => ({ s, sec: 1 })), letters: ["o", "l"], lengths: [2, 3] })).status).toBe(201);
   }
 

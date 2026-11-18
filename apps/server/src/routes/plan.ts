@@ -1,6 +1,6 @@
-// Klassenlernplan: Buchstabenfreigabe (mit festem Silbenumfang), Silbenlängen, Ausnahmen einzelner Kinder.
+// Klassenlernplan: Buchstabenfreigabe (mit festem Silbenumfang), Ausnahmen einzelner Kinder.
 import { Hono } from "hono";
-import { buildSyllables } from "@silbenflug/core";
+import { structureWords } from "@silbenflug/core";
 import { syllableScope } from "@silbenflug/engine";
 import type { Env } from "../context";
 import { authenticate, requireStaff } from "../middleware";
@@ -9,20 +9,13 @@ import { assertSchoolWritable, activeConfig, audit, body, fail, newId, nowIso } 
 import type { Db } from "../db";
 
 const ROWS_PER_STMT = 14; // D1 erlaubt höchstens 100 Parameter je Anweisung (hier 6 je Zeile)
-const parseLens = (s: string) => s.split(",").map(Number).filter((x) => x >= 2 && x <= 4);
-
-export async function classLens(db: Db, classId: string): Promise<number[]> {
-  const r = await db.first<{ allowed_lengths: string }>("SELECT allowed_lengths FROM class_learning_settings WHERE class_id=?", [classId]);
-  const l = parseLens(r?.allowed_lengths ?? "2,3");
-  return l.length ? l : [2, 3];
-}
 // Buchstaben, die ein Kind üben darf: Freigaben seiner aktuellen Klasse in Reihenfolge, ohne seine Ausnahmen
-export async function studentLetters(db: Db, studentId: string): Promise<{ classId: string | null; letters: string[]; lengths: number[] }> {
+export async function studentLetters(db: Db, studentId: string): Promise<{ classId: string | null; letters: string[] }> {
   const h = await db.first<{ class_id: string }>("SELECT class_id FROM student_class_history WHERE student_id=? AND to_date IS NULL", [studentId]);
-  if (!h) return { classId: null, letters: [], lengths: [2, 3] };
+  if (!h) return { classId: null, letters: [] };
   const rel = await db.all<{ letter: string }>("SELECT letter FROM class_letter_releases WHERE class_id=? ORDER BY release_order", [h.class_id]);
   const ex = new Set((await db.all<{ letter: string }>("SELECT letter FROM student_letter_exclusions WHERE student_id=?", [studentId])).map((x) => x.letter));
-  return { classId: h.class_id, letters: rel.map((x) => x.letter).filter((l) => !ex.has(l)), lengths: await classLens(db, h.class_id) };
+  return { classId: h.class_id, letters: rel.map((x) => x.letter).filter((l) => !ex.has(l)) };
 }
 
 export function planRoutes() {
@@ -42,17 +35,7 @@ export function planRoutes() {
     const ex = await d.db.all<{ student_id: string; letter: string }>("SELECT e.student_id, e.letter FROM student_letter_exclusions e JOIN student_class_history h ON h.student_id=e.student_id AND h.to_date IS NULL WHERE h.class_id=?", [cid]);
     const byStudent: Record<string, string[]> = {};
     ex.forEach((x) => { (byStudent[x.student_id] ||= []).push(x.letter); });
-    return c.json({ allowedLengths: await classLens(d.db, cid), releases, exclusions: byStudent });
-  });
-
-  r.put("/classes/:cid/settings", staff, async (c) => {
-    const d = c.get("deps"), cid = c.req.param("cid"), sid = await cls(c), b = await body(c);
-    await assertSchoolWritable(d, sid);
-    const lens = Array.isArray(b.allowedLengths) ? [...new Set(b.allowedLengths.map(Number))].filter((x) => x >= 2 && x <= 4).sort() : [];
-    if (!lens.length) throw fail(400, "allowedLengths: mindestens eine Länge aus 2, 3, 4 erwartet");
-    await d.db.run("INSERT INTO class_learning_settings(class_id,allowed_lengths,updated_at) VALUES(?,?,?) ON CONFLICT(class_id) DO UPDATE SET allowed_lengths=excluded.allowed_lengths, updated_at=excluded.updated_at", [cid, lens.join(","), nowIso(d)]);
-    await audit(d, c.get("p").id, "class_lengths_set", cid, { lens });
-    return c.json({ allowedLengths: lens }); // gilt für künftige Freigaben; bereits festgelegte Silbenumfänge ändern sich nie
+    return c.json({ releases, exclusions: byStudent });
   });
 
   // Gibt Buchstaben frei. Die erste Freigabe einer Klasse braucht mindestens 2 Buchstaben (Startgruppe, "letters"); danach genau einen ("letter").
@@ -74,9 +57,9 @@ export function planRoutes() {
       if (prev.some((x) => x.letter === l)) throw fail(409, "Dieser Buchstabe ist schon freigegeben");
       group = [l];
     }
-    const lens = await classLens(d.db, cid), { version } = await activeConfig(d), at = nowIso(d), known = prev.map((x) => x.letter);
-    const groupSyl = prev.length ? [] : lens.slice().sort((a, b) => a - b).flatMap((L) => buildSyllables(group, L));
-    const scopes = group.map((l) => ({ letter: l, syl: prev.length ? syllableScope(known, l, lens) : groupSyl }));
+    const { version } = await activeConfig(d), at = nowIso(d), known = prev.map((x) => x.letter);
+    const groupSyl = prev.length ? [] : structureWords(group);
+    const scopes = group.map((l) => ({ letter: l, syl: prev.length ? syllableScope(known, l) : groupSyl }));
     if (!prev.length && !scopes.some((x) => x.syl.length)) throw fail(400, "Mit diesen Buchstaben lassen sich keine Silben bilden. Bitte auch einen Vokal wählen.");
     const stmts: Array<{ sql: string; params: Array<string | number> }> = [];
     scopes.forEach((sc, i) => {
@@ -88,7 +71,7 @@ export function planRoutes() {
     });
     await d.db.batch(stmts);
     await audit(d, p.id, "letters_released", cid, { letters: group, syllables: scopes.map((x) => x.syl.length) });
-    return c.json({ released: scopes.map((x) => ({ letter: x.letter, syllableCount: x.syl.length })), lengths: lens }, 201);
+    return c.json({ released: scopes.map((x) => ({ letter: x.letter, syllableCount: x.syl.length })) }, 201);
   });
 
   r.get("/classes/:cid/releases/:letter/scope", staff, async (c) => {
