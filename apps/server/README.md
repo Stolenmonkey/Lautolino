@@ -25,7 +25,7 @@ Ersten Admin lokal anlegen: SQL erzeugen (`npm run admin-sql -w @silbenflug/serv
 - Admin: `/admin/schools`, `/admin/schools/:id/license`, `/admin/staff`, `/admin/config`, `/admin/config/versions`, `/admin/audit`
 - Schule: `/schools/:sid/years|classes|staff`, `/classes/:cid/students`, `/students/:id/code/regenerate|move`
 - Lernplan: `/classes/:cid/plan|settings|releases`, `/students/:id/exclusions|plan`, Kind: `/student/plan`
-- Messwerte (Kind): `POST /student/rounds` (idempotent über `clientRoundId`), `GET /student/awards`, `POST /student/awards/ack`, `GET /student/auto-state`
+- Messwerte (Kind): `POST /student/rounds` (idempotent über `clientRoundId`), `GET /student/awards`, `POST /student/awards/ack`
 - Auswertung (Lehrkraft): `GET /students/:id/progress`, `GET /students/:id/rounds`
 
 ## Bewertung (Phase 4)

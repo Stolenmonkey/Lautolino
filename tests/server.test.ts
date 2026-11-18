@@ -309,7 +309,7 @@ async function klasseMitKindern(extraLetters: string[] = []) {
 }
 let rid = 0;
 const round = (tok: string, syls: string[], sec: number, letters = ["o", "l"], id = "r" + ++rid) =>
-  call("POST", "/student/rounds", tok, { clientRoundId: id, seconds: 40, letters, lengths: [2, 3], syllables: syls.map((s) => ({ s, sec })) });
+  call("POST", "/student/rounds", tok, { clientRoundId: id, seconds: 40, letters, syllables: syls.map((s) => ({ s, sec })) });
 
 describe("Messwerte und Auszeichnungen", () => {
   it("keine Bewertung unter 10 Messungen; ab der 10. Messung Bronze, Silber, Gold; Popup nur für die höchste Stufe", async () => {
@@ -375,11 +375,6 @@ describe("Messwerte und Auszeichnungen", () => {
     const g = async (t: string) => (await call("GET", "/student/awards", t)).json.letters.find((x: any) => x.letter === "e");
     expect((await g(mia)).level).toBeNull(); expect((await g(mia)).released).toBe(false); expect((await g(ben)).level).toBe("gold");
   });
-  it("Automatik-Stand wird gespeichert und kann abgerufen werden", async () => {
-    const { tok } = await klasseMitKindern(), mia = await tok(0);
-    await call("POST", "/student/rounds", mia, { clientRoundId: "a1", seconds: 30, letters: ["o", "l"], lengths: [2, 3], syllables: [{ s: "ol", sec: 2 }], autoState: { key: "lo|2,3", bal: 55, sd: 100 } });
-    expect((await call("GET", "/student/auto-state", mia)).json).toEqual([{ combo_key: "lo|2,3", len_balance: 55, syl_difficulty: 100 }]);
-  });
   it("abgelaufene Lizenz sperrt neue Runden, Lesen bleibt", async () => {
     const { adm, A, kids, tok } = await klasseMitKindern(), mia = await tok(0);
     await call("POST", `/admin/schools/${A.id}/license`, adm, { action: "abgelaufen" });
@@ -402,7 +397,7 @@ describe("Messwerte und Auszeichnungen", () => {
   });
   it("ungültige Meldungen werden abgelehnt", async () => {
     const { tok } = await klasseMitKindern(), mia = await tok(0), post = (b: any) => call("POST", "/student/rounds", mia, b);
-    const ok = { clientRoundId: "x", seconds: 10, letters: ["o", "l"], lengths: [2], syllables: [{ s: "ol", sec: 2 }] };
+    const ok = { clientRoundId: "x", seconds: 10, letters: ["o", "l"], syllables: [{ s: "ol", sec: 2 }] };
     expect((await post({ ...ok, clientRoundId: undefined })).status).toBe(400);
     expect((await post({ ...ok, seconds: -1 })).status).toBe(400);
     expect((await post({ ...ok, syllables: [] })).status).toBe(400);

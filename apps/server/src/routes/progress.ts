@@ -1,12 +1,11 @@
 // Messwerte, Bewertung sicher beherrschter Silben und Auszeichnungen.
 // Einziger Messwert ist die Zeit bis „Weiter“. Die Bewertung ist zeitbasiert und kein Nachweis der Lesekorrektheit.
 import { Hono } from "hono";
-import { FALLBACK_LENS, groupedTasks, randomCase, sylProbs } from "@silbenflug/core";
+import { groupedTasks, randomCase, sylProbs } from "@silbenflug/core";
 import { secureTasks, syllablePlan } from "@silbenflug/engine";
 import type { SyllablePlan } from "@silbenflug/engine";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
-import { isMastered, letterProgress, newAwards, highestLevel, autoParams, comboKey, roundParams, sdFromLen, startVal, sylStat, sylTimeParams } from "@silbenflug/engine";
-import type { AutoState } from "@silbenflug/engine";
+import { isMastered, letterProgress, newAwards, highestLevel, roundParams } from "@silbenflug/engine";
 import type { AwardLevel, SilbenflugConfig } from "@silbenflug/shared";
 import type { Deps, Env } from "../context";
 import { authenticate, requireStaff } from "../middleware";
@@ -84,10 +83,9 @@ export function progressRoutes() {
       return { s, sec: Math.min(cfg.syl_time.max_seconds, num(x?.sec, 0, 3600, "syllables.sec")) };
     });
     const letters = Array.isArray(b.letters) ? [...new Set(b.letters.map((x: unknown) => String(x).toLowerCase()))].filter((l) => /^[a-z]$/.test(l as string)) as string[] : [];
-    const lengths = Array.isArray(b.lengths) ? [...new Set(b.lengths.map(Number))].filter((x) => x >= 2 && x <= 4).sort() : [];
     const playedAt = b.playedAt && !isNaN(Date.parse(String(b.playedAt))) && Date.parse(String(b.playedAt)) <= nowDate(d).getTime() + 86400000 ? new Date(String(b.playedAt)).toISOString() : nowIso(d), at = nowIso(d);
     const roundId = newId(), stmts: Array<{ sql: string; params?: Array<string | number | null> }> = [];
-    stmts.push({ sql: "INSERT INTO rounds(id,student_id,client_round_id,played_at,seconds,letters,lengths,config_version,task_count) VALUES(?,?,?,?,?,?,?,?,?)", params: [roundId, p.id, clientId, playedAt, seconds, letters.join(""), lengths.join(","), version, items.length] });
+    stmts.push({ sql: "INSERT INTO rounds(id,student_id,client_round_id,played_at,seconds,letters,config_version,task_count) VALUES(?,?,?,?,?,?,?,?)", params: [roundId, p.id, clientId, playedAt, seconds, letters.join(""), version, items.length] });
 
     // Zeiten je Silbe anhängen, nur die letzten `retention` bleiben
     const { times, maxSeq } = await loadTimes(d, p.id), after: Record<string, number[]> = {};
@@ -119,12 +117,6 @@ export function progressRoutes() {
         if (fresh.length) awards.push({ letter: l, levels: fresh, highest: highestLevel(fresh)! });
       }
     }
-    // Automatik-Stand (optional, vom Gerät berechnet wie in Silbenzauber)
-    const a = b.autoState;
-    if (a && typeof a === "object" && typeof a.key === "string" && a.key.length <= 60) {
-      const bal = a.bal == null ? null : num(a.bal, 0, 100, "autoState.bal"), sd = a.sd == null ? null : num(a.sd, 0, 100, "autoState.sd");
-      stmts.push({ sql: "INSERT INTO student_auto_state(student_id,combo_key,len_balance,syl_difficulty,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(student_id,combo_key) DO UPDATE SET len_balance=excluded.len_balance,syl_difficulty=excluded.syl_difficulty,updated_at=excluded.updated_at", params: [p.id, a.key, bal, sd, at] });
-    }
     try { await d.db.batch(stmts); } catch (e) {
       const again = await d.db.first<{ id: string }>("SELECT id FROM rounds WHERE student_id=? AND client_round_id=?", [p.id, clientId]);
       if (again) return c.json({ duplicate: true, roundId: again.id, awards: [] }); // gleichzeitige Doppelübertragung
@@ -152,22 +144,12 @@ export function progressRoutes() {
     await d.db.run("UPDATE award_popups SET shown_at=? WHERE shown_at IS NULL AND award_id IN (SELECT id FROM awards WHERE student_id=?)", [nowIso(d), p.id]);
     return c.json({ ok: true });
   });
-  r.get("/student/auto-state", authenticate, async (c) => {
-    const p = c.get("p");
-    if (p.kind !== "student") throw fail(403, "Keine Berechtigung");
-    return c.json(await c.get("deps").db.all("SELECT combo_key, len_balance, syl_difficulty FROM student_auto_state WHERE student_id=?", [p.id]));
-  });
-
-  // Stand für andere Geräte desselben Kindes: letzte Silbenzeiten und letzte Rundenzeiten je Buchstabenkombination (Server ist maßgeblich)
+  // Stand für andere Geräte desselben Kindes: letzte Silbenzeiten (Server ist maßgeblich)
   r.get("/student/sync-data", authenticate, async (c) => {
     const d = c.get("deps"), p = c.get("p");
     if (p.kind !== "student") throw fail(403, "Keine Berechtigung");
-    const cfg = (await activeConfig(d)).config, { times } = await loadTimes(d, p.id);
-    const rows = await d.db.all<{ seconds: number; letters: string; lengths: string }>("SELECT seconds, letters, lengths FROM rounds WHERE student_id=? ORDER BY played_at DESC, id DESC LIMIT 500", [p.id]);
-    const combo: Record<string, number[]> = {};
-    rows.reverse().forEach((x) => { (combo[comboKey(x.letters.split(""), x.lengths.split(",").map(Number))] ||= []).push(x.seconds); });
-    Object.keys(combo).forEach((k) => { combo[k] = combo[k].slice(-cfg.auto.stats_rounds); });
-    return c.json({ sylTimes: times, comboTimes: combo });
+    const { times } = await loadTimes(d, p.id);
+    return c.json({ sylTimes: times });
   });
 
   // ---------- Lehrkräfte: Fortschritt und Rundenverlauf eines Kindes ----------
@@ -180,7 +162,7 @@ export function progressRoutes() {
   r.get("/students/:id/rounds", authenticate, staff, async (c) => {
     const d = c.get("deps"), id = c.req.param("id"), a = await canAccessStudent(d.db, c.get("p"), id);
     if (!a.ok) throw fail(404, "nicht gefunden");
-    const rounds = await d.db.all("SELECT id, played_at, seconds, letters, lengths, config_version FROM rounds WHERE student_id=? ORDER BY played_at, id", [id]);
+    const rounds = await d.db.all("SELECT id, played_at, seconds, letters, config_version FROM rounds WHERE student_id=? ORDER BY played_at, id", [id]);
     const markers = await d.db.all("SELECT letter, round_id FROM letter_markers WHERE student_id=?", [id]);
     const awards = await d.db.all("SELECT letter, level, achieved_at, round_id FROM awards WHERE student_id=? ORDER BY achieved_at", [id]);
     return c.json({ rounds, markers, awards });
@@ -193,23 +175,19 @@ export function progressRoutes() {
   r.get("/students/:id/syllable-train", authenticate, printers, async (c) => {
     const d = c.get("deps"), id = c.req.param("id"), a = await canAccessStudent(d.db, c.get("p"), id);
     if (!a.ok) throw fail(404, "nicht gefunden");
-    const cfg = (await activeConfig(d)).config, st = await studentLetters(d.db, id), lens = FALLBACK_LENS;
+    const cfg = (await activeConfig(d)).config, st = await studentLetters(d.db, id);
     if (!st.classId || new Set(Object.values(await loadScopes(d, st.classId, st.letters)).flat()).size < cfg.round.min_pool) throw fail(409, "Mit den freigegebenen Buchstaben gibt es noch zu wenige Silben.");
     const seedRaw = c.req.query("seed"), seed = seedRaw !== undefined && /^\d{1,9}$/.test(seedRaw) ? Number(seedRaw) : null;
     let t = (seed ?? Math.floor(Math.random() * 2 ** 31)) >>> 0;
     const rng = () => { t = (t + 0x6d2b79f5) >>> 0; let x = t; x = Math.imul(x ^ (x >>> 15), x | 1); x ^= x + Math.imul(x ^ (x >>> 7), x | 61); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
-    const rows = await d.db.all<{ combo_key: string; len_balance: number | null; syl_difficulty: number | null }>("SELECT combo_key, len_balance, syl_difficulty FROM student_auto_state WHERE student_id=?", [id]);
-    const list: AutoState[] = rows.map((r2) => { const [le, ln] = r2.combo_key.split("|"); return { key: r2.combo_key, letters: le || "", lens: (ln || "").split(",").map(Number).filter((x) => x >= 2 && x <= 4), bal: r2.len_balance ?? undefined, sd: r2.syl_difficulty ?? undefined }; });
-    const ap = autoParams(cfg), bal = startVal(list, st.letters, lens, "bal", cfg.auto.default_len_balance, ap.newComboDiscount);
-    const sd = lens.length > 1 ? sdFromLen(bal, ap) : startVal(list, st.letters, lens, "sd", cfg.auto.default_syl_difficulty, ap.newComboDiscount);
-        // Auswahl je Silbe wie in der Kinder-App (Freischaltung, Gruppen, Mix); ohne Lernstufen oder bei zu wenigen offenen Silben sichere Silben der höchsten Stufe (secureTasks)
+    // Auswahl je Silbe wie in der Kinder-App (Freischaltung, Gruppen, Mix); ohne Lernstufen oder bei zu wenigen offenen Silben sichere Silben der höchsten Stufe (secureTasks)
     const rp = roundParams(cfg), tr = await studentTraining(d, id, cfg), sp = cfg.stages.enabled ? studentSylPlan(tr, cfg) : null, st2 = cfg.stages;
     const openAll = sp ? sp.fresh.length + sp.building.length + sp.weak.length + sp.solid.length : 0;
     const syllables = sp && openAll >= cfg.round.min_pool
       ? groupedTasks(20, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, rp)
       : secureTasks([...new Set(Object.values(tr.scopes).flat())], tr.times, cfg, 20, rng, rp);
     const stu = await d.db.first<{ display_name: string }>("SELECT display_name FROM students WHERE id=?", [id]);
-    return c.json({ student: { id, name: stu ? stu.display_name : "" }, letters: st.letters, lengths: lens, comboKey: comboKey(st.letters, lens), syllables, shown: syllables.map((x) => randomCase(x, rng)), generatedAt: nowIso(d) });
+    return c.json({ student: { id, name: stu ? stu.display_name : "" }, letters: st.letters, syllables, shown: syllables.map((x) => randomCase(x, rng)), generatedAt: nowIso(d) });
   });
   return r;
 }

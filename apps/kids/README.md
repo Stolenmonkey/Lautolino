@@ -16,7 +16,7 @@ Installierbare Web-App im Silbenzauber-Design. Läuft nur im Browser.
 
 ## Offline
 - Fertige Runden liegen im Puffer (je mit `clientRoundId`) und werden gesendet, sobald Netz da ist (beim Start, beim Zurückkehren in die App, bei "online"). Der Server erkennt Doppelte.
-- Plan, Konfiguration, Auszeichnungen und Automatik-Stand werden gemerkt; die Übung geht ohne Netz weiter. Nur die Anmeldung braucht Netz.
+- Plan, Konfiguration, Auszeichnungen und Silbenzeiten werden gemerkt; die Übung geht ohne Netz weiter. Nur die Anmeldung braucht Netz.
 - Abgelaufene Anmeldung: zurück zur Anmeldung, der Puffer bleibt und wird nach erneuter Anmeldung gesendet.
 
 ## Bekannte Grenzen
@@ -24,7 +24,7 @@ Installierbare Web-App im Silbenzauber-Design. Läuft nur im Browser.
 - Vorlesen und Sperren aus Silbenzauber sind nicht übernommen.
 
 ## Abgleich mehrerer Geräte
-Sind alle gemerkten Runden gesendet, übernimmt das Gerät Silbenzeiten, Rundenzeiten und Automatik-Stand vom Server (`GET /student/sync-data`, `/student/auto-state`). So hat ein Kind auf jedem Gerät denselben Stand. Solange noch Runden im Puffer liegen, gilt der lokale Stand.
+Sind alle gemerkten Runden gesendet, übernimmt das Gerät die Silbenzeiten vom Server (`GET /student/sync-data`). So hat ein Kind auf jedem Gerät denselben Stand. Solange noch Runden im Puffer liegen, gilt der lokale Stand.
 
 ## Lernstufen
 Die Runde wird in der App je Silbe zusammengestellt (`syllablePlan` + `groupedTasks`): Freischaltung nach `stages.gate_percent`, Mix aus `stages.mix_*_percent`, berechnet aus den lokalen Silbenzeiten. Ohne Lernstufen (`stages.enabled = 0`) oder bei zu wenigen Silben gilt die Aufgabenverteilung wie in Silbenzauber.

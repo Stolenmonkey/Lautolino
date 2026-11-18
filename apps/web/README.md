@@ -19,7 +19,7 @@ Ordner `apps/web` veröffentlichen, in `config.js` die Adresse des Workers eintr
 - Reiter „Auswertung“ (Schulleitung und Lehrkraft): Kind wählen, dann Buchstabenstand (Stufe, sicher beherrscht), Zeitverlauf der Runden mit Markierung „neu: X“ beim ersten Üben eines neuen Buchstabens, Zielzeit-Linie, Punkte für neue Auszeichnungen, Rundenliste.
 - „Silben-Zug drucken (PDF)“ für ein Kind, „Silben-Züge für alle Kinder (PDF)“ für die Klasse: DIN A4 quer, 20 Silben, ein Zug mit 4 Zeilen zu je 5 Waggons. Die Auswahl macht der Server (`GET /students/:id/syllable-train`, optional `?seed=` für Wiederholbarkeit), das PDF entsteht im Browser.
 - Das PDF-Modul braucht einen kleinen Build: `npm run build:web` erzeugt `js/zug.bundle.js` (mit den Buchstabenformen aus core). Die Datei liegt fertig im Ordner; `npm test` baut sie vorher neu.
-- Auswahl der Silben: wie in der Übung (Buchstaben des Kindes, Schwierigkeit aus Automatik-Stand und Silbenzeiten). Noch nicht sicher beherrschte Silben (auch noch nicht bewertete) kommen doppelt so oft vor wie sicher beherrschte; der Faktor steht in der Konfiguration als `train.unmastered_weight` (2, erlaubt 1 bis 10; 1 = keine Bevorzugung).
+- Auswahl der Silben: wie in der Übung (Buchstaben des Kindes, Silbenzeiten). Noch nicht sicher beherrschte Silben (auch noch nicht bewertete) kommen doppelt so oft vor wie sicher beherrschte; der Faktor steht in der Konfiguration als `train.unmastered_weight` (2, erlaubt 1 bis 10; 1 = keine Bevorzugung).
 
 ## Lautolino (Phase 8)
 - Anmeldung: Passwortfelder mit Augensymbol, "Passwort vergessen?", Seite zum Festlegen des Passworts über den Link aus der E-Mail (`#einladung=` bzw. `#passwort-neu=` in der Adresse).

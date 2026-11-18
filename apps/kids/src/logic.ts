@@ -1,37 +1,24 @@
 // Lernlogik der Kinder-App: reine Funktionen auf core und engine (unverändert). Kein Zugriff auf Oberfläche oder Netz.
-import { FALLBACK_LENS, groupedTasks, randomCase } from "@silbenflug/core";
-import { autoAdjust, autoParams, comboKey, secureTasks, recordSyl, roundParams, sdFromLen, startVal, sylStat, sylTimeParams, syllablePlan } from "@silbenflug/engine";
-import type { AutoState } from "@silbenflug/engine";
+import { groupedTasks, randomCase } from "@silbenflug/core";
+import { secureTasks, recordSyl, roundParams, syllablePlan } from "@silbenflug/engine";
 import type { Rng, SilbenflugConfig } from "@silbenflug/shared";
 
 export interface Plan { classId: string | null; letters: string[]; syllables: string[] }   // syllables: fester Silbenumfang der freigegebenen Buchstaben (vom Server)
-export interface AutoValue { bal: number | null; sd: number | null }
-// Alles, was das Gerät für ein Kind merkt (Silbenzeiten und Automatik-Stand; der Server hat die maßgebliche Kopie der Auszeichnungen).
+// Alles, was das Gerät für ein Kind merkt (Silbenzeiten; der Server hat die maßgebliche Kopie der Auszeichnungen).
 export interface LocalState {
   sylTimes: Record<string, number[]>;     // je Silbe die letzten Zeiten (Sekunden bis „Weiter“)
-  comboTimes: Record<string, number[]>;   // je Buchstabenkombination die letzten Rundenzeiten
-  auto: Record<string, AutoValue>;        // Automatik-Stand je Kombination (Schlüssel wie comboKey)
 }
-export const emptyState = (): LocalState => ({ sylTimes: {}, comboTimes: {}, auto: {} });
+export const emptyState = (): LocalState => ({ sylTimes: {} });
 
-export interface RoundSetup { key: string; letters: string[]; lens: number[]; bal: number; sd: number; tasks: string[]; shown: string[] }
+export interface RoundSetup { letters: string[]; tasks: string[]; shown: string[] }
 export interface RoundResult { seconds: number; syllables: Array<{ s: string; sec: number }> }
 
-function autoList(auto: Record<string, AutoValue>): AutoState[] {
-  return Object.keys(auto).map((key) => {
-    const [le, ln] = key.split("|"), v = auto[key];
-    return { key, letters: le || "", lens: (ln || "").split(",").map(Number).filter((x) => x >= 2 && x <= 4), bal: v.bal ?? undefined, sd: v.sd ?? undefined };
-  });
-}
 // Ob der Silbenumfang genug Übungswörter für eine Runde hat (wie in Silbenzauber mindestens 3).
 export function canPractice(plan: Plan, cfg: SilbenflugConfig): boolean {
   return plan.letters.length > 0 && plan.syllables.length >= cfg.round.min_pool;
 }
-// Bereitet eine Runde vor: Schwierigkeit aus dem Automatik-Stand (neue Kombination: ähnlichste bekannte minus Abschlag), Aufgaben mit der Aufgabenverteilung aus core.
+// Bereitet eine Runde vor: Aufgaben nach Lernstufen (Gruppen und Mix) aus den lokalen Silbenzeiten.
 export function prepareRound(plan: Plan, cfg: SilbenflugConfig, st: LocalState, rng: Rng): RoundSetup {
-  const letters = plan.letters.slice(), lens = FALLBACK_LENS, ap = autoParams(cfg), list = autoList(st.auto);
-  const bal = startVal(list, letters, lens, "bal", cfg.auto.default_len_balance, ap.newComboDiscount);
-  const sd = lens.length > 1 ? sdFromLen(bal, ap) : startVal(list, letters, lens, "sd", cfg.auto.default_syl_difficulty, ap.newComboDiscount);
   const st2 = cfg.stages;
   // Auswahl je Silbe: Freischaltung und Gruppen aus den lokalen Silbenzeiten, Mix aus der Konfiguration (ohne Lernstufen oder zu wenige offene Silben: sichere Silben der höchsten Stufe)
   let tasks: string[] | null = null;
@@ -41,30 +28,15 @@ export function prepareRound(plan: Plan, cfg: SilbenflugConfig, st: LocalState, 
       tasks = groupedTasks(cfg.round.task_count, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, roundParams(cfg));
   }
   if (!tasks) tasks = secureTasks(plan.syllables, st.sylTimes, cfg, cfg.round.task_count, rng, roundParams(cfg));
-  return { key: comboKey(letters, lens), letters, lens, bal, sd, tasks, shown: tasks.map((s) => randomCase(s, rng)) };
+  return { letters: plan.letters.slice(), tasks, shown: tasks.map((s) => randomCase(s, rng)) };
 }
-// Rundenende: Silbenzeiten und Rundenzeit merken, Automatik anpassen. Ergebnis: neuer Stand und der Automatik-Wert, der zum Server geschickt wird.
-export function finishRound(st: LocalState, setup: RoundSetup, res: RoundResult, cfg: SilbenflugConfig): { state: LocalState; autoState: { key: string; bal: number; sd: number } } {
-  const next: LocalState = JSON.parse(JSON.stringify(st)), ap = autoParams(cfg);
-  res.syllables.forEach((x) => recordSyl(next.sylTimes, x.s, x.sec, cfg.syl_time.max_seconds, cfg.syl_time.retention));
-  const times = (next.comboTimes[setup.key] || []).concat([res.seconds]).slice(-cfg.auto.stats_rounds);
-  next.comboTimes[setup.key] = times;
-  let bal = setup.bal, sd = setup.sd;
-  if (setup.lens.length > 1) { bal = autoAdjust(bal, times, cfg.auto.target_seconds, cfg.auto.avg_rounds, ap); sd = sdFromLen(bal, ap); }
-  else sd = autoAdjust(sd, times, cfg.auto.target_seconds, cfg.auto.avg_rounds, ap);   // nur eine Länge: nur die Silbenschwierigkeit bewegt sich
-  next.auto[setup.key] = { bal, sd };
-  return { state: next, autoState: { key: setup.key, bal, sd } };
-}
-// Automatik-Stände vom Server (Zeilen der Schnittstelle /student/auto-state) mit dem lokalen Stand zusammenführen. Der lokale Stand gewinnt (er ist neuer).
-export function mergeAuto(st: LocalState, rows: Array<{ combo_key: string; len_balance: number | null; syl_difficulty: number | null }>): LocalState {
+// Rundenende: Silbenzeiten merken.
+export function finishRound(st: LocalState, res: RoundResult, cfg: SilbenflugConfig): LocalState {
   const next: LocalState = JSON.parse(JSON.stringify(st));
-  (rows || []).forEach((r) => { if (!next.auto[r.combo_key]) next.auto[r.combo_key] = { bal: r.len_balance, sd: r.syl_difficulty }; });
+  res.syllables.forEach((x) => recordSyl(next.sylTimes, x.s, x.sec, cfg.syl_time.max_seconds, cfg.syl_time.retention));
   return next;
 }
-// Nach erfolgreichem Senden aller gemerkten Runden ist der Server maßgeblich: Silbenzeiten, Rundenzeiten und Automatik-Stand kommen von dort,
-// damit jedes Gerät eines Kindes denselben Stand hat.
-export function adoptServer(st: LocalState, data: { sylTimes?: Record<string, number[]>; comboTimes?: Record<string, number[]> } | null, rows: Array<{ combo_key: string; len_balance: number | null; syl_difficulty: number | null }>): LocalState {
-  const next: LocalState = { sylTimes: (data && data.sylTimes) || {}, comboTimes: (data && data.comboTimes) || {}, auto: {} };
-  (rows || []).forEach((r) => { next.auto[r.combo_key] = { bal: r.len_balance, sd: r.syl_difficulty }; });
-  return next;
+// Nach erfolgreichem Senden aller gemerkten Runden ist der Server maßgeblich: die Silbenzeiten kommen von dort, damit jedes Gerät eines Kindes denselben Stand hat.
+export function adoptServer(data: { sylTimes?: Record<string, number[]> } | null): LocalState {
+  return { sylTimes: (data && data.sylTimes) || {} };
 }

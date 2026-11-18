@@ -8,8 +8,6 @@ import { classifySyllable } from "./stages";
 
 // Höchstzahl mehrsilbiger Wörter je Unterkategorie (1.1 bis 7.2) und neuem Buchstaben; einsilbige Wörter werden nie gekürzt.
 export const WORD_CAP_PER_SUB = 30;
-// Nur noch Schlüsselteil der Automatik-Stände (comboKey, "lo|2,3"); Silben werden nicht mehr nach Länge gewählt.
-export const FALLBACK_LENS = [2, 3];
 const ENUM_LIMIT = 400, SAMPLES = 40;
 
 const fnv = (s: string): number => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };

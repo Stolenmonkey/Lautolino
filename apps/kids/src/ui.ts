@@ -3,7 +3,7 @@ import { renderWord, renderWordWithArcs } from "@silbenflug/core";
 import type { AwardLevel, Rng, SilbenflugConfig } from "@silbenflug/shared";
 import { ApiError, createKidsApi, flushQueue, newRoundId } from "./api";
 import type { FetchFn, KV, QueuedRound } from "./api";
-import { adoptServer, canPractice, emptyState, finishRound, mergeAuto, prepareRound } from "./logic";
+import { adoptServer, canPractice, emptyState, finishRound, prepareRound } from "./logic";
 import type { LocalState, Plan, RoundSetup } from "./logic";
 
 export interface Deps { base: string; storage: KV; fetchFn?: FetchFn; rng?: Rng; now?: () => number }
@@ -67,8 +67,8 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
         if (f.result.authLost) { logout("Bitte melde dich noch einmal an."); return; }
         if (f.result.offline) return;
         d.config = (await api.get("/config")).config; d.plan = await api.get("/student/plan");
-        const auto = await api.get("/student/auto-state"), sd = await api.get("/student/sync-data");
-        d.st = d.queue.length ? mergeAuto(d.st, auto) : adoptServer(d.st, sd, auto);   // gemerkte Runden offen: lokaler Stand gilt; sonst der des Servers
+        const sd = await api.get("/student/sync-data");
+        if (!d.queue.length) d.st = adoptServer(sd);   // gemerkte Runden offen: lokaler Stand gilt; sonst der des Servers
         d.awards = await api.get("/student/awards");
       } catch (e) { if (e instanceof ApiError && e.status === 401) logout("Bitte melde dich noch einmal an."); /* sonst: offline, es gilt der gemerkte Stand */ }
       finally { syncing = null; save(); }
@@ -192,8 +192,8 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
   function finish(): void {
     const d = data as Data, s = setup as RoundSetup, cfg = d.config as SilbenflugConfig;
     lastSecs = Math.round((now() - roundStart) / 100) / 10;
-    const r = finishRound(d.st, s, { seconds: lastSecs, syllables: times }, cfg); d.st = r.state;
-    d.queue.push({ clientRoundId: newRoundId(rng), seconds: lastSecs, syllables: times, letters: s.letters, lengths: s.lens, playedAt: new Date(now()).toISOString(), autoState: r.autoState });
+    d.st = finishRound(d.st, { seconds: lastSecs, syllables: times }, cfg);
+    d.queue.push({ clientRoundId: newRoundId(rng), seconds: lastSecs, syllables: times, letters: s.letters, playedAt: new Date(now()).toISOString() });
     save(); setup = null; go("end");
     void sync().then(() => { if (cur() === "end") showPopup(); });
   }

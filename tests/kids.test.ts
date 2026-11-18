@@ -8,8 +8,7 @@ import { migrateLocal } from "../apps/server/src/migrate";
 import { hashPassword } from "../apps/server/src/crypto";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
 import { buildSyllables, structureWords } from "@silbenflug/core";
-import { autoAdjust, autoParams, comboKey } from "@silbenflug/engine";
-import { canPractice, emptyState, finishRound, mergeAuto, prepareRound } from "../apps/kids/src/logic";
+import { canPractice, emptyState, adoptServer, finishRound, prepareRound } from "../apps/kids/src/logic";
 import { ApiError, createKidsApi, flushQueue } from "../apps/kids/src/api";
 import type { QueuedRound } from "../apps/kids/src/api";
 import { mountKids } from "../apps/kids/src/ui";
@@ -20,36 +19,29 @@ const cfg = DEFAULT_CONFIG;
 const plan = { classId: "k", letters: ["o", "l", "e"], syllables: structureWords(["o", "l", "e"]) };
 
 describe("Lernlogik der Kinder-App", () => {
-  it("Runde: 20 Aufgaben aus den freigegebenen Buchstaben, Schlüssel wie in der Statistik", () => {
+  it("Runde: 20 Aufgaben aus den freigegebenen Buchstaben", () => {
     const s = prepareRound(plan, cfg, emptyState(), mulberry32(1));
     expect(s.tasks.length).toBe(20); expect(s.shown.length).toBe(20);
     expect(s.tasks.every((t) => /^[ole]+$/.test(t) && t.length >= 1)).toBe(true);
     expect(s.shown.every((x, i) => x.toLowerCase() === s.tasks[i])).toBe(true);
-    expect(s.key).toBe(comboKey(plan.letters, s.lens)); expect(s.bal).toBe(cfg.auto.default_len_balance);
+    expect(s.letters).toEqual(plan.letters);
   });
   it("zu wenige Silben: keine Übung", () => {
     expect(canPractice({ classId: null, letters: [], syllables: [] }, cfg)).toBe(false);
     expect(canPractice({ classId: null, letters: ["x", "y"], syllables: [] }, cfg)).toBe(false);
     expect(canPractice(plan, cfg)).toBe(true);
   });
-  it("Rundenende: langsamer als das Ziel macht leichter, schneller macht schwerer (wie die Automatik aus engine)", () => {
+  it("Rundenende merkt die Silbenzeiten; der Server-Stand ersetzt den lokalen", () => {
     const s = prepareRound(plan, cfg, emptyState(), mulberry32(2)), syl = s.tasks.map((t) => ({ s: t, sec: 3 }));
-    const slow = finishRound(emptyState(), s, { seconds: 150, syllables: syl }, cfg), fast = finishRound(emptyState(), s, { seconds: 30, syllables: syl }, cfg);
-    expect(slow.autoState.bal).toBeLessThan(s.bal); expect(fast.autoState.bal).toBeGreaterThan(s.bal);
-    expect(slow.autoState.bal).toBe(autoAdjust(s.bal, [150], cfg.auto.target_seconds, cfg.auto.avg_rounds, autoParams(cfg)));
-    expect(slow.autoState.sd).toBe(Math.min(100, slow.autoState.bal * 2));   // zwei Längen: Silbenschwierigkeit folgt der Länge
-    expect(Object.keys(slow.state.sylTimes).length).toBeGreaterThan(0);
-    const next = prepareRound(plan, cfg, slow.state, mulberry32(3)); expect(next.bal).toBe(slow.autoState.bal);   // nächste Runde startet beim gemerkten Stand
-  });
-  it("Server-Stand wird übernommen, der lokale gewinnt", () => {
-    const st = mergeAuto({ ...emptyState(), auto: { "eloo|2": { bal: 10, sd: 20 } } }, [{ combo_key: "elo|2,3", len_balance: 30, syl_difficulty: 60 }, { combo_key: "eloo|2", len_balance: 99, syl_difficulty: 99 }]);
-    expect(st.auto["elo|2,3"]).toEqual({ bal: 30, sd: 60 }); expect(st.auto["eloo|2"]).toEqual({ bal: 10, sd: 20 });
+    const st = finishRound(emptyState(), { seconds: 150, syllables: syl }, cfg);
+    expect(Object.keys(st.sylTimes).length).toBeGreaterThan(0);
+    expect(adoptServer({ sylTimes: { ol: [1.5] } }).sylTimes).toEqual({ ol: [1.5] }); expect(adoptServer(null).sylTimes).toEqual({});
   });
 });
 
 
 describe("Offline-Puffer", () => {
-  const rnd = (id: string): QueuedRound => ({ clientRoundId: id, seconds: 10, syllables: [{ s: "ol", sec: 1 }], letters: ["o", "l"], lengths: [2], playedAt: new Date().toISOString(), autoState: { key: "lo|2", bal: 50, sd: 50 } });
+  const rnd = (id: string): QueuedRound => ({ clientRoundId: id, seconds: 10, syllables: [{ s: "ol", sec: 1 }], letters: ["o", "l"], playedAt: new Date().toISOString() });
   const fakeApi = (script: Array<number | "net">) => { const calls: string[] = []; const api = createKidsApi({ base: "http://x", fetchFn: async (_u, o) => { calls.push(JSON.parse(o.body).clientRoundId); const s = script.shift() ?? 201; if (s === "net") throw new Error("offline"); return { ok: s < 400, status: s, text: async () => JSON.stringify(s < 400 ? { ok: true } : { error: "x" }) }; } }); return { api, calls }; };
   it("Netzfehler: Rest bleibt, Reihenfolge bleibt", async () => {
     const { api } = fakeApi([201, "net"]), r = await flushQueue(api, [rnd("a"), rnd("b"), rnd("c")]);
@@ -95,7 +87,7 @@ describe("Kinder-App gegen echten Server", () => {
   const mount = () => { const root = document.createElement("div"), storage = mem(); document.body.appendChild(root); const m = mountKids(root, { base: "http://x", storage, rng: mulberry32(7), now: () => clock, fetchFn: async (u, o) => { if (offline) throw new Error("offline"); const r = await app.request(u.replace("http://x", ""), o); return { ok: r.ok, status: r.status, text: () => r.text() }; } }); return { root, storage, ready: m.ready }; };
   async function prefill() {   // 10 schnelle Durchgänge über den ganzen Silbenumfang -> Bronze, Silber, Gold stehen als neue Auszeichnung an
     const all = structureWords(["o", "l"]);
-    for (let i = 0; i < 10; i++) expect((await call("POST", "/student/rounds", kidTok, { clientRoundId: "pre" + i, seconds: 40, syllables: all.map((s) => ({ s, sec: 1 })), letters: ["o", "l"], lengths: [2, 3] })).status).toBe(201);
+    for (let i = 0; i < 10; i++) expect((await call("POST", "/student/rounds", kidTok, { clientRoundId: "pre" + i, seconds: 40, syllables: all.map((s) => ({ s, sec: 1 })), letters: ["o", "l"] })).status).toBe(201);
   }
 
   it("falscher Merkschlüssel zeigt eine freundliche Meldung, richtiger führt zur Übersicht", async () => {
@@ -117,7 +109,7 @@ describe("Kinder-App gegen echten Server", () => {
     expect((await call("GET", "/student/awards", kidTok)).json.pending).toEqual([]);
   });
 
-  it("Übung: 20 Aufgaben, Zeit am Rundenende, Runde und Automatik kommen beim Server an; Sitzung bleibt nach Neustart", async () => {
+  it("Übung: 20 Aufgaben, Zeit am Rundenende, die Runde kommt beim Server an; Sitzung bleibt nach Neustart", async () => {
     const a = mount(); await a.ready; await flush(); (a.root.querySelector("#code") as HTMLInputElement).value = code; click(a.root, "Anmelden"); await flush();
     click(a.root, "Übung starten"); expect(a.root.querySelector("#prog")!.textContent).toBe("Aufgabe 1 von 20");
     clock += 1500; click(a.root, "Weiter"); expect(a.root.querySelector("#prog")!.textContent).toBe("Aufgabe 1 von 20");   // erst Sterne, dann Übergang
@@ -125,7 +117,7 @@ describe("Kinder-App gegen echten Server", () => {
     play(a.root, 19); await flush();
     expect(a.root.textContent).toContain("Herzlichen Glückwunsch, Mia!"); expect(a.root.textContent).toMatch(/Deine Zeit\s*\d+ Sekunden/);
     expect(roundsOnServer()).toBe(1);
-    const st = (await call("GET", "/student/auto-state", kidTok)).json; expect(st.length).toBe(1); expect(st[0].combo_key).toBe("lo|2,3");
+    expect((await call("GET", "/student/auto-state", kidTok)).status).toBe(404);
     click(a.root, "Ende"); expect(a.root.textContent).toContain("Hallo, Mia!");
     const b = (() => { const root = document.createElement("div"); const m = mountKids(root, { base: "http://x", storage: a.storage, rng: mulberry32(9), now: () => clock, fetchFn: async (u, o) => { const r = await app.request(u.replace("http://x", ""), o); return { ok: r.ok, status: r.status, text: () => r.text() }; } }); return { root, ready: m.ready }; })();
     await b.ready; await flush(); expect(b.root.textContent).toContain("Hallo, Mia!");
@@ -143,7 +135,7 @@ describe("Kinder-App gegen echten Server", () => {
     window.dispatchEvent(new Event("online")); await flush(); expect(roundsOnServer()).toBe(1);
   });
 
-  it("zwei Geräte desselben Kindes: Silbenzeiten und Automatik kommen über den Server auf das andere Gerät", async () => {
+  it("zwei Geräte desselben Kindes: Silbenzeiten kommen über den Server auf das andere Gerät", async () => {
     const a = mount(), b = mount(); await a.ready; await b.ready; await flush();
     for (const x of [a, b]) { (x.root.querySelector("#code") as HTMLInputElement).value = code; click(x.root, "Anmelden"); await flush(); }
     const dataOf = (m: { storage: { getItem(k: string): string | null } }) => { const sess = JSON.parse(m.storage.getItem("silbenflug.kind.session")!); return JSON.parse(m.storage.getItem("silbenflug.kind.data." + sess.studentId)!); };
@@ -152,7 +144,7 @@ describe("Kinder-App gegen echten Server", () => {
     expect(Object.keys(dataOf(a).st.sylTimes).length).toBeGreaterThan(0);
     window.dispatchEvent(new Event("online")); await flush();   // Gerät B gleicht ab
     expect(Object.keys(dataOf(b).st.sylTimes).sort()).toEqual(Object.keys(dataOf(a).st.sylTimes).sort());
-    expect(dataOf(b).st.comboTimes["lo|2,3"].length).toBe(1); expect(dataOf(b).st.auto["lo|2,3"]).toEqual(dataOf(a).st.auto["lo|2,3"]);
+    expect(dataOf(b).st.sylTimes).toEqual(dataOf(a).st.sylTimes);
     const r = await call("GET", "/student/sync-data", kidTok); expect(r.status).toBe(200); expect(Object.keys(r.json.sylTimes).length).toBeGreaterThan(0);
     expect((await call("GET", "/student/sync-data", null)).status).toBe(401);
   });

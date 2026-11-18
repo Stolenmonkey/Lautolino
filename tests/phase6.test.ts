@@ -106,7 +106,7 @@ describe("Server und Oberfläche", () => {
   it("Silben-Zug ohne Lernstufen: nur sichere Silben der höchsten Stufe, keine Längenwahl", async () => {
     expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0 } }, note: "ohne Lernstufen" })).status).toBe(201);
     const tok = await kidToken(0), all = structureWords(["o", "l"]), top = Math.max(...all.map((x) => classifySyllable(x).stage));
-    for (let i = 0; i < 10; i++) expect((await call("POST", "/student/rounds", tok, { clientRoundId: "z" + i, seconds: 40, syllables: all.map((x) => ({ s: x, sec: 1 })), letters: ["o", "l"], lengths: [2, 3], autoState: { key: "lo|2,3", bal: 0, sd: 0 } })).status).toBe(201);
+    for (let i = 0; i < 10; i++) expect((await call("POST", "/student/rounds", tok, { clientRoundId: "z" + i, seconds: 40, syllables: all.map((x) => ({ s: x, sec: 1 })), letters: ["o", "l"] })).status).toBe(201);
     const t = (await train(kA, teacher, "?seed=1")).json.syllables as string[];
     expect(t.length).toBeGreaterThan(0); expect(t.every((x) => classifySyllable(x).stage === top || classifySyllable(x).stage < top)).toBe(true); expect(t.some((x) => classifySyllable(x).stage === top)).toBe(true);
   });
@@ -122,7 +122,7 @@ describe("Server und Oberfläche", () => {
   it("Lehrer-Ansicht: Reiter, Buchstabenstand, Zeitverlauf mit Markierung, PDF für Kind und Klasse", async () => {
     expect(schoolTabs("lehrer").auswertung).toBe("Auswertung"); expect(schoolTabs("schulleitung").auswertung).toBeDefined();
     const tok = await kidToken(0), all = structureWords(["o", "l"]);
-    for (let i = 0; i < 3; i++) expect((await call("POST", "/student/rounds", tok, { clientRoundId: "c" + i, seconds: 60 - i * 10, syllables: all.map((x) => ({ s: x, sec: 1 })), letters: ["o", "l"], lengths: [2, 3] })).status).toBe(201);
+    for (let i = 0; i < 3; i++) expect((await call("POST", "/student/rounds", tok, { clientRoundId: "c" + i, seconds: 60 - i * 10, syllables: all.map((x) => ({ s: x, sec: 1 })), letters: ["o", "l"] })).status).toBe(201);
     const api = createApi({ base: "http://x", storage: mem(), fetchFn: (u: string, o: any) => app.request(u.replace("http://x", ""), o) });
     api.token = lead;   // Schulleitung (hat dieselben Rechte für Auswertung und Druck)
     const user = { id: "x", role: "schulleitung", schoolId: sid }, root = document.createElement("div"); document.body.appendChild(root);

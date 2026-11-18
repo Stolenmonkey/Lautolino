@@ -41,8 +41,8 @@ describe("Lautolino (Server und Oberfläche)", () => {
   const newApp = (mailer: boolean) => createApp({ db: nodeSqliteDb(raw), pepper: "p".repeat(40), iterations: 1000, now: () => new Date(clock), appUrl: "https://app.test/web/",
     mailer: mailer ? async (m: Mail) => { if (failMail) throw new Error("Anbieter nicht erreichbar"); mails.push(m); } : undefined });
   const linkOf = (m: Mail, kind: "einladung" | "passwort-neu") => { const r = new RegExp("https://app\\.test/web/#" + kind + "=([0-9a-f]{64})").exec(m.text); expect(r, m.text).not.toBeNull(); return r![1]; };
-  const rounds = async (tok: string, sylls: string[], n: number, sec: number | ((s: string, i: number) => number), prefix: string, letters = LETTERS, lengths = [2, 3, 4]) => {
-    for (let i = 0; i < n; i++) expect((await call("POST", "/student/rounds", tok, { clientRoundId: prefix + i, seconds: 30, syllables: sylls.map((s) => ({ s, sec: typeof sec === "number" ? sec : sec(s, i) })), letters, lengths })).status).toBe(201);
+  const rounds = async (tok: string, sylls: string[], n: number, sec: number | ((s: string, i: number) => number), prefix: string, letters = LETTERS) => {
+    for (let i = 0; i < n; i++) expect((await call("POST", "/student/rounds", tok, { clientRoundId: prefix + i, seconds: 30, syllables: sylls.map((s) => ({ s, sec: typeof sec === "number" ? sec : sec(s, i) })), letters })).status).toBe(201);
   };
   const LETTERS = ["l", "e", "o", "a", "m", "p"];
   const kidTok = async (code: string) => (await call("POST", "/student/login", null, { code })).json.token as string;
@@ -156,10 +156,10 @@ describe("Lautolino (Server und Oberfläche)", () => {
     it("Prozentwerte je Buchstabe aus den echten Daten der gewählten Klasse; Ausnahmen zählen nicht mit", async () => {
       await call("POST", `/classes/${cid2}/releases`, other, { letters: ["o", "l"] });
       const k2 = (await call("POST", `/classes/${cid2}/students`, other, { names: ["Eva", "Tom", "Uli", "Zoe"] })).json, all = structureWords(["o", "l"]);
-      const play = async (code: string, pre: string, sec: number) => { const tok = await kidTok(code); await rounds(tok, all, 10, sec, pre, ["o", "l"], [2, 3]); };
+      const play = async (code: string, pre: string, sec: number) => { const tok = await kidTok(code); await rounds(tok, all, 10, sec, pre, ["o", "l"]); };
       await play(k2[0].code, "e", 1);          // Eva: Gold für O und L
       await play(k2[1].code, "t", 2.4);        // Tom: schnell genug, aber knapp (alles sicher bei <= Vorgabe)
-      await rounds(await kidTok(k2[2].code), ["lo"], 1, 1, "u", ["o", "l"], [2, 3]);   // Uli: hat nur geübt, keine Auszeichnung
+      await rounds(await kidTok(k2[2].code), ["lo"], 1, 1, "u", ["o", "l"]);   // Uli: hat nur geübt, keine Auszeichnung
       const r = (await call("GET", `/classes/${cid2}/overview`, other)).json;
       expect(r.students).toBe(4); const o = r.letters.find((l: any) => l.letter === "o"), l = r.letters.find((x: any) => x.letter === "l");
       expect(o).toMatchObject({ students: 4, reached: 3, reachedPercent: 75, gold: 2, goldPercent: 50, bronze: 2, bronzePercent: 50 });
@@ -345,7 +345,7 @@ describe("Lautolino (Server und Oberfläche)", () => {
     it("Buchstabenübersicht zeigt je freigegebenem Buchstaben den Status Bronze, Silber, Gold (drei Punkte, Medaille, Legende)", async () => {
       const tok = await kidTok(codeA), all = structureWords(["o", "l"]);
       await call("POST", `/classes/${cid2}/releases`, other, { letters: ["o", "l"] }); const k2 = (await call("POST", `/classes/${cid2}/students`, other, { names: ["Eva"] })).json[0];
-      const t2 = await kidTok(k2.code); await rounds(t2, all, 10, 1, "g", ["o", "l"], [2, 3]);
+      const t2 = await kidTok(k2.code); await rounds(t2, all, 10, 1, "g", ["o", "l"]);
       const a = mountK(k2.code); await a.ready; await flush(); (a.root.querySelector("#code") as HTMLInputElement).value = k2.code; click(a.root, "Anmelden"); await flush();
       const dlg = a.root.querySelector(".dlg"); if (dlg) { click(a.root, "Toll!"); await flush(); }
       const on = Array.from(a.root.querySelectorAll("#lgrid .lt.on")); expect(on.length).toBe(2);

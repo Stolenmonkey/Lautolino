@@ -24,7 +24,7 @@ export function createKidsApi(o: { base: string; fetchFn?: FetchFn }) {
 export type KidsApi = ReturnType<typeof createKidsApi>;
 
 // Eine fertige Runde wartet im Puffer, bis der Server sie bestätigt hat. clientRoundId macht das Senden wiederholbar (der Server erkennt Doppelte).
-export interface QueuedRound { clientRoundId: string; seconds: number; syllables: Array<{ s: string; sec: number }>; letters: string[]; lengths: number[]; playedAt: string; autoState: { key: string; bal: number; sd: number } }
+export interface QueuedRound { clientRoundId: string; seconds: number; syllables: Array<{ s: string; sec: number }>; letters: string[]; playedAt: string }
 
 export type FlushResult = { sent: number; left: number; authLost: boolean; offline: boolean };
 // Sendet den Puffer der Reihe nach. Netzfehler oder Serverfehler: Rest bleibt liegen. 401: Anmeldung abgelaufen, Rest bleibt liegen.
