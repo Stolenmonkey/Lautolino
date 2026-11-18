@@ -50,7 +50,7 @@ async function lernplan(root, api, cid, classes, msg) {
       h("button", { type: "button", onclick: () => act(msg, async () => { const s = await api.get(`/classes/${cid}/releases/${r.letter}/scope`); clear(scopeBox).append(h("div", { class: "card" }, h("strong", {}, `Silben von ${r.letter.toUpperCase()} (${s.length})`), h("div", { class: "chips" }, s.map((x) => h("span", {}, x.toUpperCase()))))); }) }, "Silben ansehen")])) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."), scopeBox,
     plan.releases.length
       ? h("div", { class: "row" }, h("label", {}, "Nächsten Buchstaben freigeben ", letter), h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
-          const r = await api.post(`/classes/${cid}/releases`, await mitUmfang(api, plan, [letter.value])), x = r.released[0]; clear(msg).append(notice(`${x.letter.toUpperCase()} freigegeben. Fester Silbenumfang: ${x.syllableCount} Silben.` + (x.syllableCount ? "" : " (Mit den bisherigen Buchstaben ergeben sich keine neuen Silben.)"), "ok"));
+          const r = await api.post(`/classes/${cid}/releases`, await mitUmfang(api, plan, [letter.value.trim().toLowerCase()])), x = r.released[0]; clear(msg).append(notice(`${x.letter.toUpperCase()} freigegeben. Fester Silbenumfang: ${x.syllableCount} Silben.` + (x.syllableCount ? "" : " (Mit den bisherigen Buchstaben ergeben sich keine neuen Silben.)"), "ok"));
         }, reload) }, "Freigeben"))
       : h("div", { class: "card" }, h("p", {}, "Die Klasse startet mit mindestens 2 Buchstaben, darunter ein Vokal (z. B. O L)."), h("div", { class: "row" }, h("label", {}, "Startbuchstaben ", start), h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
           const r = await api.post(`/classes/${cid}/releases`, await mitUmfang(api, plan, [...new Set(start.value.toLowerCase().match(/[a-z]/g) || [])])); clear(msg).append(notice(`Freigegeben: ${r.released.map((x) => x.letter.toUpperCase() + " (" + x.syllableCount + " Silben)").join(", ")}.`, "ok"));
@@ -80,7 +80,8 @@ async function klassen(root, api, sid, classes, msg, reload) {
 // Berechnet den Silbenumfang im Browser und liefert den Body für POST /releases (Server prüft und speichert nur).
 async function mitUmfang(api, plan, group) {
   const known = plan.releases.map((r) => r.letter);
-  if (known.length ? !/^[a-z]$/.test(group[0] || "") : group.length < 2) return known.length ? { letter: group[0] } : { letters: group };
+  if (known.length && !/^[a-z]$/.test(group[0] || "")) throw new Error("Bitte einen Buchstaben von A bis Z eingeben");
+  if (!known.length && group.length < 2) return { letters: group };
   const [{ config }, m] = await Promise.all([api.get("/config"), import("../scope.bundle.js")]);
   const scopes = m.computeScopes(known, group, config);
   return known.length ? { letter: group[0], scopes } : { letters: group, scopes };
