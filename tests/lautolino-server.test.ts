@@ -342,18 +342,18 @@ describe("Lautolino (Server und Oberfläche)", () => {
       for (let i = 0; i < 20 && !found2; i++) { const l = label(a.root).cur.toLowerCase(); if (l.length === 4 && /^[^aeiou][aeiou][^aeiou][aeiou]$/.test(l)) { found2 = true; expect(a.root.querySelectorAll("#syl .cur .arc").length).toBe(2); expect(a.root.querySelectorAll("#syl .cur .sy").length).toBe(2); } clock += 1200; click(a.root, "Weiter"); }
       expect(found2).toBe(true);
     });
-    it("Buchstabenübersicht zeigt je freigegebenem Buchstaben den Status Bronze, Silber, Gold (drei Punkte, Medaille, Legende)", async () => {
+    it("Buchstabenübersicht zeigt je freigegebenem Buchstaben den Status Bronze, Silber, Gold (Medaille)", async () => {
       const tok = await kidTok(codeA), all = groupScope(["o", "l"], scopeParams(DEFAULT_CONFIG));
       await call("POST", `/classes/${cid2}/releases`, other, { letters: ["o", "l"] }); const k2 = (await call("POST", `/classes/${cid2}/students`, other, { names: ["Eva"] })).json[0];
       const t2 = await kidTok(k2.code); await rounds(t2, all, 10, 1, "g", ["o", "l"]);
       const a = mountK(k2.code); await a.ready; await flush(); (a.root.querySelector("#code") as HTMLInputElement).value = k2.code; click(a.root, "Anmelden"); await flush();
-      const dlg = a.root.querySelector(".dlg"); if (dlg) { click(a.root, "Toll!"); await flush(); }
+      for (let i = 0; i < 2; i++) { const dlg = a.root.querySelector(".dlg"); if (!dlg) break; click(a.root, /Neue/.test(dlg.textContent || "") ? "Los geht's!" : "Toll!"); await flush(); }
       const on = Array.from(a.root.querySelectorAll("#lgrid .lt.on")); expect(on.length).toBe(2);
-      for (const t of on) { expect(t.querySelectorAll(".pip.got").length).toBe(3); expect(t.querySelectorAll(".pip").length).toBe(3); expect(t.querySelectorAll(".medal").length).toBe(1); expect(t.getAttribute("title")).toBe("Gold"); }
-      expect(a.root.querySelectorAll("#lgrid .lt.off .pip").length).toBe(0); expect(a.root.querySelector(".legend")!.textContent).toMatch(/Bronze.*Silber.*Gold/); expect(a.root.querySelector("#lgrid")!.textContent).not.toContain("%");
+      for (const t of on) { expect(t.querySelectorAll(".medal").length).toBe(1); expect(t.getAttribute("title")).toBe("Gold"); }
+      expect(a.root.querySelector("#lgrid")!.textContent).not.toContain("%");
       void tok;
       const b = mountK(codeA); await b.ready; await flush(); (b.root.querySelector("#code") as HTMLInputElement).value = codeA; click(b.root, "Anmelden"); await flush();   // Kind ohne Medaillen: leere Punkte als Ziel
-      for (const t of Array.from(b.root.querySelectorAll("#lgrid .lt.on"))) { expect(t.querySelectorAll(".pip").length).toBe(3); expect(t.querySelectorAll(".pip.got").length).toBe(0); expect(t.querySelectorAll(".medal").length).toBe(0); }
+      for (const t of Array.from(b.root.querySelectorAll("#lgrid .lt.on"))) { expect(t.querySelectorAll(".medal").length).toBe(0); }
     });
     it("Training folgt den Lernstufen: Runde besteht nur aus Silben des Fensters (plus Wiederholung)", async () => {
       const a = mountK(codeA); await a.ready; await flush(); (a.root.querySelector("#code") as HTMLInputElement).value = codeA; click(a.root, "Anmelden"); await flush(); click(a.root, "Übung starten");
