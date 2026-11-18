@@ -70,6 +70,8 @@ describe("Fortschritt und Auszeichnungen", () => {
     expect(levelProgress("silber", 90, cfg)).toEqual({ next: "gold", segments: 3 });
     expect(levelProgress("silber", 95, cfg)).toEqual({ next: "gold", segments: 4 });
     expect(levelProgress("bronze", 10, cfg)).toEqual({ next: "silber", segments: 0 });
+    expect(levelProgress(null, 25, cfg, 5)).toEqual({ next: "bronze", segments: 2 });
+    expect(levelProgress(null, 49, cfg, 5)).toEqual({ next: "bronze", segments: 4 });
     expect(levelProgress("gold", 100, cfg)).toBeNull();
   });
   it("ohne festgelegte Grenzen keine Auszeichnung", () => {

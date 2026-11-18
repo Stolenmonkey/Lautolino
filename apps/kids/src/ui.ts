@@ -28,12 +28,16 @@ const owl = (cls: string, id = ""): string => '<svg class="' + cls + '"' + (id ?
 const TITLE = "Silbenzauber".split("").map((c, i) => '<span style="color:' + ["#e8505b", "#f08a24", "#e2b400", "#2faa5a", "#2f7fd8", "#7b5fd6"][i % 6] + '">' + c + "</span>").join("");
 const LAWN = '<div class="lawn" aria-hidden="true"><svg viewBox="0 0 400 100" preserveAspectRatio="xMidYMax slice"><path d="M0 58Q80 30 170 50T400 40V100H0Z" fill="#c4ecba"/><path d="M0 70Q110 45 220 66T400 58V100H0Z" fill="#a6dea0"/><path d="M0 82Q100 66 200 80T400 74V100H0Z" fill="#82d08a"/></svg></div>';
 
-// Fortschritt zur nächsten Medaille: 4 Segmente übereinander, unten beginnt es; nach Gold bleibt der Platz leer
-function ladder(p: { next: AwardLevel; segments: number } | null | undefined): string {
-  if (!p) return '<span class="ladder none" aria-hidden="true"></span>';
-  let b = "";
-  for (let i = 0; i < 4; i++) b += "<i" + (i < p.segments ? ' class="f" style="background:' + LEVEL_COLOR[p.next] + '"' : "") + "></i>";
-  return '<span class="ladder" role="img" aria-label="' + p.segments + " von 4 Teilen bis " + LEVEL_NAME[p.next] + '">' + b + "</span>";
+// Fortschrittsring um den Großbuchstaben: 5 Schritte, füllt sich im Uhrzeigersinn ab 12 Uhr; nach Gold bleibt er voll
+function ring(p: { next: AwardLevel; segments: number } | null | undefined, held: AwardLevel | null, on: boolean): string {
+  const n = !on ? 0 : p ? Math.max(0, Math.min(5, p.segments)) : held === "gold" ? 5 : 0;
+  const lab = !on ? "" : p ? ' role="img" aria-label="' + n + " von 5 Teilen bis " + LEVEL_NAME[p.next] + '"' : ' aria-hidden="true"';
+  return '<svg class="ring" viewBox="0 0 80 80"' + (lab || ' aria-hidden="true"') + '><circle class="trk" cx="40" cy="40" r="35"/>' + (n ? '<circle class="fil" cx="40" cy="40" r="35" pathLength="100" stroke-dasharray="' + n * 20 + ' 100" transform="rotate(-90 40 40)"/>' : "") + "</svg>";
+}
+// Ein Stern für die höchste erreichte Stufe (Bronze, Silber, Gold); ohne Stufe kein Stern
+function tstar(level: AwardLevel | null): string {
+  if (!level) return "";
+  return '<svg class="medal tstar" viewBox="0 0 24 24" role="img" aria-label="' + LEVEL_NAME[level] + '"><polygon points="12,3 14.7,8.8 21,9.5 16.3,13.8 17.6,20 12,16.9 6.4,20 7.7,13.8 3,9.5 9.3,8.8" fill="' + LEVEL_COLOR[level] + '" stroke="#1f2a44" stroke-width="1.6" stroke-linejoin="round"/></svg>';
 }
 function medal(level: AwardLevel | null, big = false): string {
   if (!level) return "";
@@ -101,7 +105,8 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
   function renderHome(): void {
     const d = data as Data, aw = d.awards, rel = new Set(d.plan ? d.plan.letters : []);
     const lv: Record<string, AwardLevel | null> = {}, pg: Record<string, { next: AwardLevel; segments: number } | null | undefined> = {}; (aw ? aw.letters : []).forEach((x) => { lv[x.letter] = x.level; pg[x.letter] = x.progress; });
-    const grid = "abcdefghijklmnopqrstuvwxyz".split("").map((l) => '<div class="lt ' + (rel.has(l) ? "on" : "off") + '" data-letter="' + l + '"' + (rel.has(l) ? ' title="' + (lv[l] ? LEVEL_NAME[lv[l] as AwardLevel] : "noch keine Medaille") + '"' : "") + '>' + (rel.has(l) ? ladder(pg[l]) : "") + pair(l) + medal(lv[l] || null) + "</div>").join("");
+    const grid = "abcdefghijklmnopqrstuvwxyz".split("").map((l) => { const on = rel.has(l), h = lv[l] || null, tier = h === null ? "t1" : h === "bronze" ? "t2" : "t3";
+      return '<div class="lt ' + (on ? "on " + tier : "off") + '" data-letter="' + l + '"' + (on ? ' title="' + (h ? LEVEL_NAME[h] : "noch kein Stern") + '"' : "") + '><span class="rw">' + ring(pg[l], h, on) + renderWord(l.toUpperCase()) + "</span>" + tstar(h) + "</div>"; }).join("");
     const ok = !!(d.plan && d.config && canPractice(d.plan, d.config)), loading = !d.plan || !d.config;
     const info = loading ? "Einen Moment …" : !rel.size ? "Noch keine Buchstaben freigegeben. Frag deine Lehrerin oder deinen Lehrer." : !ok ? "Mit diesen Buchstaben gibt es noch zu wenige Silben." : "";
     root.innerHTML = head() + '<section class="card enter"><p class="hello">Hallo' + (session ? ", " + esc(session.name) : "") + '!</p><div class="lgrid" id="lgrid">' + grid + '</div>' + '<div class="msg" id="msg" role="alert">' + esc(msg || info) + '</div><button class="btn" id="start" type="button"' + (ok ? "" : " disabled") + '>Übung starten</button></section>' +
