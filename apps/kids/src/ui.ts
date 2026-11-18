@@ -8,7 +8,7 @@ import type { LocalState, Plan, RoundSetup } from "./logic";
 
 export interface Deps { base: string; storage: KV; fetchFn?: FetchFn; rng?: Rng; now?: () => number }
 interface AwardsView { letters: Array<{ letter: string; released: boolean; level: AwardLevel | null }>; pending: Array<{ letter: string; level: AwardLevel }> }
-interface Data { st: LocalState; queue: QueuedRound[]; plan: Plan | null; config: SilbenflugConfig | null; awards: AwardsView | null }
+interface Data { st: LocalState; queue: QueuedRound[]; plan: Plan | null; config: SilbenflugConfig | null; awards: AwardsView | null; seen?: string[] }
 interface Session { token: string; studentId: string; name: string }
 
 const SESSION_KEY = "silbenflug.kind.session", DATA_KEY = "silbenflug.kind.data.";
@@ -33,14 +33,6 @@ function medal(level: AwardLevel | null, big = false): string {
   return '<svg class="medal' + (big ? " big" : "") + '" viewBox="0 0 40 44" role="img" aria-label="' + LEVEL_NAME[level] + '"><path d="M12 2L20 18L28 2Z" fill="#e8505b"/><circle cx="20" cy="27" r="14" fill="' + LEVEL_COLOR[level] + '" stroke="#1f2a44" stroke-width="2"/><path d="M20 19l2.6 5.4 5.9.8-4.3 4.1 1 5.9L20 32.4l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z" fill="#fff" opacity=".85"/></svg>';
 }
 const pair = (l: string): string => renderWord(l.toUpperCase()) + renderWord(l.toLowerCase());
-const LEVELS: AwardLevel[] = ["bronze", "silber", "gold"];
-// Leistungsstatus eines Buchstabens: drei Punkte (Bronze, Silber, Gold), erreichte Stufen sind farbig, dazu die Medaille der höchsten Stufe
-function pips(level: AwardLevel | null): string {
-  const n = level ? LEVELS.indexOf(level) + 1 : 0;
-  return '<span class="pips" aria-hidden="true">' + LEVELS.map((lv, i) => '<i class="pip' + (i < n ? " got" : "") + '" style="' + (i < n ? "background:" + LEVEL_COLOR[lv] : "") + '"></i>').join("") + "</span>";
-}
-const LEGEND = '<p class="legend" aria-label="Medaillen">' + LEVELS.map((lv) => '<span><i class="pip got" style="background:' + LEVEL_COLOR[lv] + '"></i>' + LEVEL_NAME[lv] + "</span>").join("") + "</p>";
-
 export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void> } {
   const api = createKidsApi({ base: deps.base, fetchFn: deps.fetchFn }), rng: Rng = deps.rng || Math.random, now = deps.now || (() => Date.now());
   let session: Session | null = null, data: Data | null = null, view: "login" | "home" | "practice" | "end" = "login";
@@ -102,10 +94,10 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
   function renderHome(): void {
     const d = data as Data, aw = d.awards, rel = new Set(d.plan ? d.plan.letters : []);
     const lv: Record<string, AwardLevel | null> = {}; (aw ? aw.letters : []).forEach((x) => { lv[x.letter] = x.level; });
-    const grid = "abcdefghijklmnopqrstuvwxyz".split("").map((l) => '<div class="lt ' + (rel.has(l) ? "on" : "off") + '" data-letter="' + l + '"' + (rel.has(l) ? ' title="' + (lv[l] ? LEVEL_NAME[lv[l] as AwardLevel] : "noch keine Medaille") + '"' : "") + '>' + pair(l) + medal(lv[l] || null) + (rel.has(l) ? pips(lv[l] || null) : "") + "</div>").join("");
+    const grid = "abcdefghijklmnopqrstuvwxyz".split("").map((l) => '<div class="lt ' + (rel.has(l) ? "on" : "off") + '" data-letter="' + l + '"' + (rel.has(l) ? ' title="' + (lv[l] ? LEVEL_NAME[lv[l] as AwardLevel] : "noch keine Medaille") + '"' : "") + '>' + pair(l) + medal(lv[l] || null) + "</div>").join("");
     const ok = !!(d.plan && d.config && canPractice(d.plan, d.config)), loading = !d.plan || !d.config;
     const info = loading ? "Einen Moment …" : !rel.size ? "Noch keine Buchstaben freigegeben. Frag deine Lehrerin oder deinen Lehrer." : !ok ? "Mit diesen Buchstaben gibt es noch zu wenige Silben." : "";
-    root.innerHTML = head() + '<section class="card enter"><p class="hello">Hallo' + (session ? ", " + esc(session.name) : "") + '!</p><div class="lgrid" id="lgrid">' + grid + '</div>' + (rel.size ? LEGEND : "") + '<div class="msg" id="msg" role="alert">' + esc(msg || info) + '</div><button class="btn" id="start" type="button"' + (ok ? "" : " disabled") + '>Übung starten</button></section>' +
+    root.innerHTML = head() + '<section class="card enter"><p class="hello">Hallo' + (session ? ", " + esc(session.name) : "") + '!</p><div class="lgrid" id="lgrid">' + grid + '</div>' + '<div class="msg" id="msg" role="alert">' + esc(msg || info) + '</div><button class="btn" id="start" type="button"' + (ok ? "" : " disabled") + '>Übung starten</button></section>' +
       '<p class="foot">' + (d.queue.length ? "Gemerkt, wird später gesendet: " + d.queue.length + " · " : "") + '<button type="button" class="link" id="logout">Abmelden</button></p>' + LAWN;
     (root.querySelector("#start") as HTMLElement).onclick = startPractice;
     (root.querySelector("#logout") as HTMLElement).onclick = () => logout();
@@ -130,7 +122,7 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     const nxt = s.shown.slice(idx + 1, idx + 3);
     syl.innerHTML = '<span class="cur">' + renderWordWithArcs(s.shown[idx]) + "</span>" + (nxt.length ? '<span class="nxt" aria-hidden="true">' + nxt.map((w) => '<span class="nx">' + renderWordWithArcs(w) + "</span>").join("") + "</span>" : "");
     syl.setAttribute("aria-label", s.shown[idx] + (nxt.length ? ", danach " + nxt.join(", ") : "")); if (!old) restart(syl.querySelector(".cur") as Element, "pop", 420);
-    fit(syl); curCenter(syl); if (old) slideIn(syl, old);
+    fit(syl); if (old) slideIn(syl, old);
   }
   type Slide = { cur: DOMRect; nx: DOMRect[]; clone: HTMLElement };
   const calm = (): boolean => !!(typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -146,10 +138,12 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
   }
   // Hauptsilbe fährt nach links raus, Vorschau-Silben rücken nach, neue Vorschau kommt von rechts
   function slideIn(syl: HTMLElement, old: Slide): void {
-    const stage = (syl.closest(".stage") as HTMLElement).getBoundingClientRect(), box = syl.getBoundingClientRect(), D = 520, E = "cubic-bezier(.45,0,.2,1)";
+    const stage = (syl.closest(".stage") as HTMLElement).getBoundingClientRect(), box = syl.getBoundingClientRect(), D = 520, E = "cubic-bezier(.45,0,.2,1)", dist = old.cur.right - stage.left + 24;
     const c = old.clone; c.classList.remove("pop"); c.classList.add("out"); c.setAttribute("aria-hidden", "true");
     c.style.left = old.cur.left - box.left + "px"; c.style.top = old.cur.top - box.top + "px"; syl.appendChild(c);
-    c.animate([{ transform: "translateX(0)", opacity: 1 }, { transform: "translateX(" + -(old.cur.right - stage.left + 24) + "px)", opacity: 0 }], { duration: D, easing: E }).onfinish = () => c.remove();
+    c.animate([{ transform: "translateX(0)", opacity: 1 }, { transform: "translateX(" + -dist + "px)", opacity: 0 }], { duration: D, easing: E }).onfinish = () => c.remove();
+    const sp = root.querySelector("#spark") as HTMLElement | null;
+    if (sp && sp.animate) sp.animate([{ transform: "translateX(0)" }, { transform: "translateX(" + -dist + "px)" }], { duration: D, easing: E, fill: "forwards" });
     const move = (el: Element | null, from: DOMRect | undefined, rightIn: boolean): void => {
       if (!el || !(el as HTMLElement).animate) return; const n = el.getBoundingClientRect();
       const f = from ? "translate(" + (from.left - n.left) + "px," + (from.top - n.top) + "px) scale(" + (n.width ? from.width / n.width : 1) + ")" : "translateX(" + (stage.right - n.left + 24) + "px)";
@@ -169,8 +163,10 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
   }
   function showTask(slide = false): void { const t = now(); if (idx === 0) roundStart = t; sylStart = t; shownAt = t; paintTask(slide); }
   function restart(el: Element, cls: string, ms: number): void { el.classList.remove(cls); void (el as HTMLElement).offsetWidth; el.classList.add(cls); setTimeout(() => el.classList.remove(cls), ms); }
+  const syl = (): HTMLElement => root.querySelector("#syl") as HTMLElement;
   function burst(): void {
-    const sp = root.querySelector("#spark"); if (!sp) return;
+    const sp = root.querySelector("#spark") as HTMLElement | null; if (!sp) return;
+    if (sp.getAnimations) sp.getAnimations().forEach((a) => a.cancel()); curCenter(syl());
     Array.prototype.forEach.call(sp.children, (el: HTMLElement) => {
       const a = rng() * 2 * Math.PI, r = 70 + rng() * 80; el.style.setProperty("--dx", Math.round(Math.cos(a) * r) + "px"); el.style.setProperty("--dy", Math.round(Math.sin(a) * r * .8) + "px");
       el.style.setProperty("--rot", Math.round((rng() - .5) * 500) + "deg"); el.style.animationDelay = (rng() * .08).toFixed(2) + "s";
@@ -187,7 +183,7 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     // Erst Sterne um die aktuelle Hauptsilbe, dann fährt die Silbe weiter
     burst(); const cur = setup;
     const step = (): void => { if (!pending) return; clearTimeout(timer); pending = null; if (setup !== cur) return; idx++; showTask(true); };
-    const timer = setTimeout(step, 320); pending = step;
+    const timer = setTimeout(step, 200); pending = step;
   }
   function finish(): void {
     const d = data as Data, s = setup as RoundSetup, cfg = d.config as SilbenflugConfig;
@@ -206,7 +202,17 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
 
   // ---------- Glückwunsch-Popup: nur die höchste neu erreichte Stufe je Buchstabe ----------
   function showPopup(): void {
-    const aw = data && data.awards; if (popupOpen || !aw || !aw.pending.length) return;
+    const d = data; if (popupOpen || !d) return;
+    const fresh = d.plan && d.config ? d.plan.letters.filter((l) => !(d.seen || []).includes(l)) : [];
+    if (fresh.length && view === "home") {
+      popupOpen = true;
+      const nb = document.createElement("div"); nb.className = "dlg"; nb.setAttribute("role", "dialog"); nb.setAttribute("aria-modal", "true");
+      nb.innerHTML = '<div class="card award">' + owl("bigmascot owl") + "<h2>" + (fresh.length > 1 ? "Neue Buchstaben!" : "Neuer Buchstabe!") + '</h2>' + fresh.map((l) => '<div class="arow nl">' + pair(l) + "</div>").join("") + '<button class="btn" id="nlOk" type="button" style="margin-top:14px">Los geht\'s!</button></div>';
+      root.appendChild(nb);
+      (nb.querySelector("#nlOk") as HTMLElement).onclick = () => { nb.remove(); popupOpen = false; d.seen = Array.from(new Set((d.seen || []).concat(fresh))); save(); showPopup(); };
+      return;
+    }
+    const aw = d.awards; if (!aw || !aw.pending.length) return;
     popupOpen = true;
     const box = document.createElement("div"); box.className = "dlg"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true");
     box.innerHTML = '<div class="card award">' + owl("bigmascot owl") + "<h2>Glückwunsch!</h2>" + aw.pending.map((p) => '<div class="arow">' + pair(p.letter) + medal(p.level, true) + "<span>" + LEVEL_NAME[p.level] + "</span></div>").join("") + '<button class="btn" id="awOk" type="button" style="margin-top:14px">Toll!</button></div>';

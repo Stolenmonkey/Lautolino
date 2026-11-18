@@ -102,6 +102,7 @@ describe("Kinder-App gegen echten Server", () => {
   it("Auszeichnungen: Popup nur mit höchster Stufe, ohne Prozentwerte, Bestätigung wird gesendet", async () => {
     await prefill();
     const { root, ready } = mount(); await ready; await flush(); (root.querySelector("#code") as HTMLInputElement).value = code; click(root, "Anmelden"); await flush();
+    expect(root.querySelector(".dlg")!.textContent).toContain("Neue"); click(root, "Los geht's!"); await flush();
     const dlg = root.querySelector(".dlg"); expect(dlg).not.toBeNull();
     expect(dlg!.textContent).toContain("Gold"); expect(dlg!.textContent).not.toContain("Bronze"); expect(dlg!.textContent).not.toContain("%");
     expect(root.querySelector("#lgrid")!.textContent).not.toContain("%"); expect(root.querySelectorAll("#lgrid .medal").length).toBe(2);

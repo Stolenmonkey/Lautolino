@@ -23,11 +23,9 @@ input[type=text]:focus{outline:none;border-color:#4a8fe0}
 .lt svg:not(.medal){display:inline-block;height:1.4em;width:.64em;vertical-align:-.3em;overflow:visible}
 .lt:nth-child(4n+1).on{background:#ffe3e6}.lt:nth-child(4n+2).on{background:#fff1d2}.lt:nth-child(4n+3).on{background:#dff5e1}.lt:nth-child(4n+4).on{background:#e6e0fa}
 .lt.off{background:#f1f5fa;opacity:.4}
-.lt{flex-direction:column;padding-bottom:12px}
-.medal{position:absolute;right:-6px;top:-8px;width:32px;height:35px}
-.pips{position:absolute;left:0;right:0;bottom:3px;display:flex;justify-content:center;gap:4px}.pip{display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid #1f2a44;background:#fff;opacity:.35}.pip.got{opacity:1}
-.legend{display:flex;justify-content:center;gap:16px;margin:12px 0 0;font-size:1rem;color:#4b5b7a}.legend span{display:inline-flex;align-items:center;gap:6px}
-.medal.big{position:static}.medal.big{position:static;width:54px;height:59px}
+.lt{flex-direction:column}
+.medal{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:30px;height:33px}
+.medal.big{position:static;transform:none;width:54px;height:59px}
 .foot{text-align:center;font-size:1rem;color:#4b5b7a;margin:0}
 .link{font:inherit;font-size:1rem;color:#2f5f9a;background:none;border:0;text-decoration:underline;cursor:pointer;padding:12px 8px}
 .pbar{display:flex;align-items:center;justify-content:space-between;gap:12px}.prog{text-align:center;font-size:1.3rem;color:#4b5b7a}
