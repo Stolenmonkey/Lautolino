@@ -98,7 +98,36 @@ tests/          *.test.ts + helpers.ts + fixtures/silbenzauber-logic.js (alte Ap
 - `0002`: student_sessions. `0003`: `code_lookup` in parent_activation_codes. `0004`: staff_tokens, rate_events, parent_codes, parent_sessions.
 
 ### tests
-- `parity.test.ts` (alte vs. neue Logik, Fixture `silbenzauber-logic.js`), `engine`, `lautolino-logic`, `lautolino-server`, `server`, `kids`, `web`, `eltern`, `license`, `phase6`, `phase7` (Header, Größenlimit, Umzug-Wächter); `helpers.ts`.
+- `parity.test.ts` (alte vs. neue Logik, Fixture `silbenzauber-logic.js`), `engine`, `lautolino-logic`, `lautolino-server`, `server`, `kids`, `web`, `eltern`, `license`, `phase6`, `phase7` (Header, Größenlimit, Umzug-Wächter), `syllable-plan` (→ engine/syllablePlan), `words` (→ core/words); `helpers.ts`.
+
+## Schnellnavigation (statt Repo-Scan)
+Alle Quelldateien sind klein (größte: `apps/kids/src/ui.ts` ≈ 21 KB, `server/routes/progress.ts` ≈ 15 KB) → Datei direkt öffnen, kein Suchen im Repo. `node_modules/`, `package-lock.json`, `tests/fixtures/`, `*.bundle.js`, `dist/` nie lesen.
+
+| Aufgabe | Datei(en) | Test (selektiv) |
+|---|---|---|
+| Kinder-UI/Ablauf einer Runde | `apps/kids/src/ui.ts`, `logic.ts` | `npx vitest run tests/kids.test.ts` |
+| Kinder-Sync/Offline-Queue | `apps/kids/src/api.ts` | `tests/kids.test.ts` |
+| Übungswörter/Stufen | `packages/core/src/words.ts`, `stages.ts`, `stagedRound.ts` | `tests/words.test.ts` |
+| Silben-Freischaltung/Gruppen | `packages/engine/src/syllablePlan.ts` | `tests/syllable-plan.test.ts` |
+| Meisterung/Awards/Zeiten | `packages/engine/src/mastery.ts`, `sylTime.ts` (nur erweitern!) | `tests/engine.test.ts`, `parity.test.ts` |
+| Konfiguration/Defaults | `packages/shared/src/config.ts` | `tests/engine.test.ts` |
+| Lehrer-Web: Tabs/Ansichten | `apps/web/js/views/<name>.js`, Routing `main.js` | `tests/web.test.ts` |
+| Silben-Zug-PDF | `apps/web/src/zug.ts`, `pdf.ts` (danach `npm run build`) | `tests/web.test.ts` |
+| Eltern-Ansicht | `apps/eltern/app.js` | `tests/eltern.test.ts` |
+| Server-Endpunkt | `apps/server/src/routes/<bereich>.ts` (Tabelle unten) | `tests/lautolino-server.test.ts`, `server.test.ts` |
+| Rechte/Rollen | `apps/server/src/permissions.ts`, `middleware.ts` | `tests/lautolino-server.test.ts` |
+| Lizenz | `apps/server/src/license.ts` | `tests/license.test.ts` |
+| DB-Schema | neue Datei in `db/migrations/` (nie alte ändern) | `tests/lautolino-server.test.ts` |
+
+### Server-Routen (Datei → Endpunkte)
+- `routes/auth.ts`: POST `/login /logout /forgot-password /set-password /change-password`, GET `/me`
+- `routes/admin.ts`: POST `/schools /schools/:id/license /staff /config`; GET `/schools /schools/:id/license-events /config/versions(/:v) /audit`
+- `routes/school.ts`: `/schools/:sid/{years,classes,staff}` (GET/POST), PATCH `/schools/:sid/staff/:uid`, PUT `…/staff/:uid/classes`, `/classes/:cid/students` (GET/POST), POST `/students/:id/code/regenerate`, PATCH `/students/:id`, POST `/students/:id/move`
+- `routes/plan.ts`: GET `/classes/:cid/plan`, POST `/classes/:cid/releases`, GET `/classes/:cid/releases/:letter/scope`, PUT `/students/:id/exclusions`, GET `/students/:id/plan`
+- `routes/progress.ts`: Kind: POST `/student/rounds`, GET `/student/awards`, POST `/student/awards/ack`, GET `/student/sync-data`; Staff: GET `/students/:id/{progress,rounds,syllable-train}`
+- `routes/evaluation.ts`: GET `/students/:id/evaluation`, `/students/:id/stages/:n`, `/classes/:cid/overview`, `/classes/:cid/syllables`
+- `routes/student.ts`: POST `/login`, GET `/me`, `/plan` (Kinder)
+- `routes/parent.ts`: POST `/students/:id/parent-code/regenerate`, `/classes/:cid/parent-codes/missing`, `/parent/login`, `/parent/activate`; GET `/students/:id/parent-access`, `/parent/{me,letters,rounds}`
 
 ## Konventionen
 - Direkt auf `main`, keine Branches. Build-Artefakte `apps/kids/dist/app.js`, `apps/web/js/zug.bundle.js` sind eingecheckt → nach Änderung an `kids/src`, `web/src` oder `core/engine` `npm run build` ausführen.
