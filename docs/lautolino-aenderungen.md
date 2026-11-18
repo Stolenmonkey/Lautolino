@@ -90,4 +90,4 @@ Nicht getestet: echter Versand über Resend (kein Konto/Schlüssel hier) und die
 - Der feste Silbenumfang bleibt unveränderlich: bestehende Klassen behalten ihre 2–4-Buchstaben-Umfänge, neue Freigaben nutzen die neue Erzeugung.
 - `GET /student/plan` liefert `syllables` (Union der festen Umfänge) statt `lengths`; die Kinder-App nutzt diese Liste. Klassenübersicht/Silben-Ansicht zeigen dieselbe Union.
 - Zeitvorgabe (`mastery.time_limit_seconds`) gilt für 2–4 Buchstaben unverändert, kürzere/längere Wörter nehmen die Vorgabe der nächstliegenden Länge (`timeLimitFor`).
-- Rückfall ohne Lernstufen (`stages.enabled = 0`) nutzt weiter Zufallssilben fester Länge (`FALLBACK_LENS` = 2, 3); `lengths` in Runden und Automatik-Schlüsseln bleibt dafür bestehen.
+- Rückfall ohne Lernstufen (`stages.enabled = 0`) oder bei zu wenigen offenen Silben: `secureTasks` (engine) wählt nur sicher beherrschte Silben der höchsten Stufe mit sicheren Silben (bei zu wenigen zusätzlich tiefere Stufen; ohne sichere Silben die niedrigsten Stufen des Umfangs). Keine Zufallssilben nach Länge mehr; `FALLBACK_LENS` ist nur noch Schlüsselteil der Automatik-Stände (`lengths`, `comboKey`).

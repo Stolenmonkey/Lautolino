@@ -8,7 +8,7 @@ import { classifySyllable } from "./stages";
 
 // Höchstzahl mehrsilbiger Wörter je Unterkategorie (1.1 bis 7.2) und neuem Buchstaben; einsilbige Wörter werden nie gekürzt.
 export const WORD_CAP_PER_SUB = 30;
-// Nur für den Rückfall ohne Lernstufen (Aufgabenverteilung wie in Silbenzauber): Längen der Zufallssilben.
+// Nur noch Schlüsselteil der Automatik-Stände (comboKey, "lo|2,3"); Silben werden nicht mehr nach Länge gewählt.
 export const FALLBACK_LENS = [2, 3];
 const ENUM_LIMIT = 400, SAMPLES = 40;
 

@@ -1,6 +1,6 @@
 // Lernlogik der Kinder-App: reine Funktionen auf core und engine (unverändert). Kein Zugriff auf Oberfläche oder Netz.
-import { FALLBACK_LENS, groupedTasks, makeRound, randomCase } from "@silbenflug/core";
-import { autoAdjust, autoParams, comboKey, recordSyl, roundParams, sdFromLen, startVal, sylStat, sylTimeParams, syllablePlan } from "@silbenflug/engine";
+import { FALLBACK_LENS, groupedTasks, randomCase } from "@silbenflug/core";
+import { autoAdjust, autoParams, comboKey, secureTasks, recordSyl, roundParams, sdFromLen, startVal, sylStat, sylTimeParams, syllablePlan } from "@silbenflug/engine";
 import type { AutoState } from "@silbenflug/engine";
 import type { Rng, SilbenflugConfig } from "@silbenflug/shared";
 
@@ -32,17 +32,15 @@ export function prepareRound(plan: Plan, cfg: SilbenflugConfig, st: LocalState, 
   const letters = plan.letters.slice(), lens = FALLBACK_LENS, ap = autoParams(cfg), list = autoList(st.auto);
   const bal = startVal(list, letters, lens, "bal", cfg.auto.default_len_balance, ap.newComboDiscount);
   const sd = lens.length > 1 ? sdFromLen(bal, ap) : startVal(list, letters, lens, "sd", cfg.auto.default_syl_difficulty, ap.newComboDiscount);
-  const sylAvg: Record<string, number | null> = {};
-  Object.keys(st.sylTimes).forEach((s) => { sylAvg[s] = sylStat(st.sylTimes[s], sylTimeParams(cfg)).avg; });
   const st2 = cfg.stages;
-  // Auswahl je Silbe: Freischaltung und Gruppen aus den lokalen Silbenzeiten, Mix aus der Konfiguration (ohne Lernstufen oder zu wenige Silben: Aufgabenverteilung wie in Silbenzauber)
+  // Auswahl je Silbe: Freischaltung und Gruppen aus den lokalen Silbenzeiten, Mix aus der Konfiguration (ohne Lernstufen oder zu wenige offene Silben: sichere Silben der höchsten Stufe)
   let tasks: string[] | null = null;
   if (st2 && st2.enabled !== 0) {
     const sp = syllablePlan(plan.syllables, st.sylTimes, cfg);
     if (sp.fresh.length + sp.building.length + sp.weak.length + sp.solid.length >= cfg.round.min_pool)
       tasks = groupedTasks(cfg.round.task_count, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, roundParams(cfg));
   }
-  if (!tasks) tasks = makeRound(letters, lens, cfg.round.letter_frequency_default, cfg.round.task_count, bal, sylAvg, sd, null, rng, roundParams(cfg));
+  if (!tasks) tasks = secureTasks(plan.syllables, st.sylTimes, cfg, cfg.round.task_count, rng, roundParams(cfg));
   return { key: comboKey(letters, lens), letters, lens, bal, sd, tasks, shown: tasks.map((s) => randomCase(s, rng)) };
 }
 // Rundenende: Silbenzeiten und Rundenzeit merken, Automatik anpassen. Ergebnis: neuer Stand und der Automatik-Wert, der zum Server geschickt wird.

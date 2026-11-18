@@ -25,3 +25,20 @@ describe("structureWords", () => {
     expect(syllableScope(["o"], "l")).toEqual(a);
   });
 });
+
+import { secureTasks } from "@silbenflug/engine";
+import { DEFAULT_CONFIG } from "@silbenflug/shared";
+import { roundParams } from "@silbenflug/engine";
+describe("secureTasks (Rückfall ohne Lernstufen)", () => {
+  const pool = structureWords(["l", "e", "o", "a", "m", "p"]), rp = roundParams(DEFAULT_CONFIG), rng = () => 0.37;
+  it("wählt nur sichere Silben der höchsten Stufe mit sicheren Silben", () => {
+    const times: Record<string, number[]> = {}, v = pool.filter((x) => classifySyllable(x).stage === 1), k = pool.filter((x) => classifySyllable(x).stage === 3).slice(0, 12);
+    [...v, ...k].forEach((x) => (times[x] = Array(10).fill(0.5)));
+    const t = secureTasks(pool, times, DEFAULT_CONFIG, 20, rng, rp);
+    expect(t.length).toBe(20); expect(t.every((x) => k.includes(x) || v.includes(x))).toBe(true); expect(t.some((x) => k.includes(x))).toBe(true);
+  });
+  it("ohne sichere Silben: niedrigste Stufen des Umfangs", () => {
+    const t = secureTasks(pool, {}, DEFAULT_CONFIG, 20, rng, rp);
+    expect(t.length).toBe(20); expect(t.every((x) => classifySyllable(x).stage <= 3)).toBe(true);
+  });
+});

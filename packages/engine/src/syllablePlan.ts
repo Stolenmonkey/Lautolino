@@ -1,6 +1,8 @@
 // Silbenbasierte Auswahl: jede Silbe wird einzeln freigeschaltet und einer Gruppe zugeordnet. Alles wird aus den Silbenzeiten berechnet,
 // gespeichert wird nichts. Bewertung (isMastered) bleibt unverändert.
-import { classifySyllable, contrastSet } from "@silbenflug/core";
+import { classifySyllable, contrastSet, groupedTasks } from "@silbenflug/core";
+import type { RoundParams } from "@silbenflug/core";
+import type { Rng } from "@silbenflug/shared";
 import type { SilbenflugConfig } from "@silbenflug/shared";
 import { isMastered, timeLimitFor } from "./mastery";
 
@@ -66,4 +68,20 @@ export function syllablePlan(pool: string[], times: Record<string, number[]>, cf
     plan.fresh.push(...order.slice(0, need)); plan.locked = plan.locked.filter((s) => !take.has(s));
   }
   return plan;
+}
+
+// Rückfall ohne Lernstufen (oder zu wenig offene Silben): nur sicher beherrschte Silben, und zwar die der höchsten Stufe, in der das Kind etwas sicher kann;
+// reicht das nicht für minPool, kommen sichere Silben der nächsttieferen Stufen dazu. Ohne genug sichere Silben: die niedrigsten Stufen des Umfangs.
+export function secureTasks(pool: string[], times: Record<string, number[]>, cfg: SilbenflugConfig, n: number, rng: Rng, p: RoundParams, minPool: number = cfg.round.min_pool): string[] {
+  const sp = syllablePlan(pool, times, cfg, minPool), byStage = (list: string[]) => {
+    const m = new Map<number, string[]>(); list.forEach((s) => { const k = classifySyllable(s).stage; (m.get(k) ?? m.set(k, []).get(k)!).push(s); });
+    return [...m.entries()].sort((a, b) => b[0] - a[0]);
+  };
+  let list: string[] = [];
+  for (const [, g] of byStage(sp.solid)) { list = list.concat(g); if (list.length >= minPool) break; }
+  if (list.length < minPool) {
+    const all = [...new Set(pool.map((x) => x.toLowerCase()))].sort((a, b) => classifySyllable(a).stage - classifySyllable(b).stage || a.length - b.length || (a < b ? -1 : 1));
+    list = all.slice(0, Math.max(minPool, 1) * 4);
+  }
+  return groupedTasks(n, { fresh: [], building: [], weak: [], solid: list }, { fresh: 1, weak: 1, review: 1 }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, p);
 }

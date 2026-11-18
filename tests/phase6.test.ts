@@ -6,7 +6,7 @@ import { createApp } from "../apps/server/src/app";
 import { nodeSqliteDb } from "../apps/server/src/db";
 import { migrateLocal } from "../apps/server/src/migrate";
 import { hashPassword } from "../apps/server/src/crypto";
-import { buildSyllables, structureWords } from "@silbenflug/core";
+import { buildSyllables, structureWords, classifySyllable } from "@silbenflug/core";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
 import { Page, buildPdf } from "../apps/web/src/pdf";
 import { buildZugPdf, parsePath, sheetPage, wordUnits } from "../apps/web/src/zug";
@@ -103,12 +103,12 @@ describe("Server und Oberfläche", () => {
     expect(b.json.syllables).toEqual(a.json.syllables); expect(c.json.syllables).not.toEqual(a.json.syllables);
     expect((await train(kA, lead)).status).toBe(200);
   });
-  it("Silben-Zug: Automatik-Stand bestimmt die Schwierigkeit (Länge)", async () => {
-    expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0 } }, note: "ohne Lernstufen (alte Auswahl)" })).status).toBe(201);   // Lernstufen sind in diesem Test mit nur 2 Buchstaben nicht gemeint
-    const tok = await kidToken(0), all = structureWords(["o", "l"]);
-    const post = (bal: number, id: string) => call("POST", "/student/rounds", tok, { clientRoundId: id, seconds: 40, syllables: all.map((x) => ({ s: x, sec: 1 })), letters: ["o", "l"], lengths: [2, 3], autoState: { key: "lo|2,3", bal, sd: bal } });
-    expect((await post(0, "a1")).status).toBe(201); expect((await train(kA, teacher, "?seed=1")).json.syllables.every((x: string) => x.length === 2)).toBe(true);
-    expect((await post(100, "a2")).status).toBe(201); expect((await train(kA, teacher, "?seed=1")).json.syllables.every((x: string) => x.length === 3)).toBe(true);
+  it("Silben-Zug ohne Lernstufen: nur sichere Silben der höchsten Stufe, keine Längenwahl", async () => {
+    expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0 } }, note: "ohne Lernstufen" })).status).toBe(201);
+    const tok = await kidToken(0), all = structureWords(["o", "l"]), top = Math.max(...all.map((x) => classifySyllable(x).stage));
+    for (let i = 0; i < 10; i++) expect((await call("POST", "/student/rounds", tok, { clientRoundId: "z" + i, seconds: 40, syllables: all.map((x) => ({ s: x, sec: 1 })), letters: ["o", "l"], lengths: [2, 3], autoState: { key: "lo|2,3", bal: 0, sd: 0 } })).status).toBe(201);
+    const t = (await train(kA, teacher, "?seed=1")).json.syllables as string[];
+    expect(t.length).toBeGreaterThan(0); expect(t.every((x) => classifySyllable(x).stage === top || classifySyllable(x).stage < top)).toBe(true); expect(t.some((x) => classifySyllable(x).stage === top)).toBe(true);
   });
   it("Silben-Zug: Rechte", async () => {
     expect((await train(kA, adm)).status).toBe(403); expect((await train(kA, other)).status).toBe(404); expect((await train(kA, await kidToken(0))).status).toBe(403); expect((await train(kA, null)).status).toBe(401);

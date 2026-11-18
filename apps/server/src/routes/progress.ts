@@ -1,8 +1,8 @@
 // Messwerte, Bewertung sicher beherrschter Silben und Auszeichnungen.
 // Einziger Messwert ist die Zeit bis „Weiter“. Die Bewertung ist zeitbasiert und kein Nachweis der Lesekorrektheit.
 import { Hono } from "hono";
-import { FALLBACK_LENS, groupedTasks, makeRound, randomCase, sylProbs } from "@silbenflug/core";
-import { syllablePlan } from "@silbenflug/engine";
+import { FALLBACK_LENS, groupedTasks, randomCase, sylProbs } from "@silbenflug/core";
+import { secureTasks, syllablePlan } from "@silbenflug/engine";
 import type { SyllablePlan } from "@silbenflug/engine";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
 import { isMastered, letterProgress, newAwards, highestLevel, autoParams, comboKey, roundParams, sdFromLen, startVal, sylStat, sylTimeParams } from "@silbenflug/engine";
@@ -202,14 +202,12 @@ export function progressRoutes() {
     const list: AutoState[] = rows.map((r2) => { const [le, ln] = r2.combo_key.split("|"); return { key: r2.combo_key, letters: le || "", lens: (ln || "").split(",").map(Number).filter((x) => x >= 2 && x <= 4), bal: r2.len_balance ?? undefined, sd: r2.syl_difficulty ?? undefined }; });
     const ap = autoParams(cfg), bal = startVal(list, st.letters, lens, "bal", cfg.auto.default_len_balance, ap.newComboDiscount);
     const sd = lens.length > 1 ? sdFromLen(bal, ap) : startVal(list, st.letters, lens, "sd", cfg.auto.default_syl_difficulty, ap.newComboDiscount);
-    const { times } = await loadTimes(d, id), sylAvg: Record<string, number | null> = {};
-    Object.keys(times).forEach((k) => { sylAvg[k] = sylStat(times[k], sylTimeParams(cfg)).avg; });
-    // Auswahl je Silbe wie in der Kinder-App (Freischaltung, Gruppen, Mix); ohne Lernstufen oder bei zu wenigen Silben die Aufgabenverteilung wie in Silbenzauber
+        // Auswahl je Silbe wie in der Kinder-App (Freischaltung, Gruppen, Mix); ohne Lernstufen oder bei zu wenigen offenen Silben sichere Silben der höchsten Stufe (secureTasks)
     const rp = roundParams(cfg), tr = await studentTraining(d, id, cfg), sp = cfg.stages.enabled ? studentSylPlan(tr, cfg) : null, st2 = cfg.stages;
     const openAll = sp ? sp.fresh.length + sp.building.length + sp.weak.length + sp.solid.length : 0;
     const syllables = sp && openAll >= cfg.round.min_pool
       ? groupedTasks(20, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, rp)
-      : makeRound(st.letters, lens, cfg.round.letter_frequency_default, 20, bal, sylAvg, sd, null, rng, rp);
+      : secureTasks([...new Set(Object.values(tr.scopes).flat())], tr.times, cfg, 20, rng, rp);
     const stu = await d.db.first<{ display_name: string }>("SELECT display_name FROM students WHERE id=?", [id]);
     return c.json({ student: { id, name: stu ? stu.display_name : "" }, letters: st.letters, lengths: lens, comboKey: comboKey(st.letters, lens), syllables, shown: syllables.map((x) => randomCase(x, rng)), generatedAt: nowIso(d) });
   });
