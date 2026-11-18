@@ -17,7 +17,7 @@ const uniqLetters = (s: string): string[] => [...new Set(s.split(""))];
 const upper = (s: string): string => s.toUpperCase();
 
 function sylRow(s: string, times: Record<string, number[]>, maxSeq: Record<string, number>, cfg: SilbenflugConfig, con: Set<string>, locked?: Set<string>) {
-  const c = classifySyllable(s), t = times[s] || [], limit = timeLimitFor(cfg.mastery.time_limit_seconds, s.length);
+  const c = classifySyllable(s), t = times[s] || [], limit = timeLimitFor(cfg.mastery.time_limit_seconds, s);
   const m = isMastered(t, cfg, s), st = sylStat(t, sylTimeParams(cfg));
   return {
     syllable: s, parts: c.parts, structure: c.structure, length: s.length, letters: uniqLetters(s), stage: c.stage, sub: c.sub, subName: subName(c.sub), contrast: con.has(s), locked: !!locked && locked.has(s),

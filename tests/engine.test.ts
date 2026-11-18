@@ -27,17 +27,22 @@ describe("Bewertung sicher beherrschter Silben", () => {
     const t = [...Array(10).fill(3), 9, 9, 9, 9];
     expect(isMastered(t, cfg, "ol").status).toBe("not_mastered");
   });
-  it("ohne Zeitvorgabe keine Bewertung", () => { const c = clone(); c.mastery.time_limit_seconds["2"] = null; expect(isMastered(Array(10).fill(1), c, "ol").status).toBe("unrated"); });
+  it("ohne Zeitvorgabe keine Bewertung", () => { const c = clone(); c.mastery.time_limit_seconds["3"] = null; expect(isMastered(Array(10).fill(1), c, "ol").status).toBe("unrated"); });
 });
 
-describe("Zeitvorgabe je Silbenlänge", () => {
-  it("2er, 3er und 4er haben getrennte Vorgaben", () => {
-    const c = clone(); c.mastery.time_limit_seconds = { "2": 2, "3": 4, "4": 6 };
+describe("Zeitvorgabe je Lernstufe", () => {
+  it("jede Stufe hat ihre eigene Vorgabe (Wortlänge spielt keine Rolle)", () => {
+    const c = clone(); c.mastery.time_limit_seconds = { "1": 2, "3": 4, "4": 6, "5": 6, "6": 8, "7": 3 };
     const t = Array(10).fill(3);
-    expect(isMastered(t, c, "ol").status).toBe("not_mastered");
-    expect(isMastered(t, c, "ole").status).toBe("mastered");
-    expect(isMastered(Array(10).fill(5), c, "land").status).toBe("mastered");
+    expect(isMastered(t, c, "la").status).toBe("not_mastered");        // Stufe 1: 2 s
+    expect(isMastered(t, c, "ol").status).toBe("mastered");            // Stufe 3: 4 s
+    expect(isMastered(Array(10).fill(5), c, "lala").status).toBe("mastered");   // Stufe 4: 6 s
+    expect(isMastered(Array(10).fill(5), c, "malala").status).toBe("mastered"); // Stufe 6: 8 s
+    expect(isMastered(Array(10).fill(5), c, "plam").status).toBe("not_mastered"); // Stufe 7: 3 s
     expect(validateConfig(c)).toEqual([]);
+  });
+  it("Standardwerte: 3,5 s (Stufe 1 bis 3), 5 s (4, 5, 7), 7 s (6)", () => {
+    expect(DEFAULT_CONFIG.mastery.time_limit_seconds).toEqual({ "1": 3.5, "3": 3.5, "4": 5, "5": 5, "6": 7, "7": 5 });
   });
 });
 

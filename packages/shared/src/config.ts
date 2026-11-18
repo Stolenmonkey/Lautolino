@@ -8,7 +8,7 @@ export interface SilbenflugConfig {
     default_len_balance: number; default_syl_difficulty: number;
   };
   round: { task_count: number; repeat_damping: number; letter_frequency_default: number; difficulty_curve_exponent: number; min_pool: number };
-  mastery: { window: number; drop_longest: number; min_measurements: number; time_limit_seconds: Record<"2" | "3" | "4", number | null> };
+  mastery: { window: number; drop_longest: number; min_measurements: number; time_limit_seconds: Record<"1" | "3" | "4" | "5" | "6" | "7", number | null> };   // Zeitvorgabe je Lernstufe (Stufe 2 nutzt die Vorgabe der Stufe 1)
   award: { bronze_percent: number | null; silver_percent: number | null; gold_percent: number | null };
   unlock: { rules: unknown | null };
   retention: { after_use_days: number | null; after_leaving_days: number | null };
@@ -27,7 +27,7 @@ export const DEFAULT_CONFIG: SilbenflugConfig = {
     syl_to_len_ratio: 2, syl_cap: 100, new_combo_discount: 25, stats_rounds: 7, default_len_balance: 50, default_syl_difficulty: 50,
   },
   round: { task_count: 20, repeat_damping: 2, letter_frequency_default: 0, difficulty_curve_exponent: 4, min_pool: 3 },
-  mastery: { window: 12, drop_longest: 2, min_measurements: 10, time_limit_seconds: { "2": 3.5, "3": 3.5, "4": 3.5 } },
+  mastery: { window: 12, drop_longest: 2, min_measurements: 10, time_limit_seconds: { "1": 3.5, "3": 3.5, "4": 5, "5": 5, "6": 7, "7": 5 } },
   award: { bronze_percent: 50, silver_percent: 75, gold_percent: 95 },
   unlock: { rules: null },
   retention: { after_use_days: null, after_leaving_days: null },
@@ -62,7 +62,7 @@ export function validateConfig(c: SilbenflugConfig): string[] {
   num(r.letter_frequency_default, 0, 100, "round.letter_frequency_default"); num(r.difficulty_curve_exponent, 0.1, 20, "round.difficulty_curve_exponent");
   int(r.min_pool, 1, 20, "round.min_pool");
   int(m.window, 1, 100, "mastery.window"); int(m.drop_longest, 0, 50, "mastery.drop_longest"); int(m.min_measurements, 1, 100, "mastery.min_measurements");
-  (["2", "3", "4"] as const).forEach((L) => opt(m.time_limit_seconds[L], 0.1, 3600, `mastery.time_limit_seconds.${L}`));
+  (["1", "3", "4", "5", "6", "7"] as const).forEach((L) => opt(m.time_limit_seconds[L], 0.1, 3600, `mastery.time_limit_seconds.${L}`));
   if (m.min_measurements > m.window) e.push("mastery.min_measurements darf nicht größer als mastery.window sein");
   if (m.window > s.retention) e.push("mastery.window darf nicht größer als syl_time.retention sein (es werden sonst zu wenige Zeiten gespeichert)");
   opt(w.bronze_percent, 0, 100, "award.bronze_percent"); opt(w.silver_percent, 0, 100, "award.silver_percent"); opt(w.gold_percent, 0, 100, "award.gold_percent");

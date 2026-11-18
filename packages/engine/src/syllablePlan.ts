@@ -53,7 +53,7 @@ export function syllablePlan(pool: string[], times: Record<string, number[]>, cf
   syls.forEach((s) => {
     const n = (times[s] || []).length, r = done.get(s)!;
     plan.count[s] = n;
-    const limit = timeLimitFor(cfg.mastery.time_limit_seconds, s.length);
+    const limit = timeLimitFor(cfg.mastery.time_limit_seconds, s);
     if (r.avg !== null && limit) plan.ratio[s] = r.avg / limit;
     if (r.status === "mastered") plan.solid.push(s);
     else if (r.status === "not_mastered") plan.weak.push(s);

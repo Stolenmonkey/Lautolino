@@ -1,19 +1,20 @@
 // Bewertung sicher beherrschter Silben und Auszeichnungen. Keine eigenen Regeln: alles kommt aus der Konfiguration.
 // Die Bewertung ist zeitbasiert und kein Nachweis der Lesekorrektheit.
 import type { AwardLevel, SilbenflugConfig } from "@silbenflug/shared";
+import { classifySyllable } from "@silbenflug/core";
 import { sylStat } from "./sylTime";
 
 export type SylStatus = "unrated" | "mastered" | "not_mastered";
 
-// Zeitvorgabe nach Buchstabenzahl: 2 bis 4 wie bisher; kürzere (einzelner Vokal) und längere Wörter (mehrere Sprechsilben) nehmen die Vorgabe der nächstliegenden Länge.
-export function timeLimitFor(limits: SilbenflugConfig["mastery"]["time_limit_seconds"], len: number): number | null {
-  return limits[String(Math.min(4, Math.max(2, len))) as "2" | "3" | "4"] ?? null;
+// Zeitvorgabe nach Lernstufe der Silbe (1 bis 7, Stufe 2 teilt sich die Vorgabe mit Stufe 1; classifySyllable ordnet jedes Wort genau einer Stufe zu).
+export function timeLimitFor(limits: SilbenflugConfig["mastery"]["time_limit_seconds"], syllable: string): number | null {
+  return limits[String(classifySyllable(syllable).stage) as keyof typeof limits] ?? null;
 }
 
-// syllable: die Silbe selbst; ihre Länge bestimmt die Zeitvorgabe (siehe timeLimitFor).
+// syllable: die Silbe selbst; ihre Lernstufe bestimmt die Zeitvorgabe (siehe timeLimitFor).
 export function isMastered(times: number[] | undefined, cfg: SilbenflugConfig, syllable: string): { status: SylStatus; avg: number | null } {
   const m = cfg.mastery, t = times || [];
-  const limit = timeLimitFor(m.time_limit_seconds, syllable.length);
+  const limit = timeLimitFor(m.time_limit_seconds, syllable);
   if (t.length < m.min_measurements || limit === null) return { status: "unrated", avg: null };
   const st = sylStat(t, { window: m.window, dropLongest: m.drop_longest, minKeep: cfg.syl_time.min_keep });
   if (st.avg === null) return { status: "unrated", avg: null };

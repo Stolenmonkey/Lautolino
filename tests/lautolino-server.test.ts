@@ -129,11 +129,11 @@ describe("Lautolino (Server und Oberfläche)", () => {
       await rounds(tok, ["pe"], 4, 9, "c");                                                                         // 14 Messungen, 4 davon langsam
       let ev = (await call("GET", `/students/${kA}/evaluation`, teacher)).json, row = (s: string) => ev.syllables.find((x: any) => x.syllable === s);
       expect(row("ma")).toMatchObject({ count: 9, stored: 9, status: "unrated", avg: 1, sub: "1.2", stage: 1, parts: ["ma"], letters: ["m", "a"] });
-      expect(row("la")).toMatchObject({ count: 10, stored: 10, status: "mastered", successful: 10, avg: 1, limit: DEFAULT_CONFIG.mastery.time_limit_seconds["2"] });
+      expect(row("la")).toMatchObject({ count: 10, stored: 10, status: "mastered", successful: 10, avg: 1, limit: DEFAULT_CONFIG.mastery.time_limit_seconds["1"] });
       expect(row("pe")).toMatchObject({ count: 14, stored: 12 });                                                   // Abfragen zählen alle, gespeichert sind die letzten 12
       const times = (raw.prepare("SELECT seconds FROM syllable_times WHERE student_id=? AND syllable='pe' ORDER BY seq").all(kA) as any[]).map((x) => x.seconds);
       expect(times.length).toBe(12); expect(row("pe").avg).toBe(sylStat(times, sylTimeParams(DEFAULT_CONFIG)).avg);   // Ø stimmt mit den gespeicherten Messwerten überein
-      expect(row("pe").successful).toBe(times.filter((x) => x <= DEFAULT_CONFIG.mastery.time_limit_seconds["2"]!).length);
+      expect(row("pe").successful).toBe(times.filter((x) => x <= DEFAULT_CONFIG.mastery.time_limit_seconds["1"]!).length);
       await rounds(tok, ["ma"], 1, 1, "d"); ev = (await call("GET", `/students/${kA}/evaluation`, teacher)).json; expect(row("ma")).toMatchObject({ count: 10, status: "mastered" });
       expect(ev.minMeasurements).toBe(10); expect(Object.keys(ev.syllables[0]).sort()).toEqual(["avg", "contrast", "count", "length", "letters", "limit", "locked", "parts", "stage", "status", "structure", "stored", "sub", "subName", "successful", "syllable"].sort());
     });

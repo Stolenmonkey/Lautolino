@@ -52,7 +52,7 @@ async function konfiguration(root, api, msg) {
       if (p[0] === "unlock") { into.append(h("div", { class: "row muted" }, "unlock.rules: noch nicht festgelegt")); continue; }
       const inp = h("input", { type: "number", step: "any", value: v === null ? "" : String(v), "aria-label": p.join(".") });
       inputs.push({ path: p, inp, nullable: v === null });
-      into.append(h("div", { class: "row" }, h("label", {}, h("span", { class: "mono", style: "min-width:260px" }, p.slice(1).join(".")), inp, v === null ? h("span", { class: "muted" }, "(leer = nicht festgelegt)") : null)));
+      into.append(h("div", { class: "row" }, h("label", {}, h("span", { class: "mono", style: "min-width:260px" }, p.slice(1).join(".").replace(/^time_limit_seconds\.(\d)$/, "Zeitvorgabe Stufe $1 (Sek.)")), inp, v === null ? h("span", { class: "muted" }, "(leer = nicht festgelegt)") : null)));
     }
   };
   for (const sec of Object.keys(cur.config)) { const box = h("div", { class: "card" }, h("h3", {}, LABELS[sec] || sec)); walk({ [sec]: cur.config[sec] }, [], box); form.append(box); }

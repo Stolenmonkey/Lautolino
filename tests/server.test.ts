@@ -341,7 +341,7 @@ describe("Messwerte und Auszeichnungen", () => {
   it("Konfigurationsänderung verändert bestehende Auszeichnungen nicht", async () => {
     const { adm, tok, scope } = await klasseMitKindern(), mia = await tok(0), syls = await scope("l");
     for (let i = 0; i < 10; i++) await round(mia, syls, 2);
-    const c = JSON.parse(JSON.stringify(DEFAULT_CONFIG)); c.award = { bronze_percent: 96, silver_percent: 98, gold_percent: 100 }; c.mastery.time_limit_seconds = { "2": 0.5, "3": 0.5, "4": 0.5 };
+    const c = JSON.parse(JSON.stringify(DEFAULT_CONFIG)); c.award = { bronze_percent: 96, silver_percent: 98, gold_percent: 100 }; c.mastery.time_limit_seconds = { "1": 0.5, "3": 0.5, "4": 0.5, "5": 0.5, "6": 0.5, "7": 0.5 };
     expect((await call("POST", "/admin/config", adm, { config: c })).status).toBe(201);
     expect((await call("GET", "/student/awards", mia)).json.letters.find((x: any) => x.letter === "l").level).toBe("gold");
     expect(raw.prepare("SELECT DISTINCT config_version AS v FROM awards").all().map((x: any) => x.v)).toEqual([1]); // Version der Vergabe bleibt gespeichert
