@@ -1,5 +1,5 @@
 // Fester Silbenumfang je Buchstabe. Wird bei der Freigabe EINMAL berechnet und dauerhaft gespeichert.
-import { structureWords, classifySyllable, partWeight, wordScore } from "@silbenflug/core";
+import { structureWords, classifySyllable, partWeight, wordScore, isRealWord } from "@silbenflug/core";
 
 // Begrenzung des Umfangs (Konfiguration, Block scope): höchstens capStage14 Wörter je Lernstufe 1 bis 4 und capStage57 je Lernstufe 5 bis 7 für einen neuen Buchstaben.
 // freqPercent: Anteil der Plätze, der nach Häufigkeit im Deutschen vergeben wird (100 = nur die häufigsten, der Rest wird fest ausgelost).
@@ -8,10 +8,11 @@ export interface ScopeParams { capStage14: number; capStage57: number; freqPerce
 const fnv = (s: string): number => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 
 // Wählt je Lernstufe höchstens cap Wörter (cap mal mult). Die Plätze werden reihum auf die Unterkategorien der Stufe verteilt (z. B. 3.1 VK und 3.2 KVK);
-// bleibt eine Unterkategorie leer, rücken die anderen nach. Stufe 2 hat keine eigene Menge (Ableitung aus Stufe 1).
+// bleibt eine Unterkategorie leer, rücken die anderen nach. Ab Stufe 4 zählen nur echte Wörter (kein Auffüllen mit Pseudowörtern). Stufe 2 hat keine eigene Menge (Ableitung aus Stufe 1).
 export function limitScope(cands: string[], p: ScopeParams, mult: number, seed: string): string[] {
   const out: string[] = [], bySub = new Map<string, string[]>();
-  for (const w of [...new Set(cands)]) { const c = classifySyllable(w); (bySub.get(c.sub) ?? bySub.set(c.sub, []).get(c.sub)!).push(w); }
+  for (const w of [...new Set(cands)]) { const c = classifySyllable(w); if (c.stage >= 4 && !isRealWord(w)) continue;   // mehrsilbige Stufen: nur sinnvolle (echte) Wörter, sonst bleibt der Platz leer
+    (bySub.get(c.sub) ?? bySub.set(c.sub, []).get(c.sub)!).push(w); }
   for (let stage = 1; stage <= 7; stage++) {
     const cap = Math.max(0, Math.round((stage <= 4 ? p.capStage14 : p.capStage57) * mult));
     const subs = [...bySub.keys()].filter((id) => id.startsWith(stage + ".")).sort();

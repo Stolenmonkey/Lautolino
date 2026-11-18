@@ -1,6 +1,6 @@
 // Silbenumfang je neuem Buchstaben: Obergrenze je Lernstufe, Häufigkeit, Konfiguration.
 import { describe, expect, it } from "vitest";
-import { classifySyllable, partWeight, wordScore } from "@silbenflug/core";
+import { classifySyllable, partWeight, wordScore, isRealWord } from "@silbenflug/core";
 import { syllableScope, groupScope, scopeParams, limitScope } from "@silbenflug/engine";
 import { DEFAULT_CONFIG, validateConfig, withDefaults } from "@silbenflug/shared";
 
@@ -48,6 +48,10 @@ describe("Silbenumfang mit Obergrenze und Häufigkeit", () => {
   it("limitScope: bleibt eine Unterkategorie leer, rücken die anderen nach", () => {
     const w = limitScope(["ma", "mo", "me", "mi", "mu", "am", "em"], { capStage14: 4, capStage57: 4, freqPercent: 100 }, 1, "x");
     expect(w.filter((x) => classifySyllable(x).stage === 1).length).toBe(4); expect(w.filter((x) => classifySyllable(x).stage === 3).length).toBe(2);
+  });
+  it("ab Stufe 4 nur echte Wörter, sonst bleibt die Stufe kleiner", () => {
+    const w = syllableScope(known, "p", sp); w.filter((x) => classifySyllable(x).stage >= 4).forEach((x) => expect(isRealWord(x)).toBe(true));
+    expect(limitScope(["almlale", "lala"], { capStage14: 10, capStage57: 8, freqPercent: 100 }, 1, "x")).not.toContain("almlale");
   });
   it("Konfiguration: Prüfung der Werte und Ergänzung älterer Versionen", () => {
     expect(validateConfig(DEFAULT_CONFIG)).toEqual([]);
