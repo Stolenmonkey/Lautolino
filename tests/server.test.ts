@@ -190,14 +190,14 @@ describe("Konfigurationsversionen", () => {
   it("Standardkonfiguration wird als Version 1 angelegt; Änderung erzeugt neue Version, alte bleibt", async () => {
     const adm = (await login("admin@test.de", "admin-passwort-1")).json.token;
     expect((await call("GET", "/config", adm)).json.version).toBe(1);
-    const c = JSON.parse(JSON.stringify(DEFAULT_CONFIG)); c.award.gold_percent = 90;
-    expect((await call("POST", "/admin/config", adm, { config: c, note: "Gold 90" })).json.version).toBe(2);
-    expect((await call("GET", "/config", adm)).json.config.award.gold_percent).toBe(90);
-    expect((await call("GET", "/admin/config/versions/1", adm)).json.config.award.gold_percent).toBe(95);
+    const c = JSON.parse(JSON.stringify(DEFAULT_CONFIG)); c.award.share_percent = 80;
+    expect((await call("POST", "/admin/config", adm, { config: c, note: "Anteil 80" })).json.version).toBe(2);
+    expect((await call("GET", "/config", adm)).json.config.award.share_percent).toBe(80);
+    expect((await call("GET", "/admin/config/versions/1", adm)).json.config.award.share_percent).toBe(90);
     expect((await call("GET", "/admin/config/versions", adm)).json.filter((v: any) => v.is_active === 1).length).toBe(1);
   });
   it("ungültige Konfiguration wird abgelehnt und ändert nichts", async () => {
-    const adm = (await login("admin@test.de", "admin-passwort-1")).json.token, c = JSON.parse(JSON.stringify(DEFAULT_CONFIG)); c.award.bronze_percent = 99;
+    const adm = (await login("admin@test.de", "admin-passwort-1")).json.token, c = JSON.parse(JSON.stringify(DEFAULT_CONFIG)); c.award.share_percent = 150;
     const r = await call("POST", "/admin/config", adm, { config: c }); expect(r.status).toBe(400);
     expect((await call("GET", "/config", adm)).json.version).toBe(1);
     expect((await call("POST", "/admin/config", adm, { config: { syl_time: {} } })).status).toBe(400);
@@ -331,8 +331,8 @@ describe("Messwerte und Auszeichnungen", () => {
     expect(r10.json.awards.map((a: any) => a.letter).sort()).toEqual(["l", "o"]);
     for (const a of r10.json.awards) { expect(a.levels).toEqual(["bronze", "silber", "gold"]); expect(a.highest).toBe("gold"); }
     const ov = (await call("GET", "/student/awards", mia)).json;
-    expect(ov.letters.length).toBe(26); expect(ov.letters.find((x: any) => x.letter === "o")).toEqual({ letter: "o", released: true, level: "gold" });
-    expect(ov.letters.find((x: any) => x.letter === "z")).toEqual({ letter: "z", released: false, level: null });
+    expect(ov.letters.length).toBe(26); expect(ov.letters.find((x: any) => x.letter === "o")).toEqual({ letter: "o", released: true, level: "gold", progress: null });
+    expect(ov.letters.find((x: any) => x.letter === "z")).toEqual({ letter: "z", released: false, level: null, progress: null });
     expect(ov.pending.sort((a: any, b: any) => a.letter.localeCompare(b.letter))).toEqual([{ letter: "l", level: "gold" }, { letter: "o", level: "gold" }]); // je Buchstabe nur die höchste Stufe
     expect(JSON.stringify(ov)).not.toContain("percent");                // Kinder sehen keine Prozentwerte
     await call("POST", "/student/awards/ack", mia);
@@ -352,7 +352,7 @@ describe("Messwerte und Auszeichnungen", () => {
   it("Konfigurationsänderung verändert bestehende Auszeichnungen nicht", async () => {
     const { adm, tok, scope } = await klasseMitKindern(), mia = await tok(0), syls = await scope("l");
     for (let i = 0; i < 10; i++) await round(mia, syls, 2);
-    const c = JSON.parse(JSON.stringify(DEFAULT_CONFIG)); c.award = { bronze_percent: 96, silver_percent: 98, gold_percent: 100 }; c.mastery.time_limit_seconds = { "1": 0.5, "3": 0.5, "4": 0.5, "5": 0.5, "6": 0.5, "7": 0.5 };
+    const c = JSON.parse(JSON.stringify(DEFAULT_CONFIG)); c.award = { share_percent: 100 }; c.mastery.time_limit_seconds = { "1": 0.5, "3": 0.5, "4": 0.5, "5": 0.5, "6": 0.5, "7": 0.5 };
     expect((await call("POST", "/admin/config", adm, { config: c })).status).toBe(201);
     expect((await call("GET", "/student/awards", mia)).json.letters.find((x: any) => x.letter === "l").level).toBe("gold");
     expect(raw.prepare("SELECT DISTINCT config_version AS v FROM awards").all().map((x: any) => x.v)).toEqual([1]); // Version der Vergabe bleibt gespeichert

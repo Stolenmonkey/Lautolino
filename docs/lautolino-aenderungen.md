@@ -100,3 +100,10 @@ Nicht getestet: echter Versand über Resend (kein Konto/Schlüssel hier) und die
 - Werte gelten nur für künftige Freigaben, bereits gespeicherte Umfänge bleiben unverändert. Einstellbar unter Admin → Konfiguration → „Silbenumfang je neuem Buchstaben“.
 - Datenquelle: Tabelle `packages/core/src/silbenfreq.ts` (generiert, Quelle Python-Paket wordfreq, Daten CC BY-SA 4.0). Neu erzeugen: `python3 tools/silbenfreq/export_words.py > /tmp/words.tsv` und `npx tsx tools/silbenfreq/build.ts /tmp/words.tsv`.
 - Hinweis: Die Berechnung braucht rund 0,8 s CPU bei 10 Buchstaben (vorher 0,3 s).
+
+## Auszeichnungen nach Lernstufen (statt Prozentschwellen)
+- Bronze, Silber und Gold gelten je Buchstabe und richten sich nach den Lernstufen, in denen der Buchstabe Silben hat (aktive Stufen, mindestens 4). `packages/engine/src/mastery.ts`: `awardStatus`, `tierEnds`, `levelsReached`, `newAwards`, `levelProgress` (neue Signatur mit Silbenumfang und Zeiten statt Prozent).
+- Letzte aktive Stufe von Bronze/Silber/Gold: 7 aktive Stufen 3/5/7, 6 → 3/5/6, 5 → 2/4/5, 4 → 2/3/4. Gold endet immer bei der letzten aktiven Stufe.
+- Jede Auszeichnung braucht in ihrem Stufenbereich und in allen früheren Bereichen mindestens `award.share_percent` (Standard 90) Prozent sicher beherrschter Silben; Silber setzt Bronze voraus, Gold setzt Silber voraus. `null` = Auszeichnung aus.
+- Die Konfiguration kennt nur noch `award.share_percent` (alte Werte bronze/silver/gold_percent entfallen). Bereits vergebene Auszeichnungen bleiben unverändert; keine Migration nötig.
+- Nach der Änderung: `npm run build` (Kinder-App `apps/kids/dist/app.js`).

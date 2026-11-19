@@ -36,17 +36,45 @@ export function letterProgress(scope: string[], timesBySyl: Record<string, numbe
 
 const ORDER: AwardLevel[] = ["bronze", "silber", "gold"];
 
-// Alle Stufen, deren Grenze erreicht ist. Sind die Grenzen nicht festgelegt, ist die Auszeichnung aus.
-export function levelsReached(percent: number, cfg: SilbenflugConfig): AwardLevel[] {
-  const a = cfg.award;
-  if (a.bronze_percent === null || a.silver_percent === null || a.gold_percent === null) return [];
-  const lim: Record<AwardLevel, number> = { bronze: a.bronze_percent, silber: a.silver_percent, gold: a.gold_percent };
-  return ORDER.filter((l) => percent >= lim[l]);
+// Auszeichnungen je Buchstabe nach Lernstufen (nicht nach Prozent des Silbenumfangs).
+// Betrachtet werden nur die Lernstufen, in denen der Buchstabe Silben hat (aktive Stufen, nach Stufennummer sortiert).
+// Letzte aktive Stufe von Bronze, Silber, Gold je nach Zahl n der aktiven Stufen; Gold endet immer bei der letzten aktiven Stufe.
+const TIER_ENDS: Record<number, [number, number, number]> = { 4: [2, 3, 4], 5: [2, 4, 5], 6: [3, 5, 6], 7: [3, 5, 7] };
+export function tierEnds(n: number): [number, number, number] {
+  if (n >= 7) return TIER_ENDS[7];
+  return TIER_ENDS[n] ?? [Math.max(1, n - 2), Math.max(1, n - 1), n];   // unter 4 aktiven Stufen (kommt praktisch nicht vor): Stufen einzeln, Auszeichnungen ggf. gleichzeitig
+}
+
+export interface AwardStatus {
+  levels: AwardLevel[];                                    // alle Stufen, die erreicht sind (setzt jeweils die vorherige voraus)
+  ranges: Array<{ total: number; mastered: number }>;      // je Auszeichnung der zugehörige Stufenbereich (Bronze, Silber, Gold)
+  fractions: number[];                                     // je Bereich: Anteil sicherer Silben geteilt durch die Schwelle, höchstens 1
+}
+
+// Eine Auszeichnung ist erreicht, wenn in ihrem Stufenbereich und in allen früheren Bereichen mindestens share_percent der Silben sicher beherrscht sind.
+// Unbewertete Silben zählen als noch nicht sicher. Ist share_percent nicht festgelegt (null), ist die Auszeichnung aus.
+export function awardStatus(scope: string[], timesBySyl: Record<string, number[]>, cfg: SilbenflugConfig): AwardStatus {
+  const share = cfg.award.share_percent;
+  const byStage = new Map<number, string[]>();
+  [...new Set(scope)].forEach((s) => { const k = classifySyllable(s).stage; (byStage.get(k) ?? byStage.set(k, []).get(k)!).push(s); });
+  const stages = [...byStage.keys()].sort((a, b) => a - b), ends = tierEnds(stages.length);
+  const ranges = ends.map((end, i) => {
+    const from = i === 0 ? 0 : ends[i - 1], syl = stages.slice(from, end).flatMap((k) => byStage.get(k)!);
+    return { total: syl.length, mastered: syl.filter((s) => isMastered(timesBySyl[s], cfg, s).status === "mastered").length };
+  });
+  const fractions = ranges.map((r) => (share === null ? 0 : r.total === 0 || share <= 0 ? 1 : Math.min(1, (r.mastered / r.total) / (share / 100) + 1e-9)));
+  const levels: AwardLevel[] = [];
+  if (share !== null) for (let i = 0; i < ORDER.length; i++) { if (fractions.slice(0, i + 1).every((f) => f >= 1 - 1e-9)) levels.push(ORDER[i]); else break; }
+  return { levels, ranges, fractions };
+}
+
+export function levelsReached(scope: string[], timesBySyl: Record<string, number[]>, cfg: SilbenflugConfig): AwardLevel[] {
+  return awardStatus(scope, timesBySyl, cfg).levels;
 }
 
 // Nur neue Stufen, die das Kind noch nicht besitzt. Bereits vergebene Auszeichnungen werden nie entfernt oder geändert.
-export function newAwards(held: AwardLevel[], percent: number, cfg: SilbenflugConfig): AwardLevel[] {
-  return levelsReached(percent, cfg).filter((l) => held.indexOf(l) < 0);
+export function newAwards(held: AwardLevel[], scope: string[], timesBySyl: Record<string, number[]>, cfg: SilbenflugConfig): AwardLevel[] {
+  return levelsReached(scope, timesBySyl, cfg).filter((l) => held.indexOf(l) < 0);
 }
 export function highestLevel(levels: AwardLevel[]): AwardLevel | null {
   let h: AwardLevel | null = null;
@@ -54,15 +82,12 @@ export function highestLevel(levels: AwardLevel[]): AwardLevel | null {
   return h;
 }
 
-// Fortschritt zum nächsten Medaillen-Schritt in `steps` Segmenten (Standard 4, 0 bis steps). Der Weg läuft von der Grenze der bisherigen Medaille (ohne Medaille: 0) bis zur Grenze der nächsten.
+// Fortschritt zur nächsten Medaille in `steps` Segmenten (Standard 4, 0 bis steps): schwächster Bereich bis zur nächsten Medaille, bezogen auf die Schwelle.
 // Nach Gold oder bei ausgeschalteter Auszeichnung: null (keine Anzeige). Ändert keine Bewertung, nur Anzeige.
-export function levelProgress(held: AwardLevel | null, percent: number, cfg: SilbenflugConfig, steps = 4): { next: AwardLevel; segments: number } | null {
-  const a = cfg.award;
-  if (a.bronze_percent === null || a.silver_percent === null || a.gold_percent === null) return null;
-  const lim: Record<AwardLevel, number> = { bronze: a.bronze_percent, silber: a.silver_percent, gold: a.gold_percent };
+export function levelProgress(held: AwardLevel | null, scope: string[], timesBySyl: Record<string, number[]>, cfg: SilbenflugConfig, steps = 4): { next: AwardLevel; segments: number } | null {
+  if (cfg.award.share_percent === null) return null;
   const i = held ? ORDER.indexOf(held) + 1 : 0;
   if (i >= ORDER.length) return null;
-  const next = ORDER[i], lo = held ? lim[held] : 0, hi = lim[next];
-  const seg = hi > lo ? Math.floor(((percent - lo) / (hi - lo)) * steps + 1e-9) : steps;
-  return { next, segments: Math.max(0, Math.min(steps, seg)) };
+  const f = Math.min(...awardStatus(scope, timesBySyl, cfg).fractions.slice(0, i + 1));
+  return { next: ORDER[i], segments: f >= 1 - 1e-9 ? steps : Math.max(0, Math.floor(f * steps)) };
 }

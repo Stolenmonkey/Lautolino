@@ -1,6 +1,6 @@
 // Lernlogik der Kinder-App: reine Funktionen auf core und engine (unverändert). Kein Zugriff auf Oberfläche oder Netz.
 import { groupedTasks, randomCase } from "@silbenflug/core";
-import { secureTasks, recordSyl, roundParams, syllablePlan, letterProgress, levelProgress, levelsReached, highestLevel } from "@silbenflug/engine";
+import { secureTasks, recordSyl, roundParams, syllablePlan, levelProgress, levelsReached, highestLevel } from "@silbenflug/engine";
 import type { AwardLevel, Rng, SilbenflugConfig } from "@silbenflug/shared";
 
 export interface Plan { classId: string | null; letters: string[]; syllables: string[]; scopes?: Record<string, string[]> }   // syllables: fester Silbenumfang der freigegebenen Buchstaben (vom Server)
@@ -51,8 +51,8 @@ export function localAwards(prev: LetterAward[], scopes: Record<string, string[]
   return prev.map((x) => {
     const sc = scopes[x.letter];
     if (!x.released || !sc || !sc.some((s) => pl.has(s))) return x;
-    const percent = letterProgress(sc, sylTimes, cfg).percent, reached = highestLevel(levelsReached(percent, cfg));
+    const reached = highestLevel(levelsReached(sc, sylTimes, cfg));
     const level = reached && (!x.level || ORDER.indexOf(reached) > ORDER.indexOf(x.level)) ? reached : x.level;
-    return { ...x, level, progress: levelProgress(level, percent, cfg, 5) };
+    return { ...x, level, progress: levelProgress(level, sc, sylTimes, cfg, 5) };
   });
 }

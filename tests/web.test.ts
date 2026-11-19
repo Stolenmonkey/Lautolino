@@ -57,9 +57,9 @@ describe("Oberfläche gegen echten Server", () => {
     // Admin: Konfiguration sichtbar und speicherbar
     root = document.createElement("div"); await adminView("konfiguration", root, { api: adminApi, user: admin }); await flush();
     expect(root.textContent).toContain("Globale Konfiguration (aktive Version 1)");
-    const gold = root.querySelector('input[aria-label="award.gold_percent"]') as HTMLInputElement; expect(gold.value).toBe("95"); gold.value = "90";
+    const gold = root.querySelector('input[aria-label="award.share_percent"]') as HTMLInputElement; expect(gold.value).toBe("90"); gold.value = "85";
     click(root, "Als neue Version speichern"); await flush();
-    expect(root.textContent).toContain("Neue Version 2"); expect((await adminApi.get("/config")).config.award.gold_percent).toBe(90);
+    expect(root.textContent).toContain("Neue Version 2"); expect((await adminApi.get("/config")).config.award.share_percent).toBe(85);
     // Schulleitung: Schuljahr und Klasse anlegen, Lehrkraft anlegen und zuweisen
     const leadApi = mk(), L = await leadApi.login("leitung@test.de", lead.initialPassword);
     await leadApi.post(`/schools/${sid}/years`, { label: "2026/27" });

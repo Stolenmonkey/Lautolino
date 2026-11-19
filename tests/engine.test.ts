@@ -3,16 +3,17 @@ import { createRequire } from "node:module";
 const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite");
 import { readFileSync } from "node:fs";
 import { DEFAULT_CONFIG, validateConfig, type SilbenflugConfig } from "@silbenflug/shared";
-import { isMastered, letterProgress, levelProgress, levelsReached, newAwards, highestLevel, syllableScope } from "@silbenflug/engine";
+import { isMastered, letterProgress, levelProgress, levelsReached, newAwards, highestLevel, tierEnds, syllableScope } from "@silbenflug/engine";
 
 const clone = (): SilbenflugConfig => JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
 describe("Konfiguration", () => {
   it("Standardwerte sind gültig", () => expect(validateConfig(DEFAULT_CONFIG)).toEqual([]));
   it("erkennt Fehler", () => {
-    const c = clone(); c.award.gold_percent = 40; c.syl_time.min_keep = 99; c.auto.avg_rounds = 9;
+    const c = clone(); c.award.share_percent = 0; c.syl_time.min_keep = 99; c.auto.avg_rounds = 9;
     expect(validateConfig(c).length).toBeGreaterThanOrEqual(3);
-    const d = clone(); d.award.silver_percent = null; expect(validateConfig(d).join()).toContain("gemeinsam");
+    const d = clone(); d.award.share_percent = 101; expect(validateConfig(d).join()).toContain("award.share_percent");
+    expect(validateConfig({ ...clone(), award: { share_percent: null } })).toEqual([]); expect(DEFAULT_CONFIG.award).toEqual({ share_percent: 90 });
   });
 });
 
@@ -48,35 +49,61 @@ describe("Zeitvorgabe je Lernstufe", () => {
 
 describe("Fortschritt und Auszeichnungen", () => {
   const cfg = clone();
-  it("Prozentanteil über festen Silbenumfang", () => {
-    const scope = ["ol", "lo", "el", "le"], times: Record<string, number[]> = { ol: Array(10).fill(2), lo: Array(10).fill(2), el: Array(10).fill(9) };
-    const p = letterProgress(scope, times, cfg);
-    expect(p).toMatchObject({ total: 4, mastered: 2, notMastered: 1, unrated: 1, percent: 50 });
-    expect(levelsReached(p.percent, cfg)).toEqual(["bronze"]);
+  // Beispiel-Silben je Lernstufe (nach classifySyllable): 1 lo/le, 3 ol/el, 4 lala/lole, 5 lolla/lopla, 6 lolopa, 7 plo/blalo
+  const S: Record<number, string[]> = { 1: ["lo", "le"], 3: ["ol", "el"], 4: ["lala", "lole"], 5: ["lolla", "lopla"], 6: ["lolopa"], 7: ["plo", "blalo"] };
+  const scope7 = [1, 3, 4, 5, 6, 7].flatMap((k) => S[k]);
+  const fast = (syl: string[]) => Object.fromEntries(syl.map((x) => [x, Array(10).fill(2)])) as Record<string, number[]>;
+  const stagesOf = (k: number[]) => k.flatMap((x) => S[x]);
+  it("Stufen je Zahl aktiver Stufen (Bronze/Silber/Gold enden bei)", () => {
+    expect(tierEnds(7)).toEqual([3, 5, 7]); expect(tierEnds(6)).toEqual([3, 5, 6]); expect(tierEnds(5)).toEqual([2, 4, 5]); expect(tierEnds(4)).toEqual([2, 3, 4]);
+  });
+  it("5 aktive Stufen (Lernstufen 1, 3, 4, 5, 7): Bronze = erste 2, Silber = nächste 2, Gold = letzte", () => {
+    const sc = stagesOf([1, 3, 4, 5, 7]);
+    expect(levelsReached(sc, fast(stagesOf([1, 3])), cfg)).toEqual(["bronze"]);
+    expect(levelsReached(sc, fast(stagesOf([1, 3, 4])), cfg)).toEqual(["bronze"]);
+    expect(levelsReached(sc, fast(stagesOf([1, 3, 4, 5])), cfg)).toEqual(["bronze", "silber"]);
+    expect(levelsReached(sc, fast(sc), cfg)).toEqual(["bronze", "silber", "gold"]);
+  });
+  it("6 aktive Stufen (Lernstufen 1, 3, 4, 5, 6, 7): Bronze = erste 3, Silber = Stufe 5 und 6, Gold = letzte", () => {
+    expect(levelsReached(scope7, fast(stagesOf([1, 3, 4, 5, 7])), cfg)).toEqual(["bronze"]);   // Lernstufe 6 fehlt noch für Silber
+    expect(levelsReached(scope7, fast(stagesOf([1, 3, 4, 5, 6])), cfg)).toEqual(["bronze", "silber"]);
+    expect(levelsReached(scope7, fast(scope7), cfg)).toEqual(["bronze", "silber", "gold"]);
+  });
+  it("Silber setzt Bronze voraus, langsame oder unbewertete Silben zählen nicht", () => {
+    const sc = stagesOf([1, 3, 4, 5, 7]), t = fast(stagesOf([4, 5, 7]));
+    expect(levelsReached(sc, t, cfg)).toEqual([]);
+    const slow = { ...fast(sc), lo: Array(10).fill(9), le: Array(10).fill(9) };   // beide Silben der Lernstufe 1 zu langsam: nur 2 von 4 sicher im Bronze-Bereich
+    expect(levelsReached(sc, slow, cfg)).toEqual([]);
+  });
+  it("Schwelle share_percent aus der Konfiguration (Standard 90 %)", () => {
+    const sc = stagesOf([1, 3, 4, 5, 7]), c = clone(); c.award.share_percent = 50;
+    const half = { ...fast(sc), lo: Array(10).fill(9), ol: Array(10).fill(9) };   // je eine von zwei Silben pro Stufe zu langsam
+    expect(levelsReached(sc, half, cfg)).toEqual([]);
+    expect(levelsReached(sc, half, c)).toContain("bronze");
   });
   it("vergebene Auszeichnungen werden nicht erneut vergeben und nie entfernt", () => {
-    expect(newAwards([], 80, cfg)).toEqual(["bronze", "silber"]);
-    expect(newAwards(["bronze", "silber"], 10, cfg)).toEqual([]);
-    expect(newAwards(["bronze"], 96, cfg)).toEqual(["silber", "gold"]);
+    const sc = stagesOf([1, 3, 4, 5, 7]);
+    expect(newAwards([], sc, fast(stagesOf([1, 3, 4, 5])), cfg)).toEqual(["bronze", "silber"]);
+    expect(newAwards(["bronze", "silber"], sc, {}, cfg)).toEqual([]);
+    expect(newAwards(["bronze"], sc, fast(sc), cfg)).toEqual(["silber", "gold"]);
     expect(highestLevel(["bronze", "silber"])).toBe("silber");
   });
-  it("Fortschritt in 4 Segmenten bis zur nächsten Medaille, nach jeder Medaille wieder bei 0, nach Gold keine Anzeige", () => {
-    expect(levelProgress(null, 0, cfg)).toEqual({ next: "bronze", segments: 0 });
-    expect(levelProgress(null, 25, cfg)).toEqual({ next: "bronze", segments: 2 });
-    expect(levelProgress(null, 49, cfg)).toEqual({ next: "bronze", segments: 3 });
-    expect(levelProgress("bronze", 50, cfg)).toEqual({ next: "silber", segments: 0 });
-    expect(levelProgress("bronze", 62.5, cfg)).toEqual({ next: "silber", segments: 2 });
-    expect(levelProgress("silber", 75, cfg)).toEqual({ next: "gold", segments: 0 });
-    expect(levelProgress("silber", 90, cfg)).toEqual({ next: "gold", segments: 3 });
-    expect(levelProgress("silber", 95, cfg)).toEqual({ next: "gold", segments: 4 });
-    expect(levelProgress("bronze", 10, cfg)).toEqual({ next: "silber", segments: 0 });
-    expect(levelProgress(null, 25, cfg, 5)).toEqual({ next: "bronze", segments: 2 });
-    expect(levelProgress(null, 49, cfg, 5)).toEqual({ next: "bronze", segments: 4 });
-    expect(levelProgress("gold", 100, cfg)).toBeNull();
+  it("Fortschritt in Segmenten bis zur nächsten Medaille, nach Gold keine Anzeige", () => {
+    const sc = stagesOf([1, 3, 4, 5, 7]);
+    expect(levelProgress(null, sc, {}, cfg)).toEqual({ next: "bronze", segments: 0 });
+    expect(levelProgress(null, sc, fast(["lo", "le", "ol"]), cfg)).toEqual({ next: "bronze", segments: 3 });   // 3 von 4 sicher = 75 %, Schwelle 90 %
+    expect(levelProgress(null, sc, fast(stagesOf([1, 3])), cfg)).toEqual({ next: "bronze", segments: 4 });
+    expect(levelProgress("bronze", sc, fast(stagesOf([1, 3])), cfg)).toEqual({ next: "silber", segments: 0 });
+    expect(levelProgress("bronze", sc, fast(stagesOf([1, 3, 4])), cfg)).toEqual({ next: "silber", segments: 2 });
+    expect(levelProgress("gold", sc, fast(sc), cfg)).toBeNull();
   });
-  it("ohne festgelegte Grenzen keine Auszeichnung", () => {
-    const c = clone(); c.award = { bronze_percent: null, silver_percent: null, gold_percent: null };
-    expect(levelsReached(100, c)).toEqual([]);
+  it("ohne festgelegten Anteil keine Auszeichnung", () => {
+    const c = clone(); c.award = { share_percent: null };
+    expect(levelsReached(scope7, fast(scope7), c)).toEqual([]); expect(levelProgress(null, scope7, {}, c)).toBeNull();
+  });
+  it("Prozentanteil über festen Silbenumfang bleibt als Zahl verfügbar", () => {
+    const scope = ["ol", "lo", "el", "le"], times: Record<string, number[]> = { ol: Array(10).fill(2), lo: Array(10).fill(2), el: Array(10).fill(9) };
+    expect(letterProgress(scope, times, cfg)).toMatchObject({ total: 4, mastered: 2, notMastered: 1, unrated: 1, percent: 50 });
   });
 });
 

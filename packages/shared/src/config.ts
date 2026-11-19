@@ -1,5 +1,5 @@
 // Versionierte Konfiguration (Datenbank: config_versions.json). Alle Regelzahlen stehen hier, nicht im Code.
-// null = noch nicht festgelegt (OFFEN). Eine nicht festgelegte Auszeichnungsgrenze schaltet die Auszeichnung aus.
+// null = noch nicht festgelegt (OFFEN). Ein nicht festgelegter Auszeichnungsanteil (award.share_percent) schaltet die Auszeichnung aus.
 export interface SilbenflugConfig {
   syl_time: { window: number; drop_longest: number; min_keep: number; max_seconds: number; retention: number };
   auto: {
@@ -9,7 +9,7 @@ export interface SilbenflugConfig {
   };
   round: { task_count: number; repeat_damping: number; letter_frequency_default: number; difficulty_curve_exponent: number; min_pool: number };
   mastery: { window: number; drop_longest: number; min_measurements: number; time_limit_seconds: Record<"1" | "3" | "4" | "5" | "6" | "7", number | null> };   // Zeitvorgabe je Lernstufe (Stufe 2 nutzt die Vorgabe der Stufe 1)
-  award: { bronze_percent: number | null; silver_percent: number | null; gold_percent: number | null };
+  award: { share_percent: number | null };   // Anteil der Silben je Stufenbereich, der sicher beherrscht sein muss (Bronze/Silber/Gold nach Lernstufen); null = Auszeichnung aus
   unlock: { rules: unknown | null };
   retention: { after_use_days: number | null; after_leaving_days: number | null };
   security: {
@@ -29,7 +29,7 @@ export const DEFAULT_CONFIG: SilbenflugConfig = {
   },
   round: { task_count: 20, repeat_damping: 2, letter_frequency_default: 0, difficulty_curve_exponent: 4, min_pool: 3 },
   mastery: { window: 12, drop_longest: 2, min_measurements: 10, time_limit_seconds: { "1": 3.5, "3": 3.5, "4": 5, "5": 5, "6": 7, "7": 5 } },
-  award: { bronze_percent: 50, silver_percent: 75, gold_percent: 95 },
+  award: { share_percent: 90 },
   unlock: { rules: null },
   retention: { after_use_days: null, after_leaving_days: null },
   security: {
@@ -67,11 +67,7 @@ export function validateConfig(c: SilbenflugConfig): string[] {
   (["1", "3", "4", "5", "6", "7"] as const).forEach((L) => opt(m.time_limit_seconds[L], 0.1, 3600, `mastery.time_limit_seconds.${L}`));
   if (m.min_measurements > m.window) e.push("mastery.min_measurements darf nicht größer als mastery.window sein");
   if (m.window > s.retention) e.push("mastery.window darf nicht größer als syl_time.retention sein (es werden sonst zu wenige Zeiten gespeichert)");
-  opt(w.bronze_percent, 0, 100, "award.bronze_percent"); opt(w.silver_percent, 0, 100, "award.silver_percent"); opt(w.gold_percent, 0, 100, "award.gold_percent");
-  const set = [w.bronze_percent, w.silver_percent, w.gold_percent];
-  if (set.every((x) => x !== null)) {
-    if (!(w.bronze_percent! < w.silver_percent! && w.silver_percent! < w.gold_percent!)) e.push("award: Bronze < Silber < Gold erwartet");
-  } else if (set.some((x) => x !== null)) e.push("award: Bronze, Silber und Gold müssen gemeinsam festgelegt oder gemeinsam leer sein");
+  opt(w.share_percent, 1, 100, "award.share_percent");
   int(c.security.max_failed_logins, 1, 100, "security.max_failed_logins"); int(c.security.lock_minutes, 1, 1440, "security.lock_minutes");
   int(c.security.code_max_attempts_per_hour, 1, 1000, "security.code_max_attempts_per_hour"); int(c.security.parent_code_days, 1, 365, "security.parent_code_days");
   int(c.security.invite_hours, 1, 720, "security.invite_hours"); int(c.security.reset_minutes, 5, 1440, "security.reset_minutes");

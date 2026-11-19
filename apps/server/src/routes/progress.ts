@@ -107,7 +107,7 @@ export function progressRoutes() {
       const scopes = await loadScopes(d, st.classId, st.letters), held = await heldAwards(d, p.id), played = new Set(items.map((x) => x.s));
       for (const l of st.letters) {
         if (!scopes[l].some((s) => played.has(s))) continue;
-        const prog = letterProgress(scopes[l], after, cfg), fresh = newAwards(held[l] || [], prog.percent, cfg);
+        const prog = letterProgress(scopes[l], after, cfg), fresh = newAwards(held[l] || [], scopes[l], after, cfg);
         stmts.push({ sql: "INSERT INTO letter_mastery_cache(student_id,letter,mastered_count,total_count,percent,computed_at) VALUES(?,?,?,?,?,?) ON CONFLICT(student_id,letter) DO UPDATE SET mastered_count=excluded.mastered_count,total_count=excluded.total_count,percent=excluded.percent,computed_at=excluded.computed_at", params: [p.id, l, prog.mastered, prog.total, prog.percent, at] });
         for (const lv of fresh) {
           const aid = newId();   // Auszeichnungen werden nur eingefügt, nie geändert oder entfernt
@@ -134,7 +134,7 @@ export function progressRoutes() {
     const seg: Record<string, { next: AwardLevel; segments: number } | null> = {};
     if (st.classId && st.letters.length) {
       const cfg = (await activeConfig(d)).config, scopes = await loadScopes(d, st.classId, st.letters), { times } = await loadTimes(d, p.id);
-      st.letters.forEach((l) => { seg[l] = levelProgress(highestLevel(held[l] || []), letterProgress(scopes[l], times, cfg).percent, cfg, 5); });
+      st.letters.forEach((l) => { seg[l] = levelProgress(highestLevel(held[l] || []), scopes[l], times, cfg, 5); });
     }
     const pending = await d.db.all<{ aid: string; letter: string; level: AwardLevel }>("SELECT a.id AS aid, a.letter, a.level FROM awards a JOIN award_popups o ON o.award_id=a.id WHERE a.student_id=? AND o.shown_at IS NULL", [p.id]);
     const byLetter: Record<string, AwardLevel[]> = {};
