@@ -66,3 +66,5 @@ table .v { display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap; }
 table.compact th, table.compact td { padding:4px 8px; font-size:.95rem; }
 table.compact .scopedetail td { background:var(--bg); }
 .subline { margin:2px 0; } .subline .chips span { font-size:.9rem; padding:0 4px; margin:1px; }
+.subline .chips { display:flex; flex-wrap:wrap; max-width:100%; } .subline .chips span { white-space:nowrap; }
+table.compact .scopedetail td { max-width:0; width:100%; overflow-wrap:anywhere; }

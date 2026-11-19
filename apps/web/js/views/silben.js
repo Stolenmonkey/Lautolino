@@ -4,18 +4,18 @@
 import { h, clear, act } from "../dom.js";
 
 export async function silbenPanel(root, api, cid) {
-  const r = await api.get(`/classes/${cid}/syllables`), msg = h("div"), head = ["Stufe", "Aufbau", "Unterkategorien", "Silben", ""];
+  const r = await api.get(`/classes/${cid}/syllables`), msg = h("div"), head = ["Stufe", "Aufbau", "Silben", ""];
   const rows = r.stages.map((g) => {
     const cell = h("td", { colspan: String(head.length) }), detail = h("tr", { class: "scopedetail", hidden: "" }, cell), btn = h("button", { type: "button" }, "Silben ansehen");
     btn.onclick = () => act(msg, async () => {
       if (!detail.hidden) { detail.hidden = true; btn.textContent = "Silben ansehen"; return; }
       const d = await api.get(`/classes/${cid}/syllables?stage=${g.stage}`);
       clear(cell).append(h("strong", {}, `Stufe ${g.stage}: ${d.name} (${d.total} Silben)`), d.truncated ? h("p", { class: "muted" }, "Es werden die ersten 1500 Silben gezeigt.") : null,
-        ...d.subs.map((u) => h("div", { class: "subline" }, h("span", { class: "muted" }, `${u.id} ${u.name} (${u.syllables.length}): `),
+        ...d.subs.map((u) => h("div", { class: "subline" }, h("div", { class: "muted" }, `${u.id} ${u.name} (${u.syllables.length})`),
           u.syllables.length ? h("span", { class: "chips" }, u.syllables.map((x) => h("span", { title: `Buchstaben: ${x.letters.join(" ").toUpperCase()} · neuester: ${x.newestLetter.toUpperCase()}` }, x.parts.join("-").toUpperCase()))) : h("span", { class: "muted" }, "Keine Silben."))));
       detail.hidden = false; btn.textContent = "Silben ausblenden";
     });
-    return [h("tr", {}, [h("strong", {}, `${g.stage}. ${g.name}`), g.structure, g.subs.map((u) => `${u.id}: ${u.total}`).join(" · "), g.total, g.total ? btn : ""].map((c) => h("td", {}, c))), detail];
+    return [h("tr", {}, [h("strong", {}, `${g.stage}.`), g.structure, g.total, g.total ? btn : ""].map((c) => h("td", {}, c))), detail];
   });
   root.append(h("h3", {}, "Übungswörter und Lernstufen"),
     h("p", { class: "muted" }, `Mit den freigegebenen Buchstaben (${r.letters.map((l) => l.toUpperCase()).join(" ")}) gibt es ${r.total} Übungswörter im festen Silbenumfang.`),
