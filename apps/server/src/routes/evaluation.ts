@@ -13,7 +13,7 @@ import { studentLetters } from "./plan";
 import { loadScopes, studentSylPlan, studentTraining } from "./progress";
 
 const MAX_ROWS = 1500;
-const DEFAULT_BAND = 25;
+const DEFAULT_BAND = 50;   // Mittelfeld-Anteil in Prozent der Kinder (Rangbasis)
 const median = (v: number[]): number => { const s = [...v].sort((a, b) => a - b), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
 const uniqLetters = (s: string): string[] => [...new Set(s.split(""))];
 const upper = (s: string): string => s.toUpperCase();
@@ -32,11 +32,11 @@ function sylRow(s: string, times: Record<string, number[]>, maxSeq: Record<strin
 }
 
 // Einstufung der Kinder einer Klasse. Quote = sicher beherrschte Silben / freigegebene Silben des Kindes (ohne Ausnahmen).
-// Median der Klasse (nur Kinder mit Daten) ± Band (Prozentpunkte): darüber überdurchschnittlich, darunter unterdurchschnittlich, Grenzen zählen als durchschnittlich.
+// Rangbasiert: Perzentilrang je Kind (Mittelrang bei Gleichstand) unter den Kindern mit Daten. Mittelfeld = mittlere `band` % der Kinder (Rang 50 ± band/2), mindestens das dem Rang 50 nächste Kind; Grenzen zählen als durchschnittlich.
 // Kinder ohne Messungen oder ohne freigegebene Silben: "nodata", nicht im Median.
 async function childGroups(d: Deps, cid: string, letters: string[], excluded: Set<string>) {
   const cfg = (await activeConfig(d)).config;
-  const band = ((await d.db.first("SELECT avg_band FROM classes WHERE id=?", [cid])) as { avg_band: number } | null)?.avg_band ?? DEFAULT_BAND;
+  const band = ((await d.db.first("SELECT mid_share FROM classes WHERE id=?", [cid])) as { mid_share: number } | null)?.mid_share ?? DEFAULT_BAND;
   const kids = await d.db.all("SELECT k.id, k.display_name AS name FROM students k JOIN student_class_history h ON h.student_id=k.id AND h.to_date IS NULL WHERE h.class_id=? AND k.active=1 ORDER BY k.display_name", [cid]) as { id: string; name: string }[];
   const scopes = await loadScopes(d, cid, letters);
   const rows = await d.db.all("SELECT t.student_id, t.syllable, t.seconds FROM syllable_times t JOIN student_class_history h ON h.student_id=t.student_id AND h.to_date IS NULL JOIN students k ON k.id=t.student_id WHERE h.class_id=? AND k.active=1 ORDER BY t.student_id, t.syllable, t.seq", [cid]) as { student_id: string; syllable: string; seconds: number }[];
@@ -46,12 +46,16 @@ async function childGroups(d: Deps, cid: string, letters: string[], excluded: Se
     const scope = new Set<string>(); letters.filter((l) => !excluded.has(k.id + "|" + l)).forEach((l) => (scopes[l] || []).forEach((s) => scope.add(s)));
     const own = times[k.id] || {}, total = scope.size, hasData = total > 0 && Object.keys(own).length > 0;
     const mastered = hasData ? [...scope].filter((s) => own[s] && isMastered(own[s], cfg, s).status === "mastered").length : 0;
-    return { id: k.id, name: k.name, mastered, total, percent: hasData ? Math.round((mastered / total) * 1000) / 10 : null as number | null, group: "nodata" as string };
+    return { id: k.id, name: k.name, mastered, total, percent: hasData ? Math.round((mastered / total) * 1000) / 10 : null as number | null, group: "nodata" as string, rank: null as number | null };
   });
   const rated = list.filter((x) => x.percent !== null), med = rated.length ? median(rated.map((x) => x.percent as number)) : null, eps = 1e-9;
-  rated.forEach((x) => { const p = x.percent as number; x.group = p > (med as number) + band + eps ? "over" : p < (med as number) - band - eps ? "under" : "average"; });
+  const pcts = rated.map((x) => x.percent as number);
+  rated.forEach((x) => { const p = x.percent as number; x.rank = Math.round(((pcts.filter((v) => v < p).length + pcts.filter((v) => v === p).length / 2) / pcts.length) * 1e6) / 1e4; });
+  const thr = rated.length ? Math.max(band / 2, Math.min(...rated.map((x) => Math.abs((x.rank as number) - 50)))) : 0;
+  rated.forEach((x) => { const dist = (x.rank as number) - 50; x.group = Math.abs(dist) <= thr + eps ? "average" : dist > 0 ? "over" : "under"; });
+  const mid = rated.filter((x) => x.group === "average").map((x) => x.percent as number);
   list.sort((a, b) => (b.percent ?? -1) - (a.percent ?? -1) || (a.name < b.name ? -1 : 1));
-  return { band, median: med === null ? null : Math.round(med * 10) / 10, children: list };
+  return { band, median: med === null ? null : Math.round(med * 10) / 10, midFrom: mid.length ? Math.min(...mid) : null, midTo: mid.length ? Math.max(...mid) : null, children: list };
 }
 
 export function evaluationRoutes() {
@@ -122,14 +126,14 @@ export function evaluationRoutes() {
     return c.json({ classId: cid, students: kids.length, letters, ...(await childGroups(d, cid, rel.map((x) => x.letter), excluded)) });
   });
 
-  // Band (Prozentpunkte um den Klassenmedian) je Klasse einstellen
+  // Mittelfeld-Anteil (Prozent der Kinder, 5er-Schritte) je Klasse einstellen
   r.put("/classes/:cid/band", authenticate, staff, async (c) => {
     const d = c.get("deps"), cid = c.req.param("cid"), a = await canAccessClass(d.db, c.get("p"), cid);
     if (!a.ok) throw fail(404, "nicht gefunden");
     await assertSchoolWritable(d, a.schoolId as string);
     const b = await body(c), band = Number(b.band);
-    if (!Number.isInteger(band) || band < 0 || band > 100) throw fail(400, "band: ganze Zahl von 0 bis 100 erwartet");
-    await d.db.run("UPDATE classes SET avg_band=? WHERE id=?", [band, cid]);
+    if (!Number.isInteger(band) || band < 10 || band > 100 || band % 5) throw fail(400, "band: Vielfaches von 5 zwischen 10 und 100 erwartet");
+    await d.db.run("UPDATE classes SET mid_share=? WHERE id=?", [band, cid]);
     return c.json({ band });
   });
 

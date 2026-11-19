@@ -1,4 +1,4 @@
-// Klassenübersicht: Kinder in drei Gruppen (über-/durchschnittlich/unterdurchschnittlich) nach Quote sicher beherrschter Silben, relativ zum Klassenmedian ± einstellbares Band.
+// Klassenübersicht: Kinder in drei Gruppen (über-/durchschnittlich/unterdurchschnittlich) nach Quote sicher beherrschter Silben; Mittelfeld = mittlere x % der Kinder nach Rang (Slider in 5er-Schritten).
 // Darunter (eingeklappt): je Buchstabe, wie viel Prozent der Kinder den Buchstaben erreicht haben und wie viele Bronze, Silber, Gold erreicht haben.
 import { h, table, act, clear } from "../dom.js";
 
@@ -16,21 +16,23 @@ function childCard(k) {
 export async function uebersicht(root, api, cid, classes, msg) {
   const r = await api.get(`/classes/${cid}/overview`);
   const out = h("div"), info = h("p", { class: "muted" });
-  const slider = h("input", { type: "range", min: 5, max: 50, step: 1, value: r.band, "aria-label": "Band in Prozentpunkten" }), val = h("strong", {}, `±${r.band}`);
-  const render = (band) => {
-    const med = r.median, lo = med === null ? null : med - band, hi = med === null ? null : med + band;
-    info.textContent = med === null ? "Noch keine Daten: Median und Grenzen folgen, sobald Kinder geübt haben."
-      : `Median ${pct(med)}. Durchschnittlich: ${pct(Math.round(Math.max(0, lo) * 10) / 10)} bis ${pct(Math.round(Math.min(100, hi) * 10) / 10)}.`;
+  const slider = h("input", { type: "range", min: 10, max: 100, step: 5, value: r.band, "aria-label": "Mittelfeld in Prozent der Klasse" }), val = h("strong", {}, `${r.band} %`);
+  const rated = r.children.filter((k) => k.group !== "nodata"), minDist = rated.length ? Math.min(...rated.map((k) => Math.abs(k.rank - 50))) : 0;
+  const render = (share) => {
+    const thr = Math.max(share / 2, minDist), grp = (k) => k.group === "nodata" ? "nodata" : Math.abs(k.rank - 50) <= thr + 1e-9 ? "average" : k.rank > 50 ? "over" : "under";
+    const mid = rated.filter((k) => grp(k) === "average").map((k) => k.percent);
+    info.textContent = r.median === null ? "Noch keine Daten: Mittelfeld und Median folgen, sobald Kinder geübt haben."
+      : `Mittelfeld: ${pct(Math.min(...mid))} bis ${pct(Math.max(...mid))}. Median ${pct(r.median)}.`;
     clear(out).append(...GROUPS.map(([key, title]) => {
-      const kids = r.children.filter((k) => (k.group === "nodata" ? "nodata" : bandOf(k, med, band)) === key);
+      const kids = r.children.filter((k) => grp(k) === key);
       return h("section", { class: "kidgroup " + key }, h("h3", {}, `${title} (${kids.length})`), kids.length ? h("ul", { class: "kidlist" }, kids.map(childCard)) : h("p", { class: "muted" }, "–"));
     }));
   };
-  slider.addEventListener("input", () => { val.textContent = `±${slider.value}`; render(Number(slider.value)); });
+  slider.addEventListener("input", () => { val.textContent = `${slider.value} %`; render(Number(slider.value)); });
   slider.addEventListener("change", () => act(msg, async () => { await api.put(`/classes/${cid}/band`, { band: Number(slider.value) }); clear(msg); }));
   root.append(h("h2", {}, "Klassenübersicht"),
-    h("p", { class: "muted" }, `Aktive Kinder in der Klasse: ${r.students}. Einstufung nach dem Anteil sicher beherrschter Silben an allen freigegebenen Silben des Kindes, im Vergleich zum Klassenmedian.`),
-    h("div", { class: "row" }, h("label", {}, "Band ", slider, " ", val, " Prozentpunkte")), info, out);
+    h("p", { class: "muted" }, `Aktive Kinder in der Klasse: ${r.students}. Einstufung nach dem Anteil sicher beherrschter Silben an allen freigegebenen Silben des Kindes, nach Rang in der Klasse.`),
+    h("div", { class: "row" }, h("label", {}, "Mittelfeld ", slider, " ", val, " der Klasse")), info, out);
   render(r.band);
   root.append(h("details", {}, h("summary", {}, "Übersicht je Buchstabe"),
     r.letters.length ? h("div", { class: "tablewrap" }, table(["Buchstabe", "Kinder", "Erreicht (geübt)", "Bronze oder besser", "Silber oder besser", "Gold (sicher beherrscht)"], r.letters.map((l) => [
@@ -39,6 +41,3 @@ export async function uebersicht(root, api, cid, classes, msg) {
     ]))) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."),
     h("p", { class: "muted" }, "Erreicht = das Kind hat den Buchstaben in einer Runde geübt. Bronze, Silber, Gold = vergebene Auszeichnung nach den unveränderten Prozentgrenzen der Konfiguration.")));
 }
-
-// Gleiche Regel wie auf dem Server (Grenzen zählen als durchschnittlich), damit der Slider sofort wirkt.
-function bandOf(k, med, band) { const eps = 1e-9; return k.percent > med + band + eps ? "over" : k.percent < med - band - eps ? "under" : "average"; }
