@@ -61,3 +61,8 @@ table .v { display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap; }
   table.stack td .v { justify-content:flex-end; }
   .barbox { width:90px; }
 }
+
+/* Kompakte Stufenübersicht mit Silben direkt in der Zeile */
+table.compact th, table.compact td { padding:4px 8px; font-size:.95rem; }
+table.compact .scopedetail td { background:var(--bg); }
+.subline { margin:2px 0; } .subline .chips span { font-size:.9rem; padding:0 4px; margin:1px; }

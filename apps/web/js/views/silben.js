@@ -1,20 +1,24 @@
 // Lernplan der Klasse: alle mit den freigegebenen Buchstaben möglichen Silben, geordnet nach Lernstufe und Unterkategorie.
 // Die Zuordnung wird bei jedem Aufruf neu berechnet und passt sich deshalb von selbst an, wenn Buchstaben dazukommen.
-import { h, clear, table, notice } from "../dom.js";
+// Kompakt: Klick auf "Silben ansehen" zeigt die Silben direkt unter der Stufe (Ein-/Ausblenden), Silben als Chips.
+import { h, clear, act } from "../dom.js";
 
 export async function silbenPanel(root, api, cid) {
-  const r = await api.get(`/classes/${cid}/syllables`), detail = h("div");
-  const open = async (n) => {
-    try {
-      const d = await api.get(`/classes/${cid}/syllables?stage=${n}`);
-      clear(detail).append(h("div", { class: "card" }, h("strong", {}, `Stufe ${n}: ${d.name} (${d.total} Silben)`), d.truncated ? h("p", { class: "muted" }, "Es werden die ersten 1500 Silben gezeigt.") : null,
-        ...d.subs.map((u) => h("div", {}, h("h4", {}, `${u.id} ${u.name} (${u.syllables.length})`), u.syllables.length ? h("div", { class: "tablewrap" }, table(["Silbe", "Buchstaben", "Neuester Buchstabe"], u.syllables.map((x) => [
-          h("strong", { class: "mono" }, x.parts.join("-").toUpperCase()), x.letters.join(" ").toUpperCase(), x.newestLetter.toUpperCase() ]), { wide: true })) : h("p", { class: "muted" }, "Keine Silben.")))));
-    } catch (e) { clear(detail).append(notice(e.message, "error")); }
-  };
+  const r = await api.get(`/classes/${cid}/syllables`), msg = h("div"), head = ["Stufe", "Aufbau", "Unterkategorien", "Silben", ""];
+  const rows = r.stages.map((g) => {
+    const cell = h("td", { colspan: String(head.length) }), detail = h("tr", { class: "scopedetail", hidden: "" }, cell), btn = h("button", { type: "button" }, "Silben ansehen");
+    btn.onclick = () => act(msg, async () => {
+      if (!detail.hidden) { detail.hidden = true; btn.textContent = "Silben ansehen"; return; }
+      const d = await api.get(`/classes/${cid}/syllables?stage=${g.stage}`);
+      clear(cell).append(h("strong", {}, `Stufe ${g.stage}: ${d.name} (${d.total} Silben)`), d.truncated ? h("p", { class: "muted" }, "Es werden die ersten 1500 Silben gezeigt.") : null,
+        ...d.subs.map((u) => h("div", { class: "subline" }, h("span", { class: "muted" }, `${u.id} ${u.name} (${u.syllables.length}): `),
+          u.syllables.length ? h("span", { class: "chips" }, u.syllables.map((x) => h("span", { title: `Buchstaben: ${x.letters.join(" ").toUpperCase()} · neuester: ${x.newestLetter.toUpperCase()}` }, x.parts.join("-").toUpperCase()))) : h("span", { class: "muted" }, "Keine Silben."))));
+      detail.hidden = false; btn.textContent = "Silben ausblenden";
+    });
+    return [h("tr", {}, [h("strong", {}, `${g.stage}. ${g.name}`), g.structure, g.subs.map((u) => `${u.id}: ${u.total}`).join(" · "), g.total, g.total ? btn : ""].map((c) => h("td", {}, c))), detail];
+  });
   root.append(h("h3", {}, "Übungswörter und Lernstufen"),
     h("p", { class: "muted" }, `Mit den freigegebenen Buchstaben (${r.letters.map((l) => l.toUpperCase()).join(" ")}) gibt es ${r.total} Übungswörter im festen Silbenumfang.`),
-    h("div", { class: "tablewrap" }, table(["Stufe", "Aufbau", "Unterkategorien", "Silben", ""], r.stages.map((g) => [
-      h("strong", {}, `${g.stage}. ${g.name}`), g.structure, g.subs.map((u) => `${u.id}: ${u.total}`).join(" · "), g.total, g.total ? h("button", { type: "button", onclick: () => open(g.stage) }, "Silben ansehen") : "" ]))),
-    h("p", { class: "muted" }, "Stufe 2 zeigt dieselben Silben wie Stufe 1.2 in der Gegenüberstellung (gleicher Vokal, anderer Anlaut)."), detail);
+    h("div", { class: "tablewrap" }, h("table", { class: "wide compact" }, h("thead", {}, h("tr", {}, head.map((x) => h("th", {}, x)))), h("tbody", {}, rows.flat()))),
+    h("p", { class: "muted" }, "Stufe 2 zeigt dieselben Silben wie Stufe 1.2 in der Gegenüberstellung (gleicher Vokal, anderer Anlaut)."), msg);
 }
