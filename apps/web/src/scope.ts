@@ -10,6 +10,6 @@ export function computeScopes(known: string[], group: string[], config: unknown)
 }
 
 // Silben eines Buchstabens auf die sieben Lernstufen verteilt (für die Anzeige im Lernplan).
-export function stageRows(syllables: string[]): Array<{ stage: number; name: string; syllables: string[] }> {
-  return stagePlan(syllables).map((g) => ({ stage: g.stage, name: g.name, syllables: g.syllables }));
+export function stageRows(syllables: string[]): Array<{ stage: number; structure: string; syllables: string[] }> {
+  return stagePlan(syllables).map((g) => ({ stage: g.stage, structure: g.structure, syllables: g.syllables }));
 }

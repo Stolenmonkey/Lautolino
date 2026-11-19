@@ -44,16 +44,17 @@ async function schueler(root, api, cid, classes, msg) {
 
 // Freigaben: Klick auf "Silben ansehen" zeigt die Silben direkt unter dem Buchstaben, geordnet nach den 7 Lernstufen (bleibt stehen, kein Ein-/Ausklappen).
 function freigabeTabelle(api, cid, releases, msg) {
-  const head = ["Nr.", "Buchstabe", "Freigegeben", "Silben im festen Umfang", ""];
+  const head = ["Buchstabe", "Freigegeben", "Silben im festen Umfang", ""];
   const rows = releases.map((r) => {
     const cell = h("td", { colspan: String(head.length) }), detail = h("tr", { class: "scopedetail", hidden: "" }, cell), btn = h("button", { type: "button" }, "Silben ansehen");
     btn.onclick = () => act(msg, async () => {
+      if (!detail.hidden) { detail.hidden = true; btn.textContent = "Silben ansehen"; return; }
       const [s, m] = await Promise.all([api.get(`/classes/${cid}/releases/${r.letter}/scope`), import("../scope.bundle.js")]);
       clear(cell).append(h("strong", {}, `Silben von ${r.letter.toUpperCase()} (${s.length})`), h("div", { class: "tablewrap" }, table(["Stufe", "Silben"], m.stageRows(s).map((g) => [
-        h("strong", {}, `${g.stage}. Stufe: ${g.name}`), g.syllables.length ? h("div", { class: "chips" }, g.syllables.map((x) => h("span", {}, x.toUpperCase()))) : h("span", { class: "muted" }, "–") ]), { wide: true })));
-      detail.hidden = false; btn.disabled = true;
+        h("strong", {}, `${g.stage}. Stufe`), h("div", { class: "muted" }, g.structure), g.syllables.length ? h("div", { class: "chips" }, g.syllables.map((x) => h("span", {}, x.toUpperCase()))) : h("span", { class: "muted" }, "–") ]), { wide: true })));
+      detail.hidden = false; btn.textContent = "Silben ausblenden";
     });
-    return [h("tr", {}, [r.release_order, h("strong", {}, r.letter.toUpperCase()), fmtDate(r.released_at), r.syllable_count, btn].map((c) => h("td", {}, c))), detail];
+    return [h("tr", {}, [h("strong", {}, r.letter.toUpperCase()), fmtDate(r.released_at), r.syllable_count, btn].map((c) => h("td", {}, c))), detail];
   });
   return h("div", { class: "tablewrap" }, h("table", { class: "wide" }, h("thead", {}, h("tr", {}, head.map((x) => h("th", {}, x)))), h("tbody", {}, rows.flat())));
 }
