@@ -102,15 +102,23 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     inp.onkeydown = (e) => { if (e.key === "Enter") void doLogin(); };
   }
 
-  function renderHome(): void {
+  type AwL = AwardsView["letters"][number];
+  const tile = (l: string, on: boolean, h: AwardLevel | null, p: AwL["progress"], withRing = true): string => { const tier = h === null ? "t1" : h === "bronze" ? "t2" : "t3";
+    return '<div class="lt ' + (on ? "on " + tier : "off") + '" data-letter="' + l + '"' + (on && withRing ? ' title="' + (h ? LEVEL_NAME[h] : "noch kein Stern") + '"' : "") + '><span class="rw">' + (withRing ? ring(p, h, on) : "") + renderWord(l.toUpperCase()) + "</span>" + (withRing ? tstar(h) : "") + "</div>"; };
+  function gridHtml(): string {
     const d = data as Data, aw = d.awards, rel = new Set(d.plan ? d.plan.letters : []);
-    const lv: Record<string, AwardLevel | null> = {}, pg: Record<string, { next: AwardLevel; segments: number } | null | undefined> = {}; (aw ? aw.letters : []).forEach((x) => { lv[x.letter] = x.level; pg[x.letter] = x.progress; });
-    const grid = "abcdefghijklmnopqrstuvwxyz".split("").map((l) => { const on = rel.has(l), h = lv[l] || null, tier = h === null ? "t1" : h === "bronze" ? "t2" : "t3";
-      return '<div class="lt ' + (on ? "on " + tier : "off") + '" data-letter="' + l + '"' + (on ? ' title="' + (h ? LEVEL_NAME[h] : "noch kein Stern") + '"' : "") + '><span class="rw">' + ring(pg[l], h, on) + renderWord(l.toUpperCase()) + "</span>" + tstar(h) + "</div>"; }).join("");
+    const lv: Record<string, AwardLevel | null> = {}, pg: Record<string, AwL["progress"]> = {}; (aw ? aw.letters : []).forEach((x) => { lv[x.letter] = x.level; pg[x.letter] = x.progress; });
+    return "abcdefghijklmnopqrstuvwxyz".split("").map((l) => tile(l, rel.has(l), lv[l] || null, pg[l])).join("");
+  }
+  function homeHtml(): string {
+    const d = data as Data, rel = new Set(d.plan ? d.plan.letters : []);
     const ok = !!(d.plan && d.config && canPractice(d.plan, d.config)), loading = !d.plan || !d.config;
     const info = loading ? "Einen Moment …" : !rel.size ? "Noch keine Buchstaben freigegeben. Frag deine Lehrerin oder deinen Lehrer." : !ok ? "Mit diesen Buchstaben gibt es noch zu wenige Silben." : "";
-    root.innerHTML = head() + '<section class="card enter"><p class="hello">Hallo' + (session ? ", " + esc(session.name) : "") + '!</p><div class="lgrid" id="lgrid">' + grid + '</div>' + '<div class="msg" id="msg" role="alert">' + esc(msg || info) + '</div><button class="btn" id="start" type="button"' + (ok ? "" : " disabled") + '>Übung starten</button></section>' +
+    return head() + '<section class="card enter"><p class="hello">Hallo' + (session ? ", " + esc(session.name) : "") + '!</p><div class="lgrid" id="lgrid">' + gridHtml() + '</div>' + '<div class="msg" id="msg" role="alert">' + esc(msg || info) + '</div><button class="btn" id="start" type="button"' + (ok ? "" : " disabled") + '>Übung starten</button></section>' +
       '<p class="foot">' + (d.queue.length ? "Gemerkt, wird später gesendet: " + d.queue.length + " · " : "") + '<button type="button" class="link" id="logout">Abmelden</button></p>' + LAWN;
+  }
+  function renderHome(): void {
+    root.innerHTML = homeHtml();
     (root.querySelector("#start") as HTMLElement).onclick = startPractice;
     (root.querySelector("#logout") as HTMLElement).onclick = () => logout();
   }
@@ -202,14 +210,27 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     lastSecs = Math.round((now() - roundStart) / 100) / 10;
     d.st = finishRound(d.st, { seconds: lastSecs, syllables: times }, cfg);
     d.queue.push({ clientRoundId: newRoundId(rng), seconds: lastSecs, syllables: times, letters: s.letters, playedAt: new Date(now()).toISOString() });
-    save(); setup = null; go("end");
-    void sync().then(() => { if (cur() === "end") showPopup(); });
+    const before = snapshot(d.awards); save(); setup = null; go("end");
+    void sync().then(() => { if (cur() === "end") showImprovement(before); });
   }
   function renderEnd(): void {
-    const nm = session ? session.name : "", n = Math.round(lastSecs);
-    root.innerHTML = '<section class="card end enter">' + owl("bigmascot owl") + "<h2>" + (nm ? "Herzlichen Glückwunsch, " + esc(nm) + "!" : "Geschafft!") + '</h2><p class="time"><span class="tl">Deine Zeit</span>' + (n === 1 ? "1 Sekunde" : n + " Sekunden") + '</p></section>' +
-      '<div class="endbtns"><button class="btn" id="again" type="button">Noch mal?</button><button class="btn red" id="stop" type="button">Ende</button></div>' + LAWN;
+    const nm = session ? (session.name.trim().split(/\s+/)[0] || "") : "", n = Math.round(lastSecs);
+    root.innerHTML = homeHtml() + '<div class="dlg col" role="dialog" aria-modal="true"><section class="card end award enter">' + owl("bigmascot owl") + "<h2>" + (nm ? "Herzlichen Glückwunsch, " + esc(nm) + "!" : "Geschafft!") + '</h2><p class="time"><span class="tl">Deine Zeit</span>' + (n === 1 ? "1 Sekunde" : n + " Sekunden") + '</p><div id="imp"></div></section>' +
+      '<div class="endbtns"><button class="btn" id="again" type="button">Noch mal?</button><button class="btn red" id="stop" type="button">Ende</button></div></div>';
     (root.querySelector("#again") as HTMLElement).onclick = startPractice; (root.querySelector("#stop") as HTMLElement).onclick = () => go("home");
+  }
+  // Stand der Fortschrittskreise und Sterne vor der Runde, um danach Verbesserungen zu zeigen
+  const RANK: Record<string, number> = { bronze: 1, silber: 2, gold: 3 };
+  function snapshot(aw: AwardsView | null): Record<string, AwL> { const m: Record<string, AwL> = {}; if (aw) aw.letters.forEach((x) => { m[x.letter] = { ...x }; }); return m; }
+  const rk = (x: AwL): number => (x.level ? RANK[x.level] : 0) * 10 + (x.progress ? x.progress.segments : x.level === "gold" ? 5 : 0);
+  function showImprovement(before: Record<string, AwL>): void {
+    const d = data, host = root.querySelector("#imp") as HTMLElement | null; if (!d || !d.awards || !host) return;
+    const better = d.awards.letters.filter((x) => x.released && before[x.letter] && rk(x) > rk(before[x.letter]));
+    const grid = root.querySelector("#lgrid") as HTMLElement | null; if (grid) grid.innerHTML = gridHtml();
+    if (!better.length) return;
+    const one = (x: AwL): string => { const o = before[x.letter]; return '<div class="imp">' + tile(x.letter, true, o.level, o.progress) + '<span class="arr" aria-label="wird zu">&rarr;</span>' + tile(x.letter, true, x.level, x.progress) + "</div>"; };
+    host.innerHTML = '<div class="impbox"><div class="impt">Spitze, du hast dich verbessert!</div>' + better.map(one).join("") + "</div>";
+    if (d.awards.pending.length) { d.awards.pending = []; save(); void api.post("/student/awards/ack").catch(() => { /* offline: beim nächsten Abgleich */ }); }
   }
 
   // ---------- Glückwunsch-Popup: nur die höchste neu erreichte Stufe je Buchstabe ----------
@@ -219,11 +240,12 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     if (fresh.length && view === "home") {
       popupOpen = true;
       const nb = document.createElement("div"); nb.className = "dlg"; nb.setAttribute("role", "dialog"); nb.setAttribute("aria-modal", "true");
-      nb.innerHTML = '<div class="card award">' + owl("bigmascot owl") + "<h2>" + (fresh.length > 1 ? "Neue Buchstaben!" : "Neuer Buchstabe!") + '</h2>' + fresh.map((l) => '<div class="arow nl">' + pair(l) + "</div>").join("") + '<button class="btn" id="nlOk" type="button" style="margin-top:14px">Los geht\'s!</button></div>';
+      nb.innerHTML = '<div class="card award">' + owl("bigmascot owl") + "<h2>" + (fresh.length > 1 ? "Neue Buchstaben zum Üben" : "Neuer Buchstabe zum Üben") + '</h2><div class="newl">' + fresh.map((l) => '<div class="nt">' + tile(l, true, null, null, false) + "</div>").join("") + "</div>" + '<button class="btn" id="nlOk" type="button" style="margin-top:14px">Los geht\'s!</button></div>';
       root.appendChild(nb);
       (nb.querySelector("#nlOk") as HTMLElement).onclick = () => { nb.remove(); popupOpen = false; d.seen = Array.from(new Set((d.seen || []).concat(fresh))); save(); showPopup(); };
       return;
     }
+    if (view === "end") return;   // am Rundenende zeigt die Verbesserungs-Anzeige die neuen Sterne
     const aw = d.awards; if (!aw || !aw.pending.length) return;
     popupOpen = true;
     const box = document.createElement("div"); box.className = "dlg"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true");

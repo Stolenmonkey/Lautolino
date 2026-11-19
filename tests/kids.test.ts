@@ -95,7 +95,7 @@ describe("Kinder-App gegen echten Server", () => {
     const inp = root.querySelector("#code") as HTMLInputElement; inp.value = "Falsch-Falsch-00"; click(root, "Anmelden"); await flush();
     expect(root.textContent).toContain("nicht richtig"); expect(root.querySelector("#lgrid")).toBeNull();
     (root.querySelector("#code") as HTMLInputElement).value = code.toUpperCase(); click(root, "Anmelden"); await flush();
-    expect(root.textContent).toContain("Hallo, Mia!"); expect(root.querySelectorAll(".lt").length).toBe(26); expect(root.querySelectorAll(".lt.on").length).toBe(2);
+    expect(root.textContent).toContain("Hallo, Mia!"); expect(root.querySelectorAll("#lgrid .lt").length).toBe(26); expect(root.querySelectorAll("#lgrid .lt.on").length).toBe(2);
     expect((root.querySelector("#start") as HTMLButtonElement).disabled).toBe(false);
   });
 
