@@ -226,10 +226,18 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     const d = data, host = root.querySelector("#imp") as HTMLElement | null; if (!d || !d.awards || !host) return;
     const better = d.awards.letters.filter((x) => x.released && before[x.letter] && rk(x) > rk(before[x.letter]));
     const grid = root.querySelector("#lgrid") as HTMLElement | null; if (grid) grid.innerHTML = gridHtml();
+    // Am Rundenende ersetzt diese Anzeige das Glückwunsch-Popup: offene Awards sofort quittieren, damit später kein zweites Popup folgt
+    if (d.awards.pending.length) { d.awards.pending = []; save(); void api.post("/student/awards/ack").catch(() => { /* offline: beim nächsten Abgleich */ }); }
     if (!better.length) return;
     const one = (x: AwL): string => { const o = before[x.letter]; return '<div class="imp">' + tile(x.letter, true, o.level, o.progress) + '<span class="arr" aria-label="wird zu">&rarr;</span>' + tile(x.letter, true, x.level, x.progress) + "</div>"; };
     host.innerHTML = '<div class="impbox"><div class="impt">Spitze, du hast dich verbessert!</div>' + better.map(one).join("") + "</div>";
-    if (d.awards.pending.length) { d.awards.pending = []; save(); void api.post("/student/awards/ack").catch(() => { /* offline: beim nächsten Abgleich */ }); }
+    fitDialog(host);
+  }
+  // Verkleinert die Kacheln, bis das Popup in den Bildschirm passt (Buttons bleiben sichtbar)
+  function fitDialog(host: HTMLElement): void {
+    const card = host.closest(".card") as HTMLElement | null; if (!card) return;
+    let w = 96; card.style.setProperty("--impw", w + "px");
+    while (card.scrollHeight > card.clientHeight + 1 && w > 28) { w -= 6; card.style.setProperty("--impw", w + "px"); }
   }
 
   // ---------- Glückwunsch-Popup: nur die höchste neu erreichte Stufe je Buchstabe ----------

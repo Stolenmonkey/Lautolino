@@ -53,7 +53,8 @@ svg .s{fill:none;stroke:#1f2a44;stroke-width:12;stroke-linecap:round;stroke-line
 .dlg.col{flex-direction:column;gap:14px}.dlg.col .endbtns{width:100%;max-width:420px}
 .newl{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:6px}.nt{width:104px}
 .impbox{border-top:3px dotted #b9d3f2;margin-top:8px;padding-top:12px}.impt{font-size:1.3rem;color:#23864a;margin-bottom:10px}
-.imp{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:8px}.imp .lt{width:96px;flex:none}.imp .arr{font-size:2.6rem;color:#2f5f9a;line-height:1}
+.imp{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:8px}.imp .lt{width:var(--impw,96px);flex:none}.impbox{display:flex;flex-wrap:wrap;justify-content:center;column-gap:18px}.impbox .impt{flex:0 0 100%}
+.dlg{overflow:hidden}.dlg .card{max-height:100%;overflow-y:auto;box-sizing:border-box}.imp .arr{font-size:2.6rem;color:#2f5f9a;line-height:1}
 .hidden{display:none!important}
 @keyframes hop{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-12px) rotate(3deg)}}
 @keyframes hopS{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-6px) rotate(2deg)}}
