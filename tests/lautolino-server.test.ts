@@ -163,6 +163,14 @@ describe("Lautolino (Server und Oberfläche)", () => {
       const r = (await call("GET", `/classes/${cid2}/overview`, other)).json;
       expect(r.students).toBe(4); const o = r.letters.find((l: any) => l.letter === "o"), l = r.letters.find((x: any) => x.letter === "l");
       expect(o).toMatchObject({ students: 4, reached: 3, reachedPercent: 75, gold: 2, goldPercent: 50, bronze: 2, bronzePercent: 50 });
+      // Einstufung: Median der Kinder mit Daten ± Band (Standard 25); Zoe ohne Daten steht in eigener Gruppe
+      const g = (res: any, n: string) => res.children.find((x: any) => x.name === n);
+      expect(r.band).toBe(25); expect(g(r, "Zoe")).toMatchObject({ group: "nodata", percent: null }); expect(g(r, "Eva")).toMatchObject({ percent: 100, group: "average" }); expect(r.median).toBe(100);
+      expect(g(r, "Uli")).toMatchObject({ percent: 0, group: "under" });
+      expect((await call("PUT", `/classes/${cid2}/band`, other, { band: 101 })).status).toBe(400); expect((await call("PUT", `/classes/${cid}/band`, other, { band: 10 })).status).toBe(404);
+      expect((await call("PUT", `/classes/${cid2}/band`, other, { band: 100 })).json).toEqual({ band: 100 });
+      const wide = (await call("GET", `/classes/${cid2}/overview`, other)).json; expect(wide.band).toBe(100); expect(g(wide, "Uli").group).toBe("average");
+      await call("PUT", `/classes/${cid2}/band`, other, { band: 25 });
       await call("PUT", `/students/${k2[3].id}/exclusions`, other, { letters: ["l"] });
       const r2 = (await call("GET", `/classes/${cid2}/overview`, other)).json.letters.find((x: any) => x.letter === "l"); expect(r2).toMatchObject({ students: 3, reached: 3, reachedPercent: 100, goldPercent: 66.7 });
       expect(l.order).toBe(2);

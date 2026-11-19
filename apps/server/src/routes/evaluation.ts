@@ -5,14 +5,16 @@ import { classifySyllable, contrastSet, stagePlan, subName, STAGES, STAGE_COUNT 
 import { isMastered, sylStat, sylTimeParams, timeLimitFor } from "@silbenflug/engine";
 import type { StageRow } from "@silbenflug/engine";
 import type { SilbenflugConfig } from "@silbenflug/shared";
-import type { Env } from "../context";
+import type { Deps, Env } from "../context";
 import { authenticate, requireStaff } from "../middleware";
 import { canAccessClass, canAccessStudent } from "../permissions";
-import { activeConfig, fail } from "../util";
+import { activeConfig, assertSchoolWritable, body, fail } from "../util";
 import { studentLetters } from "./plan";
 import { loadScopes, studentSylPlan, studentTraining } from "./progress";
 
 const MAX_ROWS = 1500;
+const DEFAULT_BAND = 25;
+const median = (v: number[]): number => { const s = [...v].sort((a, b) => a - b), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
 const uniqLetters = (s: string): string[] => [...new Set(s.split(""))];
 const upper = (s: string): string => s.toUpperCase();
 
@@ -27,6 +29,29 @@ function sylRow(s: string, times: Record<string, number[]>, maxSeq: Record<strin
     successful: limit === null ? null : t.filter((x) => x <= limit).length,   // gespeicherte Messungen innerhalb der Zeitvorgabe
     limit, status: m.status,               // mastered = sicher beherrscht, not_mastered, unrated (noch zu wenige Messungen)
   };
+}
+
+// Einstufung der Kinder einer Klasse. Quote = sicher beherrschte Silben / freigegebene Silben des Kindes (ohne Ausnahmen).
+// Median der Klasse (nur Kinder mit Daten) ± Band (Prozentpunkte): darüber überdurchschnittlich, darunter unterdurchschnittlich, Grenzen zählen als durchschnittlich.
+// Kinder ohne Messungen oder ohne freigegebene Silben: "nodata", nicht im Median.
+async function childGroups(d: Deps, cid: string, letters: string[], excluded: Set<string>) {
+  const cfg = (await activeConfig(d)).config;
+  const band = ((await d.db.first("SELECT avg_band FROM classes WHERE id=?", [cid])) as { avg_band: number } | null)?.avg_band ?? DEFAULT_BAND;
+  const kids = await d.db.all("SELECT k.id, k.display_name AS name FROM students k JOIN student_class_history h ON h.student_id=k.id AND h.to_date IS NULL WHERE h.class_id=? AND k.active=1 ORDER BY k.display_name", [cid]) as { id: string; name: string }[];
+  const scopes = await loadScopes(d, cid, letters);
+  const rows = await d.db.all("SELECT t.student_id, t.syllable, t.seconds FROM syllable_times t JOIN student_class_history h ON h.student_id=t.student_id AND h.to_date IS NULL JOIN students k ON k.id=t.student_id WHERE h.class_id=? AND k.active=1 ORDER BY t.student_id, t.syllable, t.seq", [cid]) as { student_id: string; syllable: string; seconds: number }[];
+  const times: Record<string, Record<string, number[]>> = {};
+  rows.forEach((x) => { ((times[x.student_id] ||= {})[x.syllable] ||= []).push(x.seconds); });
+  const list = kids.map((k) => {
+    const scope = new Set<string>(); letters.filter((l) => !excluded.has(k.id + "|" + l)).forEach((l) => (scopes[l] || []).forEach((s) => scope.add(s)));
+    const own = times[k.id] || {}, total = scope.size, hasData = total > 0 && Object.keys(own).length > 0;
+    const mastered = hasData ? [...scope].filter((s) => own[s] && isMastered(own[s], cfg, s).status === "mastered").length : 0;
+    return { id: k.id, name: k.name, mastered, total, percent: hasData ? Math.round((mastered / total) * 1000) / 10 : null as number | null, group: "nodata" as string };
+  });
+  const rated = list.filter((x) => x.percent !== null), med = rated.length ? median(rated.map((x) => x.percent as number)) : null, eps = 1e-9;
+  rated.forEach((x) => { const p = x.percent as number; x.group = p > (med as number) + band + eps ? "over" : p < (med as number) - band - eps ? "under" : "average"; });
+  list.sort((a, b) => (b.percent ?? -1) - (a.percent ?? -1) || (a.name < b.name ? -1 : 1));
+  return { band, median: med === null ? null : Math.round(med * 10) / 10, children: list };
 }
 
 export function evaluationRoutes() {
@@ -94,7 +119,18 @@ export function evaluationRoutes() {
       const bronze = cnt(["bronze", "silber", "gold"]), silber = cnt(["silber", "gold"]), gold = cnt(["gold"]);
       return { letter: r2.letter, order: r2.release_order, students: eligible.length, reached, bronze, silber, gold, reachedPercent: pct(reached, eligible.length), bronzePercent: pct(bronze, eligible.length), silberPercent: pct(silber, eligible.length), goldPercent: pct(gold, eligible.length) };
     });
-    return c.json({ classId: cid, students: kids.length, letters });
+    return c.json({ classId: cid, students: kids.length, letters, ...(await childGroups(d, cid, rel.map((x) => x.letter), excluded)) });
+  });
+
+  // Band (Prozentpunkte um den Klassenmedian) je Klasse einstellen
+  r.put("/classes/:cid/band", authenticate, staff, async (c) => {
+    const d = c.get("deps"), cid = c.req.param("cid"), a = await canAccessClass(d.db, c.get("p"), cid);
+    if (!a.ok) throw fail(404, "nicht gefunden");
+    await assertSchoolWritable(d, a.schoolId as string);
+    const b = await body(c), band = Number(b.band);
+    if (!Number.isInteger(band) || band < 0 || band > 100) throw fail(400, "band: ganze Zahl von 0 bis 100 erwartet");
+    await d.db.run("UPDATE classes SET avg_band=? WHERE id=?", [band, cid]);
+    return c.json({ band });
   });
 
   // ---------- Mögliche Silben der Klasse mit Stufe und Unterkategorie ----------
