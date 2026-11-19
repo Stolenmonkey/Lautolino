@@ -84,6 +84,6 @@ svg .s{fill:none;stroke:#1f2a44;stroke-width:12;stroke-linecap:round;stroke-line
 #app:has(.lgrid) .lt{border-radius:20px}
 #app:has(.lgrid) .ring circle{stroke-width:7}
 #app:has(.lgrid) .msg{margin-top:6px;font-size:1rem}
-#app:has(.lgrid) .btn{min-height:60px;font-size:1.5rem;position:sticky;bottom:max(10px,env(safe-area-inset-bottom));z-index:2;box-shadow:0 4px 0 #23864a,0 0 0 8px #fff}#app:has(.lgrid) .btn:disabled{box-shadow:0 0 0 8px #fff}
+#app:has(.lgrid) .btn{min-height:60px;font-size:1.5rem;position:sticky;bottom:max(10px,env(safe-area-inset-bottom));z-index:2;box-shadow:0 4px 0 #23864a,0 0 0 8px #fff}#app:has(.lgrid) .btn.red{box-shadow:0 4px 0 #c13c47,0 0 0 8px #fff}#app:has(.lgrid) .btn:disabled{box-shadow:0 0 0 8px #fff}
 #app:has(.lgrid) .foot .link{padding:6px 8px}
 #app:has(.lgrid) .lawn{padding-top:0}#app:has(.lgrid) .lawn svg{height:clamp(30px,8vw,60px)}
