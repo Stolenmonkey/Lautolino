@@ -75,8 +75,8 @@ svg .s{fill:none;stroke:#1f2a44;stroke-width:12;stroke-linecap:round;stroke-line
 #app:has(.lgrid) .head{gap:8px}#app:has(.lgrid) .mascot{width:48px;height:52px}#app:has(.lgrid) h1{font-size:1.6rem}
 #app:has(.lgrid) .card{padding:14px;border-radius:24px}
 #app:has(.lgrid) .hello{font-size:1.2rem;margin:0 0 8px}
-#app:has(.lgrid) .lgrid{grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px}
-#app:has(.lgrid) .lt{border-radius:14px}
+#app:has(.lgrid) .lgrid{grid-template-columns:repeat(4,1fr);gap:8px}
+#app:has(.lgrid) .lt{border-radius:20px}
 #app:has(.lgrid) .ring circle{stroke-width:7}
 #app:has(.lgrid) .msg{margin-top:6px;font-size:1rem}
 #app:has(.lgrid) .btn{min-height:60px;font-size:1.5rem}
