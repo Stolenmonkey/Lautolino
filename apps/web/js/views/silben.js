@@ -9,7 +9,7 @@ export async function silbenPanel(root, api, cid) {
       const d = await api.get(`/classes/${cid}/syllables?stage=${n}`);
       clear(detail).append(h("div", { class: "card" }, h("strong", {}, `Stufe ${n}: ${d.name} (${d.total} Silben)`), d.truncated ? h("p", { class: "muted" }, "Es werden die ersten 1500 Silben gezeigt.") : null,
         ...d.subs.map((u) => h("div", {}, h("h4", {}, `${u.id} ${u.name} (${u.syllables.length})`), u.syllables.length ? h("div", { class: "tablewrap" }, table(["Silbe", "Buchstaben", "Neuester Buchstabe"], u.syllables.map((x) => [
-          h("strong", { class: "mono" }, x.parts.join("-").toUpperCase()), x.letters.join(" ").toUpperCase(), x.newestLetter.toUpperCase() ]))) : h("p", { class: "muted" }, "Keine Silben.")))));
+          h("strong", { class: "mono" }, x.parts.join("-").toUpperCase()), x.letters.join(" ").toUpperCase(), x.newestLetter.toUpperCase() ]), { wide: true })) : h("p", { class: "muted" }, "Keine Silben.")))));
     } catch (e) { clear(detail).append(notice(e.message, "error")); }
   };
   root.append(h("h3", {}, "Übungswörter und Lernstufen"),

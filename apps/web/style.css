@@ -1,13 +1,13 @@
 :root { color-scheme: light dark; --bg:#fff; --fg:#1d2330; --muted:#5b6475; --line:#d5d9e0; --accent:#1f5fae; --soft:#f3f5f8; --warn:#9a3412; --ok:#166534; }
 @media (prefers-color-scheme: dark) { :root { --bg:#14181f; --fg:#e6e9ef; --muted:#9aa3b2; --line:#2c3340; --accent:#6aa7ee; --soft:#1c222c; --warn:#fb923c; --ok:#4ade80; } }
 * { box-sizing: border-box; }
-body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
 header { padding:10px 16px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:baseline; }
 #who { color:var(--muted); flex:1; }
 nav { display:flex; gap:4px; padding:0 16px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
 nav button { border:0; background:none; color:var(--muted); padding:10px 12px; cursor:pointer; font:inherit; border-bottom:2px solid transparent; }
 nav button[aria-current=true] { color:var(--fg); border-bottom-color:var(--accent); }
-main { max-width:960px; margin:0 auto; padding:16px; }
+main { max-width:1180px; margin:0 auto; padding:16px; }
 h2 { font-size:1.15rem; margin:20px 0 8px; } h3 { font-size:1rem; margin:16px 0 6px; }
 table { border-collapse:collapse; width:100%; margin:8px 0; }
 th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
@@ -39,3 +39,27 @@ button.kid[aria-pressed="true"] { background:#2f7fd8; color:#fff; border-color:#
 .barbox .bar { display:block; height:100%; border-radius:0; }
 .tablewrap { overflow-x:auto; max-width:100%; }
 .hl { font-weight:700; text-decoration:underline; }
+
+/* Lesbarkeit: Zebra, größere Ziele; Matrizen (table.wide) scrollen mit festgehaltener erster Spalte */
+tbody tr:nth-child(even) { background:var(--soft); }
+th, td { padding:9px 10px; }
+table.wide th:first-child, table.wide td:first-child { position:sticky; left:0; background:var(--bg); z-index:1; }
+table .v { display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.barbox { width:140px; }
+@media (max-width:640px) {
+  main { padding:10px; } header { flex-wrap:wrap; }
+  nav { flex-wrap:nowrap; overflow-x:auto; padding:0 6px; } nav button { white-space:nowrap; padding:12px 10px; }
+  button, input, select { min-height:44px; } input[type=checkbox] { min-height:0; width:22px; height:22px; }
+  h2 { font-size:1.25rem; }
+  table.stack, table.stack tbody, table.stack tr, table.stack td { display:block; width:100%; }
+  table.stack thead { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+  table.stack tr { border:1px solid var(--line); border-radius:10px; margin:10px 0; padding:4px 12px; background:var(--soft) !important; }
+  table.stack td { display:flex; justify-content:space-between; align-items:center; gap:12px; border:0; border-bottom:1px solid var(--line); padding:9px 0; text-align:right; }
+  table.stack td:last-child { border-bottom:0; }
+  table.stack td::before { content:attr(data-label); color:var(--muted); font-weight:600; font-size:.9rem; text-align:left; flex:0 0 38%; }
+  table.stack td:not([data-label])::before { content:none; } table.stack td:not([data-label]) { justify-content:flex-end; }
+  table.stack td:first-child { font-size:1.15rem; justify-content:flex-start; text-align:left; }
+  table.stack td:first-child::before { content:none; }
+  table.stack td .v { justify-content:flex-end; }
+  .barbox { width:90px; }
+}

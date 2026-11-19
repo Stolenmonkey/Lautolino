@@ -62,7 +62,7 @@ async function lernplan(root, api, cid, classes, msg) {
       table(["Kind", ...plan.releases.map((r) => r.letter.toUpperCase()), ""], students.map((s) => {
         const ex = plan.exclusions[s.id] || [], boxes = plan.releases.map((r) => h("input", { type: "checkbox", value: r.letter, checked: ex.includes(r.letter), "aria-label": `${s.display_name} ohne ${r.letter}` }));
         return [s.display_name, ...boxes, h("button", { type: "button", onclick: () => act(msg, async () => { await api.put(`/students/${s.id}/exclusions`, { letters: boxes.filter((b) => b.checked).map((b) => b.value) }); clear(msg).append(notice("Gespeichert.", "ok")); }) }, "Speichern")];
-      })));
+      }), { wide: true }));
   }
 }
 
