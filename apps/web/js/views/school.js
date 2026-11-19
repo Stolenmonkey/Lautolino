@@ -42,12 +42,27 @@ async function schueler(root, api, cid, classes, msg) {
   await act(msg, load);
 }
 
+// Freigaben: Klick auf "Silben ansehen" zeigt die Silben direkt unter dem Buchstaben, geordnet nach den 7 Lernstufen (bleibt stehen, kein Ein-/Ausklappen).
+function freigabeTabelle(api, cid, releases, msg) {
+  const head = ["Nr.", "Buchstabe", "Freigegeben", "Silben im festen Umfang", ""];
+  const rows = releases.map((r) => {
+    const cell = h("td", { colspan: String(head.length) }), detail = h("tr", { class: "scopedetail", hidden: "" }, cell), btn = h("button", { type: "button" }, "Silben ansehen");
+    btn.onclick = () => act(msg, async () => {
+      const [s, m] = await Promise.all([api.get(`/classes/${cid}/releases/${r.letter}/scope`), import("../scope.bundle.js")]);
+      clear(cell).append(h("strong", {}, `Silben von ${r.letter.toUpperCase()} (${s.length})`), h("div", { class: "tablewrap" }, table(["Stufe", "Silben"], m.stageRows(s).map((g) => [
+        h("strong", {}, `${g.stage}. Stufe: ${g.name}`), g.syllables.length ? h("div", { class: "chips" }, g.syllables.map((x) => h("span", {}, x.toUpperCase()))) : h("span", { class: "muted" }, "–") ]), { wide: true })));
+      detail.hidden = false; btn.disabled = true;
+    });
+    return [h("tr", {}, [r.release_order, h("strong", {}, r.letter.toUpperCase()), fmtDate(r.released_at), r.syllable_count, btn].map((c) => h("td", {}, c))), detail];
+  });
+  return h("div", { class: "tablewrap" }, h("table", { class: "wide" }, h("thead", {}, h("tr", {}, head.map((x) => h("th", {}, x)))), h("tbody", {}, rows.flat())));
+}
+
 async function lernplan(root, api, cid, classes, msg) {
-  const plan = await api.get(`/classes/${cid}/plan`), students = await api.get(`/classes/${cid}/students`), scopeBox = h("div"), reload = () => lernplan(clear(root), api, cid, classes, msg);
+  const plan = await api.get(`/classes/${cid}/plan`), students = await api.get(`/classes/${cid}/students`), reload = () => lernplan(clear(root), api, cid, classes, msg);
   const start = h("input", { type: "text", size: "8", style: "text-transform:uppercase", "aria-label": "Startbuchstaben" }), letter = h("input", { type: "text", maxlength: "1", size: "2", style: "text-transform:uppercase", "aria-label": "Neuer Buchstabe" });
   root.append(h("h2", {}, "Lernplan der Klasse"),
-    h("h3", {}, "Buchstabenfreigabe"), plan.releases.length ? table(["Nr.", "Buchstabe", "Freigegeben", "Silben im festen Umfang", ""], plan.releases.map((r) => [r.release_order, h("strong", {}, r.letter.toUpperCase()), fmtDate(r.released_at), r.syllable_count,
-      h("button", { type: "button", onclick: () => act(msg, async () => { const s = await api.get(`/classes/${cid}/releases/${r.letter}/scope`); clear(scopeBox).append(h("div", { class: "card" }, h("strong", {}, `Silben von ${r.letter.toUpperCase()} (${s.length})`), h("div", { class: "chips" }, s.map((x) => h("span", {}, x.toUpperCase()))))); }) }, "Silben ansehen")])) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."), scopeBox,
+    h("h3", {}, "Buchstabenfreigabe"), plan.releases.length ? freigabeTabelle(api, cid, plan.releases, msg) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."),
     plan.releases.length
       ? h("div", { class: "row" }, h("label", {}, "Nächsten Buchstaben freigeben ", letter), h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
           const r = await api.post(`/classes/${cid}/releases`, await mitUmfang(api, plan, [letter.value.trim().toLowerCase()])), x = r.released[0]; clear(msg).append(notice(`${x.letter.toUpperCase()} freigegeben. Fester Silbenumfang: ${x.syllableCount} Silben.` + (x.syllableCount ? "" : " (Mit den bisherigen Buchstaben ergeben sich keine neuen Silben.)"), "ok"));
