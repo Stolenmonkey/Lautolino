@@ -8,7 +8,7 @@ import { migrateLocal } from "../apps/server/src/migrate";
 import { hashPassword } from "../apps/server/src/crypto";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
 import { buildSyllables, structureWords } from "@silbenflug/core";
-import { canPractice, emptyState, adoptServer, finishRound, prepareRound } from "../apps/kids/src/logic";
+import { canPractice, emptyState, adoptServer, finishRound, localAwards, prepareRound } from "../apps/kids/src/logic";
 import { ApiError, createKidsApi, flushQueue } from "../apps/kids/src/api";
 import type { QueuedRound } from "../apps/kids/src/api";
 import { mountKids } from "../apps/kids/src/ui";
@@ -107,6 +107,31 @@ describe("Kinder-App gegen echten Server", () => {
     expect(dlg!.textContent).toContain("Gold"); expect(dlg!.textContent).not.toContain("Bronze"); expect(dlg!.textContent).not.toContain("%");
     expect(root.querySelector("#lgrid")!.textContent).not.toContain("%"); expect(root.querySelectorAll("#lgrid .medal").length).toBe(2);
     click(root, "Toll!"); await flush(); expect(root.querySelector(".dlg")).toBeNull();
+    expect((await call("GET", "/student/awards", kidTok)).json.pending).toEqual([]);
+  });
+
+  it("lokal berechnete Verbesserung stimmt mit dem Server überein", async () => {
+    const all = structureWords(["o", "l"]), secs = [9, 7, 5, 3, 2, 1.5, 1, 1, 1, 1, 1, 1];
+    for (let r = 0; r < secs.length; r++) {
+      const plan0 = (await call("GET", "/student/plan", kidTok)).json, aw0 = (await call("GET", "/student/awards", kidTok)).json, sd = (await call("GET", "/student/sync-data", kidTok)).json;
+      const syl = all.filter((_, i) => (i + r) % 3 !== 0).map((x) => ({ s: x, sec: secs[r] })), st = finishRound(adoptServer(sd), { seconds: 30, syllables: syl }, cfg);
+      const local = localAwards(aw0.letters, plan0.scopes, st.sylTimes, syl.map((x) => x.s), cfg);
+      expect((await call("POST", "/student/rounds", kidTok, { clientRoundId: "par" + r, seconds: 30, syllables: syl, letters: ["o", "l"] })).status).toBe(201);
+      const aw1 = (await call("GET", "/student/awards", kidTok)).json;
+      expect(local.map((x) => [x.letter, x.level, x.progress])).toEqual(aw1.letters.map((x: any) => [x.letter, x.level, x.progress]));
+    }
+  });
+
+  it("Rundenende zeigt die Verbesserung sofort und ohne zweites Popup", async () => {
+    const all = structureWords(["o", "l"]);
+    for (let i = 0; i < 4; i++) await call("POST", "/student/rounds", kidTok, { clientRoundId: "pre" + i, seconds: 40, syllables: all.map((s) => ({ s, sec: 1 })), letters: ["o", "l"] });
+    await call("POST", "/student/awards/ack", kidTok);
+    const a = mount(); await a.ready; await flush(); (a.root.querySelector("#code") as HTMLInputElement).value = code; click(a.root, "Anmelden"); await flush();
+    while (a.root.querySelector(".dlg")) { const b = a.root.querySelector(".dlg button") as HTMLElement; b.click(); await flush(); }
+    click(a.root, "Übung starten"); play(a.root, 20);
+    expect(a.root.querySelectorAll(".dlg").length).toBe(1); expect(a.root.querySelector("#imp")!.textContent).toContain("verbessert");   // sofort, ohne auf den Server zu warten
+    await flush(); expect(a.root.querySelectorAll(".dlg").length).toBe(1);
+    click(a.root, "Ende"); await flush(); expect(a.root.querySelector(".dlg")).toBeNull();
     expect((await call("GET", "/student/awards", kidTok)).json.pending).toEqual([]);
   });
 

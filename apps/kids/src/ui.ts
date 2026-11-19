@@ -3,7 +3,7 @@ import { renderWord, renderWordWithArcs } from "@silbenflug/core";
 import type { AwardLevel, Rng, SilbenflugConfig } from "@silbenflug/shared";
 import { ApiError, createKidsApi, flushQueue, newRoundId } from "./api";
 import type { FetchFn, KV, QueuedRound } from "./api";
-import { adoptServer, canPractice, emptyState, finishRound, prepareRound } from "./logic";
+import { adoptServer, canPractice, emptyState, finishRound, localAwards, prepareRound } from "./logic";
 import type { LocalState, Plan, RoundSetup } from "./logic";
 
 export interface Deps { base: string; storage: KV; fetchFn?: FetchFn; rng?: Rng; now?: () => number }
@@ -47,7 +47,7 @@ const pair = (l: string): string => renderWord(l.toUpperCase()) + renderWord(l.t
 export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void> } {
   const api = createKidsApi({ base: deps.base, fetchFn: deps.fetchFn }), rng: Rng = deps.rng || Math.random, now = deps.now || (() => Date.now());
   let session: Session | null = null, data: Data | null = null, view: "login" | "home" | "practice" | "end" = "login";
-  let msg = "", setup: RoundSetup | null = null, idx = 0, roundStart = 0, sylStart = 0, shownAt = 0, times: Array<{ s: string; sec: number }> = [], lastSecs = 0, syncing: Promise<void> | null = null, popupOpen = false, pending: (() => void) | null = null, lastClick = 0;
+  let msg = "", setup: RoundSetup | null = null, idx = 0, roundStart = 0, sylStart = 0, shownAt = 0, times: Array<{ s: string; sec: number }> = [], lastSecs = 0, syncing: Promise<void> | null = null, popupOpen = false, pending: (() => void) | null = null, lastClick = 0, endBefore: Record<string, AwL> | null = null, celebrated = false;
 
   const cur = (): string => view;   // aktueller Stand der Ansicht (verhindert, dass TypeScript nach go() eine alte Ansicht annimmt)
   const blank = (): Data => ({ st: emptyState(), queue: [], plan: null, config: null, awards: null });
@@ -73,6 +73,9 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
         const sd = await api.get("/student/sync-data");
         if (!d.queue.length) d.st = adoptServer(sd);   // gemerkte Runden offen: lokaler Stand gilt; sonst der des Servers
         d.awards = await api.get("/student/awards");
+        // Verbesserung wurde am Rundenende schon lokal gezeigt: die Awards des Servers sind damit quittiert, kein zweites Popup
+        if (celebrated && d.awards && d.awards.pending.length) { d.awards.pending = []; void api.post("/student/awards/ack").catch(() => { /* beim nächsten Abgleich */ }); }
+        if (celebrated && !d.queue.length) celebrated = false;
       } catch (e) { if (e instanceof ApiError && e.status === 401) logout("Bitte melde dich noch einmal an."); /* sonst: offline, es gilt der gemerkte Stand */ }
       finally { syncing = null; save(); }
     })();
@@ -210,28 +213,40 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     lastSecs = Math.round((now() - roundStart) / 100) / 10;
     d.st = finishRound(d.st, { seconds: lastSecs, syllables: times }, cfg);
     d.queue.push({ clientRoundId: newRoundId(rng), seconds: lastSecs, syllables: times, letters: s.letters, playedAt: new Date(now()).toISOString() });
-    const before = snapshot(d.awards); save(); setup = null; go("end");
-    void sync().then(() => { if (cur() === "end") showImprovement(before); });
+    const before = snapshot(d.awards); endBefore = null;
+    // Verbesserung sofort lokal berechnen (gleiche Regeln wie der Server): das Popup erscheint einmal komplett, ohne auf den Server zu warten
+    if (d.awards && d.plan && d.plan.scopes) {
+      d.awards = { ...d.awards, letters: localAwards(d.awards.letters, d.plan.scopes, d.st.sylTimes, times.map((x) => x.s), cfg) }; endBefore = before; celebrated = true;
+    }
+    save(); setup = null; go("end");
+    if (endBefore) void sync().then(() => d.queue.length && cur() === "end" ? sync() : undefined).then(() => { const g = root.querySelector("#lgrid") as HTMLElement | null; if (cur() === "end" && g) g.innerHTML = gridHtml(); });
+    else void sync().then(() => { if (cur() === "end") showImprovement(before); });
   }
   function renderEnd(): void {
     const nm = session ? (session.name.trim().split(/\s+/)[0] || "") : "", n = Math.round(lastSecs);
     root.innerHTML = homeHtml() + '<div class="dlg col" role="dialog" aria-modal="true"><section class="card end award enter">' + owl("bigmascot owl") + "<h2>" + (nm ? "Herzlichen Glückwunsch, " + esc(nm) + "!" : "Geschafft!") + '</h2><p class="time"><span class="tl">Deine Zeit</span>' + (n === 1 ? "1 Sekunde" : n + " Sekunden") + '</p><div id="imp"></div><div class="endbtns"><button class="btn" id="again" type="button">Noch mal?</button><button class="btn red" id="stop" type="button">Ende</button></div></section></div>';
+    const host = root.querySelector("#imp") as HTMLElement | null; if (host && endBefore) { host.innerHTML = improvementHtml(endBefore); fitDialog(host); }
     (root.querySelector("#again") as HTMLElement).onclick = startPractice; (root.querySelector("#stop") as HTMLElement).onclick = () => go("home");
   }
   // Stand der Fortschrittskreise und Sterne vor der Runde, um danach Verbesserungen zu zeigen
   const RANK: Record<string, number> = { bronze: 1, silber: 2, gold: 3 };
   function snapshot(aw: AwardsView | null): Record<string, AwL> { const m: Record<string, AwL> = {}; if (aw) aw.letters.forEach((x) => { m[x.letter] = { ...x }; }); return m; }
   const rk = (x: AwL): number => (x.level ? RANK[x.level] : 0) * 10 + (x.progress ? x.progress.segments : x.level === "gold" ? 5 : 0);
+  function improvementHtml(before: Record<string, AwL>): string {
+    const d = data; if (!d || !d.awards) return "";
+    const better = d.awards.letters.filter((x) => x.released && before[x.letter] && rk(x) > rk(before[x.letter]));
+    if (!better.length) return "";
+    const one = (x: AwL): string => { const o = before[x.letter]; return '<div class="imp">' + tile(x.letter, true, o.level, o.progress) + '<span class="arr" aria-label="wird zu">&rarr;</span>' + tile(x.letter, true, x.level, x.progress) + "</div>"; };
+    return '<div class="impbox"><div class="impt">Spitze, du hast dich verbessert!</div>' + better.map(one).join("") + "</div>";
+  }
+  // Rückfall ohne lokalen Silbenumfang (älterer Server): Verbesserung erst nach dem Abgleich zeigen
   function showImprovement(before: Record<string, AwL>): void {
     const d = data, host = root.querySelector("#imp") as HTMLElement | null; if (!d || !d.awards || !host) return;
-    const better = d.awards.letters.filter((x) => x.released && before[x.letter] && rk(x) > rk(before[x.letter]));
     const grid = root.querySelector("#lgrid") as HTMLElement | null; if (grid) grid.innerHTML = gridHtml();
     // Am Rundenende ersetzt diese Anzeige das Glückwunsch-Popup: offene Awards sofort quittieren, damit später kein zweites Popup folgt
     if (d.awards.pending.length) { d.awards.pending = []; save(); void api.post("/student/awards/ack").catch(() => { /* offline: beim nächsten Abgleich */ }); }
-    if (!better.length) return;
-    const one = (x: AwL): string => { const o = before[x.letter]; return '<div class="imp">' + tile(x.letter, true, o.level, o.progress) + '<span class="arr" aria-label="wird zu">&rarr;</span>' + tile(x.letter, true, x.level, x.progress) + "</div>"; };
-    host.innerHTML = '<div class="impbox"><div class="impt">Spitze, du hast dich verbessert!</div>' + better.map(one).join("") + "</div>";
-    fitDialog(host);
+    const html = improvementHtml(before); if (!html) return;
+    host.innerHTML = html; fitDialog(host);
   }
   // Verkleinert die Kacheln, bis das Popup in den Bildschirm passt (Buttons bleiben sichtbar)
   function fitDialog(host: HTMLElement): void {

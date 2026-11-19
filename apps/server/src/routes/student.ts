@@ -42,7 +42,7 @@ export function studentRoutes() {
     const p = c.get("p");
     if (p.kind !== "student") throw fail(403, "Keine Berechtigung");
     const d = c.get("deps"), st = await studentLetters(d.db, p.id), scopes = st.classId ? await loadScopes(d, st.classId, st.letters) : {};
-    return c.json({ ...st, syllables: [...new Set(Object.values(scopes).flat())].sort((a, b) => a.length - b.length || (a < b ? -1 : 1)) });
+    return c.json({ ...st, syllables: [...new Set(Object.values(scopes).flat())].sort((a, b) => a.length - b.length || (a < b ? -1 : 1)), scopes });   // scopes: fester Silbenumfang je Buchstabe (die App rechnet damit die Verbesserung am Rundenende)
   });
   return r;
 }
