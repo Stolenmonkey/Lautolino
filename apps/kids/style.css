@@ -26,9 +26,8 @@ input[type=text]:focus{outline:none;border-color:#4a8fe0}
 .rw{position:absolute;left:15%;top:15%;width:70%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:1.9rem;font-size:26cqw;line-height:1}
 .ring{position:absolute;inset:0;width:100%;height:100%}.ring circle{fill:none;stroke-width:8}.ring .trk{stroke:var(--trk)}.ring .fil{stroke:var(--fil);stroke-linecap:round;transition:stroke-dasharray .4s ease-out}
 .rw svg:not(.ring){position:relative}
-.medal.tstar{position:absolute;top:8.5%;left:50%;right:auto;transform:translateX(-50%);width:26cqw;height:26cqw}
+.medal.tstar{position:absolute;top:8.5%;left:50%;right:auto;transform:translateX(-50%) scale(1.5);transform-origin:50% 83.333%;width:26cqw;height:26cqw}
 .medal{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:30px;height:33px}
-.lgrid .medal.tstar{transform:translateX(-50%) scale(2);transform-origin:50% 83.333%}
 .medal.big{position:static;transform:none;width:54px;height:59px}
 .foot{text-align:center;font-size:1rem;color:#4b5b7a;margin:0}
 .link{font:inherit;font-size:1rem;color:#2f5f9a;background:none;border:0;text-decoration:underline;cursor:pointer;padding:12px 8px}
