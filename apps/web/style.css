@@ -3,8 +3,8 @@
 body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
 header { padding:10px 16px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:baseline; }
 #who { color:var(--muted); flex:1; }
-nav { display:flex; gap:4px; padding:6px 16px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
-nav button { flex:1 1 0; min-width:max-content; text-align:center; border:0; background:none; color:var(--muted); padding:10px 12px; cursor:pointer; font:inherit; border-bottom:3px solid transparent; border-radius:8px 8px 0 0; }
+nav { display:flex; gap:4px; padding:6px 16px 0; border-bottom:1px solid var(--line); flex-wrap:nowrap; }
+nav button { flex:1 1 0; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center; border:0; background:none; color:var(--muted); padding:10px 12px; cursor:pointer; font:inherit; border-bottom:3px solid transparent; border-radius:8px 8px 0 0; }
 nav button:hover { background:var(--soft); color:var(--fg); }
 nav button[aria-current=true] { color:var(--accent); font-weight:700; background:#e8f0fb; border-bottom-color:var(--accent); }
 main { max-width:1180px; margin:0 auto; padding:16px; }
@@ -47,7 +47,7 @@ table .v { display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap; }
 .barbox { width:140px; }
 @media (max-width:640px) {
   main { padding:10px; } header { flex-wrap:wrap; }
-  nav { padding:6px 6px 0; } nav button { flex:1 1 auto; min-width:0; padding:12px 8px; }
+  nav { padding:6px 4px 0; gap:2px; } nav button { padding:12px 2px; font-size:.78rem; }
   button, input, select { min-height:44px; } input[type=checkbox] { min-height:0; width:22px; height:22px; }
   h2 { font-size:1.25rem; }
   table.stack, table.stack tbody, table.stack tr, table.stack td { display:block; width:100%; }
