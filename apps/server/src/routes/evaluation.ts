@@ -40,13 +40,17 @@ async function childGroups(d: Deps, cid: string, letters: string[], excluded: Se
   const kids = await d.db.all("SELECT k.id, k.display_name AS name FROM students k JOIN student_class_history h ON h.student_id=k.id AND h.to_date IS NULL WHERE h.class_id=? AND k.active=1 ORDER BY k.display_name", [cid]) as { id: string; name: string }[];
   const scopes = await loadScopes(d, cid, letters);
   const rows = await d.db.all("SELECT t.student_id, t.syllable, t.seconds FROM syllable_times t JOIN student_class_history h ON h.student_id=t.student_id AND h.to_date IS NULL JOIN students k ON k.id=t.student_id WHERE h.class_id=? AND k.active=1 ORDER BY t.student_id, t.syllable, t.seq", [cid]) as { student_id: string; syllable: string; seconds: number }[];
+  const roundRows = await d.db.all("SELECT r.student_id, COUNT(*) AS n FROM rounds r JOIN student_class_history h ON h.student_id=r.student_id AND h.to_date IS NULL JOIN students k ON k.id=r.student_id WHERE h.class_id=? AND k.active=1 GROUP BY r.student_id", [cid]) as { student_id: string; n: number }[];
+  const roundsOf: Record<string, number> = {};
+  roundRows.forEach((x) => { roundsOf[x.student_id] = Number(x.n); });
   const times: Record<string, Record<string, number[]>> = {};
   rows.forEach((x) => { ((times[x.student_id] ||= {})[x.syllable] ||= []).push(x.seconds); });
   const list = kids.map((k) => {
     const scope = new Set<string>(); letters.filter((l) => !excluded.has(k.id + "|" + l)).forEach((l) => (scopes[l] || []).forEach((s) => scope.add(s)));
     const own = times[k.id] || {}, total = scope.size, hasData = total > 0 && Object.keys(own).length > 0;
     const mastered = hasData ? [...scope].filter((s) => own[s] && isMastered(own[s], cfg, s).status === "mastered").length : 0;
-    return { id: k.id, name: k.name, mastered, total, percent: hasData ? Math.round((mastered / total) * 1000) / 10 : null as number | null, group: "nodata" as string, rank: null as number | null };
+    const rounds = roundsOf[k.id] || 0;   // Effizienz = sicher beherrschte Silben / durchgespielte Runden (nur Anzeige, ohne Einfluss auf die Gruppe)
+    return { id: k.id, name: k.name, mastered, total, rounds, efficiency: hasData && rounds > 0 ? Math.round((mastered / rounds) * 100) / 100 : null as number | null, percent: hasData ? Math.round((mastered / total) * 1000) / 10 : null as number | null, group: "nodata" as string, rank: null as number | null };
   });
   const rated = list.filter((x) => x.percent !== null), med = rated.length ? median(rated.map((x) => x.percent as number)) : null, eps = 1e-9;
   const pcts = rated.map((x) => x.percent as number);

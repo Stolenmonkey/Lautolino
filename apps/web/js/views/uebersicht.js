@@ -10,7 +10,7 @@ const GROUPS = [
 ];
 
 function childCard(k) {
-  return h("li", { class: "kidcard" }, h("strong", {}, k.name), " ", k.percent === null ? h("span", { class: "muted" }, "noch nichts geübt") : [bar(k.percent), `${pct(k.percent)} (${k.mastered} von ${k.total})`]);
+  return h("li", { class: "kidcard" }, h("strong", {}, k.name), " ", k.percent === null ? h("span", { class: "muted" }, "noch nichts geübt") : [bar(k.percent), `${pct(k.percent)} (${k.mastered} von ${k.total})`, " · ", k.efficiency === null ? h("span", { class: "muted" }, "Effizienz: –") : h("span", { title: `${k.mastered} sicher beherrschte Silben ÷ ${k.rounds} Runden` }, `Effizienz: ${String(k.efficiency).replace(".", ",")} Silben/Runde (${k.rounds} Runden)`)]);
 }
 
 export async function uebersicht(root, api, cid, classes, msg) {
@@ -31,7 +31,7 @@ export async function uebersicht(root, api, cid, classes, msg) {
   slider.addEventListener("input", () => { val.textContent = `${slider.value} %`; render(Number(slider.value)); });
   slider.addEventListener("change", () => act(msg, async () => { await api.put(`/classes/${cid}/band`, { band: Number(slider.value) }); clear(msg); }));
   root.append(h("h2", {}, "Klassenübersicht"),
-    h("p", { class: "muted" }, `Aktive Kinder in der Klasse: ${r.students}. Einstufung nach dem Anteil sicher beherrschter Silben an allen freigegebenen Silben des Kindes, nach Rang in der Klasse.`),
+    h("p", { class: "muted" }, `Aktive Kinder in der Klasse: ${r.students}. Einstufung nach dem Anteil sicher beherrschter Silben an allen freigegebenen Silben des Kindes, nach Rang in der Klasse. Effizienz = sicher beherrschte Silben ÷ durchgespielte Runden (nur zur Information).`),
     h("div", { class: "row" }, h("label", {}, "Mittelfeld ", slider, " ", val, " der Klasse")), info, out);
   render(r.band);
   root.append(h("details", {}, h("summary", {}, "Übersicht je Buchstabe"),
