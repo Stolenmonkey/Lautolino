@@ -24,14 +24,19 @@ export async function schoolView(tab, root, { api, user }) {
 async function schueler(root, api, cid, classes, msg) {
   const list = h("div"), codes = h("div"), parents = h("div"), load = async () => {
     const rows = await api.get(`/classes/${cid}/students`);
-    clear(list).append(rows.length ? table(["Name", "Status", ""], rows.map((s) => [s.display_name, s.active ? "aktiv" : "deaktiviert", h("span", { class: "row" },
-      h("button", { type: "button", onclick: () => elternPanel(clear(parents), api, s, msg) }, "Eltern"),
-      h("button", { type: "button", onclick: () => act(msg, async () => { const r = await api.post(`/students/${s.id}/code/regenerate`); showCodes([{ displayName: s.display_name, code: r.code }], "Neuer Merkschlüssel – der alte ist ungültig."); }) }, "Neuer Merkschlüssel"),
+    const missing = rows.some((s) => s.active && (!s.code || !s.parent_code));
+    clear(list).append(rows.length ? table(["Name", "Status", "", "Passwort Kind", "Passwort Eltern", ""], rows.map((s) => [s.display_name, s.active ? "aktiv" : "deaktiviert",
       h("button", { type: "button", onclick: () => act(msg, () => api.patch(`/students/${s.id}`, { active: !s.active }), load) }, s.active ? "Deaktivieren" : "Aktivieren"),
-      classes.length > 1 ? h("select", { "aria-label": "Verschieben", onchange: (e) => e.target.value && act(msg, () => api.post(`/students/${s.id}/move`, { classId: e.target.value }), load) },
-        h("option", { value: "" }, "Verschieben …"), classes.filter((c) => c.id !== cid).map((c) => h("option", { value: c.id }, c.name))) : null)])) : h("p", { class: "muted" }, "Noch keine Kinder in dieser Klasse."));
+      h("span", { class: "code" }, s.code || "—"), h("span", { class: "code" }, s.parent_code || "—"),
+      h("details", { class: "more" }, h("summary", { "aria-label": "Weitere Aktionen" }, "⋯"), h("span", { class: "row" },
+        h("button", { type: "button", onclick: () => elternPanel(clear(parents), api, s, msg, load) }, "Eltern"),
+        h("button", { type: "button", onclick: () => act(msg, () => api.post(`/students/${s.id}/code/regenerate`), load) }, "Neues Kinderpasswort"),
+        classes.length > 1 ? h("select", { "aria-label": "Verschieben", onchange: (e) => e.target.value && act(msg, () => api.post(`/students/${s.id}/move`, { classId: e.target.value }), load) },
+          h("option", { value: "" }, "Verschieben …"), classes.filter((c) => c.id !== cid).map((c) => h("option", { value: c.id }, c.name))) : null))]), { wide: true }) : h("p", { class: "muted" }, "Noch keine Kinder in dieser Klasse."),
+      missing ? h("div", { class: "row noprint" }, h("button", { type: "button", id: "missingCodes", onclick: () => confirm("Für Kinder ohne sichtbares Passwort werden neue Passwörter erzeugt. Die alten werden ungültig. Fortfahren?") && act(msg, async () => { const r = await api.post(`/classes/${cid}/codes/missing`); clear(msg).append(notice(`${r.created} Passwörter erzeugt.`, "ok")); }, load) }, "Fehlende Passwörter erzeugen")) : null,
+      rows.length ? h("button", { type: "button", class: "noprint", onclick: () => window.print() }, "Drucken") : null);
   };
-  const showCodes = (rows, text) => { const withParent = rows.some((r) => r.parentCode); clear(codes).append(h("div", { class: "card" }, h("p", {}, text + " Die Codes sind nur jetzt sichtbar und werden nicht im Klartext gespeichert."),
+  const showCodes = (rows, text) => { const withParent = rows.some((r) => r.parentCode); clear(codes).append(h("div", { class: "card" }, h("p", {}, text + ""),
     table(["Name", ...(rows.some((r) => r.code) ? ["Schülercode (Merkschlüssel)"] : []), ...(withParent ? ["Elterncode"] : [])], rows.map((r) => [r.displayName, ...(rows.some((x) => x.code) ? [h("span", { class: "code" }, r.code || "")] : []), ...(withParent ? [h("span", { class: "code" }, r.parentCode || "")] : [])])), h("button", { type: "button", class: "noprint", onclick: () => window.print() }, "Drucken"))); };
   const names = h("textarea", { placeholder: "Ein Name pro Zeile" });
   root.append(h("h2", {}, "Schüler"), list, codes, parents,

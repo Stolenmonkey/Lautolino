@@ -76,7 +76,7 @@ describe("Oberfläche gegen echten Server", () => {
     const tApi = mk(), T = await tApi.login("lehrkraft@test.de", pwText[1]);
     root = document.createElement("div"); await schoolView("schueler", root, { api: tApi, user: T }); await flush();
     (root.querySelector("textarea") as HTMLTextAreaElement).value = "Mia\nBen"; click(root, "Anlegen"); await flush();
-    expect(root.textContent).toContain("2 Kinder angelegt"); expect(root.querySelectorAll(".code").length).toBe(4);
+    expect(root.textContent).toContain("2 Kinder angelegt"); expect(root.querySelectorAll(".code").length).toBe(8); /* 4 im Anlege-Panel, 4 (Kind+Eltern je 2 Kinder) in der Tabelle */
     const codes = Array.from(root.querySelectorAll(".code")).map((x) => x.textContent!);
     root = document.createElement("div"); await schoolView("lernplan", root, { api: tApi, user: T }); await flush();
     (root.querySelector('input[aria-label="Startbuchstaben"]') as HTMLInputElement).value = "O L"; click(root, "Startbuchstaben freigeben"); await flush();

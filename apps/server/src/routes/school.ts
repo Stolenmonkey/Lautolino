@@ -71,7 +71,22 @@ export function schoolRoutes() {
   r.get("/classes/:cid/students", async (c) => {
     const d = c.get("deps"), a = await canAccessClass(d.db, c.get("p"), c.req.param("cid"));
     if (!a.ok) throw fail(404, "nicht gefunden");
-    return c.json(await d.db.all("SELECT k.id, k.display_name, k.active FROM students k JOIN student_class_history h ON h.student_id=k.id AND h.to_date IS NULL WHERE h.class_id=? ORDER BY k.display_name", [c.req.param("cid")]));
+    // Klartext-Codes (code_plain) sehen nur Personal mit Zugriff auf die Klasse; null = Code vor Migration 0009 erzeugt.
+    return c.json(await d.db.all("SELECT k.id, k.display_name, k.active, (SELECT code_plain FROM student_codes sc WHERE sc.student_id=k.id AND sc.revoked_at IS NULL) AS code, (SELECT code_plain FROM parent_codes pc WHERE pc.student_id=k.id AND pc.revoked_at IS NULL) AS parent_code FROM students k JOIN student_class_history h ON h.student_id=k.id AND h.to_date IS NULL WHERE h.class_id=? ORDER BY k.display_name", [c.req.param("cid")]));
+  });
+  // Erzeugt für Kinder, deren Code nicht im Klartext vorliegt (alte Codes), neue Codes. Die alten Codes werden dabei ungültig.
+  r.post("/classes/:cid/codes/missing", async (c) => {
+    const d = c.get("deps"), p = c.get("p"), cid = c.req.param("cid"), a = await canAccessClass(d.db, p, cid);
+    if (!a.ok || p.kind !== "staff") throw fail(404, "nicht gefunden");
+    await assertSchoolWritable(d, a.schoolId!);
+    const kids = await d.db.all<{ id: string; sc: string | null; pc: string | null }>("SELECT k.id, (SELECT code_plain FROM student_codes sc WHERE sc.student_id=k.id AND sc.revoked_at IS NULL) AS sc, (SELECT code_plain FROM parent_codes pc WHERE pc.student_id=k.id AND pc.revoked_at IS NULL) AS pc FROM students k JOIN student_class_history h ON h.student_id=k.id AND h.to_date IS NULL WHERE h.class_id=? AND k.active=1", [cid]);
+    let n = 0;
+    for (const k of kids) {
+      if (!k.sc) { await issueStudentCode(d, k.id); await d.db.run("DELETE FROM student_sessions WHERE student_id=?", [k.id]); n++; }
+      if (!k.pc) { await issueParentCode(d, k.id); n++; }
+    }
+    await audit(d, p.id, "codes_missing_created", cid, { count: n });
+    return c.json({ created: n });
   });
   // Legt Kinder an und gibt Schülercode und Elterncode genau einmal zurück (danach nur noch neu erzeugen).
   r.post("/classes/:cid/students", async (c) => {

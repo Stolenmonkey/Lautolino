@@ -53,10 +53,11 @@ describe("Elternzugang", () => {
   const kidTok = async (i = 0) => (await call("POST", "/student/login", null, { code: codes[i] })).json.token as string;
   const play = async (id = 0) => { const tok = await kidTok(id), all = structureWords(["o", "l"]); for (let i = 0; i < 10; i++) expect((await call("POST", "/student/rounds", tok, { clientRoundId: "e" + id + "_" + i, seconds: 40 - i, syllables: all.map((x) => ({ s: x, sec: 1 })), letters: ["o", "l"] })).status).toBe(201); };
 
-  it("Elterncode entsteht beim Anlegen des Kindes, hat das Format XXXX-XXXX-XXXX, Klartext steht nicht in der Datenbank", async () => {
+  it("Elterncode entsteht beim Anlegen des Kindes, hat das Format XXXX-XXXX-XXXX, Hash/Lookup enthalten keinen Klartext", async () => {
     const kids = (await call("POST", `/classes/${classId}/students`, teacher, { names: ["Zoe"] })).json;
     expect(kids[0].parentCode).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/); expect(kids[0].code).toMatch(/^[A-Z][a-z]+[A-Z][a-z]+\d{1,2}$/);
-    expect(JSON.stringify(raw.prepare("SELECT * FROM parent_codes").all())).not.toContain(kids[0].parentCode);
+    expect(JSON.stringify(raw.prepare("SELECT id,student_id,code_hash,code_lookup FROM parent_codes").all())).not.toContain(kids[0].parentCode);
+    expect(raw.prepare("SELECT code_plain FROM parent_codes WHERE student_id=?").get(kids[0].id).code_plain).toBe(kids[0].parentCode); // Klartext nur in code_plain (Migration 0009)
     expect((await link(kids[0].parentCode)).student.displayName).toBe("Zoe");
     const r = await call("POST", `/students/${kA}/parent-code/regenerate`, teacher); expect(r.status).toBe(200); expect(r.json.code).toMatch(/^[A-Z2-9]{4}(-[A-Z2-9]{4}){2}$/);
     expect(raw.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action='parent_code_regenerated'").get().n).toBe(1);
