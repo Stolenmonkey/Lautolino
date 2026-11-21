@@ -16,13 +16,14 @@ const LEVEL_NAME: Record<AwardLevel, string> = { bronze: "Bronze", silber: "Silb
 const LEVEL_COLOR: Record<AwardLevel, string> = { bronze: "#cd7f32", silber: "#b9c3d1", gold: "#ffc928" };
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
 
-const OWL = '<g class="wingL"><ellipse cx="30" cy="92" rx="11" ry="20" fill="#f08a24" transform="rotate(18 30 92)"/></g><g class="wingR"><ellipse cx="90" cy="92" rx="11" ry="20" fill="#f08a24" transform="rotate(-18 90 92)"/></g>' +
+const OWL = '<path d="M25 66L27 36L52 54Z" fill="#f08a24" stroke="#f08a24" stroke-width="6" stroke-linejoin="round"/><path d="M95 66L93 36L68 54Z" fill="#f08a24" stroke="#f08a24" stroke-width="6" stroke-linejoin="round"/><path d="M31 56L31 44L43 53Z" fill="#ffe3b8"/><path d="M89 56L89 44L77 53Z" fill="#ffe3b8"/>' +
+  '<g class="wingL"><ellipse cx="30" cy="92" rx="11" ry="20" fill="#f08a24" transform="rotate(18 30 92)"/></g><g class="wingR"><ellipse cx="90" cy="92" rx="11" ry="20" fill="#f08a24" transform="rotate(-18 90 92)"/></g>' +
   '<ellipse cx="60" cy="88" rx="38" ry="38" fill="#ffa63d"/><ellipse cx="60" cy="98" rx="24" ry="25" fill="#ffe3b8"/>' +
   '<g class="eyes"><circle cx="45" cy="72" r="13" fill="#fff"/><circle cx="75" cy="72" r="13" fill="#fff"/><circle cx="47" cy="74" r="6" fill="#1f2a44"/><circle cx="73" cy="74" r="6" fill="#1f2a44"/><circle cx="49" cy="72" r="2" fill="#fff"/><circle cx="75" cy="72" r="2" fill="#fff"/></g>' +
   '<path d="M53 83 L67 83 L60 95 Z" fill="#ff6b4a"/><circle cx="33" cy="88" r="6" fill="#ff9db5" opacity=".7"/><circle cx="87" cy="88" r="6" fill="#ff9db5" opacity=".7"/>' +
   '<ellipse cx="46" cy="125" rx="10" ry="4" fill="#ff6b4a"/><ellipse cx="74" cy="125" rx="10" ry="4" fill="#ff6b4a"/>';
-const owl = (cls: string, id = ""): string => '<svg class="' + cls + '"' + (id ? ' id="' + id + '"' : "") + ' viewBox="8 46 104 86" aria-hidden="true">' + OWL + "</svg>";
-const TITLE = "Lautolino";
+const owl = (cls: string, id = ""): string => '<svg class="' + cls + '"' + (id ? ' id="' + id + '"' : "") + ' viewBox="8 30 104 102" aria-hidden="true">' + OWL + "</svg>";
+const TITLE = renderWord("Lautolino");   // in der Schulschrift der App
 
 // Fortschrittsring um den Großbuchstaben: 5 Schritte, füllt sich im Uhrzeigersinn ab 12 Uhr; nach Gold bleibt er voll
 function ring(p: { next: AwardLevel; segments: number } | null | undefined, held: AwardLevel | null, on: boolean): string {
@@ -84,7 +85,7 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     if (view === "login") renderLogin(); else if (view === "home") renderHome(); else if (view === "practice") renderPractice(); else renderEnd();
     popupOpen = false; if (view === "home" || view === "end") showPopup();
   }
-  function head(): string { return '<header class="head">' + owl("mascot owl calm") + "<h1>" + TITLE + "</h1></header>"; }
+  function head(): string { return '<header class="head">' + owl("mascot owl calm") + '<h1 aria-label="Lautolino">' + TITLE + "</h1></header>"; }
 
   function renderLogin(): void {
     root.innerHTML = head() + '<section class="card enter"><label for="code">Dein Merkschlüssel</label><input id="code" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="z. B. SonneWald7"><div class="msg" id="msg" role="alert">' + esc(msg) + '</div><button class="btn" id="login" type="button" style="margin-top:12px">Anmelden</button></section>';
