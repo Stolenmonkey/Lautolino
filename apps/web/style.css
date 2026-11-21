@@ -160,3 +160,11 @@ table.plain td .v { justify-content:center; } table.plain td:first-child .v { ju
 .hd-row #who.role, .hd-row #logout { box-sizing:border-box; height:30px; min-height:0; padding:0 12px; display:inline-flex; align-items:center; font-size:.85rem; line-height:1; }
 .hd-row #logout { border-radius:999px; font-weight:600; }
 @media (max-width:640px) { .hd-row #who.role, .hd-row #logout { height:28px; padding:0 9px; font-size:clamp(.68rem, 3.2vw, .8rem); } }
+
+/* Feinschliff Header: kompakter, E-Mail zentriert über Clip+Abmelden, Logo mittig zur Höhe */
+header { align-items:center; }
+.hd-right { align-items:center; gap:4px; }
+.hd-mail { text-align:center; }
+.hd-row #who.role, .hd-row #logout { height:24px; padding:0 10px; font-size:.78rem; }
+.hd-row #logout::before { content:"\2715"; font-size:1.25em; line-height:1; margin-right:5px; color:inherit; }
+@media (max-width:640px) { .hd-row #who.role, .hd-row #logout { height:22px; padding:0 8px; font-size:clamp(.64rem, 3vw, .74rem); } .hd-row #logout::before { margin-right:4px; } }
