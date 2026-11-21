@@ -3,7 +3,7 @@
 Lernapp Silbenlesen (Schulmodus von Silbenzauber). Monorepo (npm workspaces), TypeScript, Cloudflare Worker (Hono) + D1/SQLite, Frontends ohne Framework. Sprache im Code/UI: Deutsch.
 
 ## Befehle
-`npm install` · `npm test` (vitest; `pretest` = build) · `npm run typecheck` · `npm run build` (= `build:kids` + `build:web`) · Server lokal: `npm run dev -w @silbenflug/server`
+`npm install` · `npm test` (vitest; `pretest` = build) · `npm run typecheck` · `npm run build` (= `build:kids` + `build:web`) · Server lokal: `npm run dev -w @silbenflug/server` · Testschule (20 simulierte Kinder): `npx tsx apps/server/scripts/testkinder.ts [--config konfig.json --version N]` → `db/testdaten/testschule-seed.sql` / `testschule-reset.sql` (Schule `testschule`, Kinder `tk01`–`tk20`; Codes über die Verwaltung erzeugen)
 
 ## Dateibaum
 ```
@@ -15,7 +15,7 @@ packages/
   engine/src/{index,sylTime,automatik,mastery,scope,stages,params}.ts
 apps/
   server/   wrangler.toml package.json README.md
-    scripts/{dev-local,make-admin-sql}.ts
+    scripts/{dev-local,make-admin-sql,testkinder}.ts
     src/{worker,app,context,db,middleware,permissions,crypto,codes,license,mail,migrate,staff,staffTokens,train,util}.ts
     src/routes/{admin,auth,school,plan,progress,evaluation,student,parent}.ts
   kids/     Kinder-PWA: index.html style.css config.js sw.js manifest.webmanifest icons build.mjs

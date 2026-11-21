@@ -1,0 +1,25 @@
+-- Löscht die Testschule samt aller Testkinder (nur Schule 'testschule').
+DELETE FROM award_popups WHERE award_id IN (SELECT id FROM awards WHERE student_id IN (SELECT id FROM students WHERE school_id='testschule'));
+DELETE FROM awards WHERE student_id IN (SELECT id FROM students WHERE school_id='testschule');
+DELETE FROM letter_markers WHERE student_id IN (SELECT id FROM students WHERE school_id='testschule');
+DELETE FROM letter_mastery_cache WHERE student_id IN (SELECT id FROM students WHERE school_id='testschule');
+DELETE FROM syllable_times WHERE student_id IN (SELECT id FROM students WHERE school_id='testschule');
+DELETE FROM rounds WHERE student_id IN (SELECT id FROM students WHERE school_id='testschule');
+DELETE FROM student_blocked_syllables WHERE student_id IN (SELECT id FROM students WHERE school_id='testschule');
+DELETE FROM parent_activation_codes WHERE student_id IN (SELECT id FROM students WHERE school_id='testschule');
+DELETE FROM parent_devices WHERE student_id IN (SELECT id FROM students WHERE school_id='testschule');
+DELETE FROM student_sessions WHERE student_id IN (SELECT id FROM students WHERE school_id='testschule');
+DELETE FROM student_codes WHERE student_id IN (SELECT id FROM students WHERE school_id='testschule');
+DELETE FROM parent_codes WHERE student_id IN (SELECT id FROM students WHERE school_id='testschule');
+DELETE FROM parent_sessions WHERE student_id IN (SELECT id FROM students WHERE school_id='testschule');
+DELETE FROM student_letter_exclusions WHERE student_id IN (SELECT id FROM students WHERE school_id='testschule');
+DELETE FROM student_class_history WHERE student_id IN (SELECT id FROM students WHERE school_id='testschule');
+DELETE FROM students WHERE school_id='testschule';
+DROP TRIGGER IF EXISTS scope_immutable_delete;
+DELETE FROM letter_syllable_scope WHERE class_id='testklasse';
+CREATE TRIGGER scope_immutable_delete BEFORE DELETE ON letter_syllable_scope BEGIN SELECT RAISE(ABORT, 'letter_syllable_scope ist unveränderlich'); END;
+DELETE FROM class_letter_releases WHERE class_id='testklasse';
+DELETE FROM teacher_classes WHERE class_id='testklasse';
+DELETE FROM classes WHERE id='testklasse';
+DELETE FROM school_years WHERE id='testjahr';
+DELETE FROM schools WHERE id='testschule';
