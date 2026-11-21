@@ -18,7 +18,7 @@ export async function schoolView(tab, root, { api, user }) {
   if (!classes.some((c) => c.id === state.classId)) state.classId = classes[0].id;
   const sel = h("select", { "aria-label": "Klasse", onchange: () => { state.classId = sel.value; schoolView(tab, root, { api, user }); } }, classes.map((c) => h("option", { value: c.id, selected: c.id === state.classId }, c.name)));
   const slot = h("span");   // Platz neben der Klassenauswahl (Auswertung: Schüler-Dropdown)
-  root.append(h("div", { class: "toprow" }, h("label", { class: "klasse" }, "Klasse ", sel), slot));
+  root.append(h("div", { class: "toprow" }, classes.length > 1 ? h("label", { class: "klasse" }, "Klasse ", sel) : h("span"), slot));
   const body = h("div"); root.append(body);
   await (tab === "lernplan" ? lernplan : tab === "auswertung" ? auswertung : tab === "uebersicht" ? uebersicht : schueler)(body, api, state.classId, classes, msg, slot);
 }
