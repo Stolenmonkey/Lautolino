@@ -313,7 +313,7 @@ describe("Lautolino (Server und Oberfläche)", () => {
     it("Klassenübersicht und Lernplan mit Silben je Stufe", async () => {
       const tok = await kidTok(codeA); await rounds(tok, KV, 10, 1, "kv");
       const root = mkRoot(); await schoolView("uebersicht", root, { api: apiFor(teacher), user: { id: "x", role: "lehrer", schoolId: sid } }); await flush();
-      expect(root.textContent).toContain("Klassenübersicht"); expect(root.textContent).toContain("Aktive Kinder in der Klasse: 2"); expect(root.querySelectorAll("tbody tr").length).toBe(6); expect(root.textContent).toContain("Erreicht (geübt)");
+      expect(root.textContent).toContain("Klassenübersicht"); expect(root.textContent).toContain("Aktive Kinder: 2"); expect(root.querySelectorAll("tbody tr").length).toBe(6); expect(root.textContent).toContain("Bronze");
       const root2 = mkRoot(); await schoolView("lernplan", root2, { api: apiFor(teacher), user: { id: "x", role: "lehrer", schoolId: sid } }); await flush();
       expect(root2.textContent).toContain("Übungswörter und Lernstufen"); expect(root2.textContent).toContain("VK und KVK"); const row = Array.from(root2.querySelectorAll("tr")).find((tr) => tr.textContent!.startsWith("3.VK und KVK"))!; (Array.from(row.querySelectorAll("button")).find((b) => b.textContent === "Silben ansehen") as HTMLElement).click(); await flush();
       expect(root2.textContent).toContain("3.1 Geschlossen mit Vokal-Anfang (VK)"); expect(root2.textContent).toContain("AM");

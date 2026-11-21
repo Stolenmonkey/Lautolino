@@ -23,7 +23,7 @@ Ordner `apps/web` veröffentlichen, in `config.js` die Adresse des Workers eintr
 
 ## Lautolino (Phase 8)
 - Anmeldung: Passwortfelder mit Augensymbol, "Passwort vergessen?", Seite zum Festlegen des Passworts über den Link aus der E-Mail (`#einladung=` bzw. `#passwort-neu=` in der Adresse).
-- Reiter "Klassenübersicht": je Buchstabe Prozent der Kinder, die ihn erreicht haben bzw. Bronze/Silber/Gold.
+- Reiter "Klassenübersicht": je Buchstabe Prozent der aktiven Kinder mit mindestens Bronze, Silber bzw. Gold.
 - Reiter "Lernplan": unten "Mögliche Silben und Lernstufen" mit allen Silben der freigegebenen Buchstaben je Stufe und Unterkategorie.
 - Reiter "Auswertung" beim Kind: Lernstufen, Buchstaben je Stufe, Silbenstatistik mit Filter.
 - Reiter "Schüler": Schülercode und Elterncode, Elterncodes für vorhandene Kinder gesammelt erzeugen.

@@ -1,10 +1,9 @@
 // Klassenübersicht: Kinder in drei Gruppen (über-/durchschnittlich/unterdurchschnittlich) nach Quote sicher beherrschter Silben; Mittelfeld = mittlere x % der Kinder nach Rang (Slider in 5er-Schritten).
-// Darunter (eingeklappt): je Buchstabe, wie viel Prozent der Kinder den Buchstaben erreicht haben und wie viele Bronze, Silber, Gold erreicht haben.
+// Darunter: Tabelle je Buchstabe mit Prozent der aktiven Kinder, die mindestens Bronze, Silber bzw. Gold erreicht haben.
 import { h, table, act, clear } from "../dom.js";
 import { selectStudent } from "./auswertung.js";
 
 const pct = (v) => String(v).replace(".", ",") + " %";
-const bar = (v) => h("span", { class: "barbox", title: pct(v) }, h("span", { class: "bar", style: `width:${Math.min(100, v)}%` }));
 
 const GROUPS = [
   ["over", "Überdurchschnittlich"], ["average", "Durchschnittlich"], ["under", "Unterdurchschnittlich"], ["nodata", "Keine Daten"],
@@ -31,11 +30,10 @@ export async function uebersicht(root, api, cid, classes, msg, slot) {
   if (slot) slot.append(h("span", { class: "muted" }, ` Aktive Kinder: ${r.students}`));
   root.append(h("h2", {}, "Klassenübersicht"), out);
   render(r.band);
-  root.append(h("details", {}, h("summary", {}, "Übersicht je Buchstabe"),
-    r.letters.length ? h("div", { class: "tablewrap" }, table(["Buchstabe", "Kinder", "Erreicht (geübt)", "Bronze oder besser", "Silber oder besser", "Gold (sicher beherrscht)"], r.letters.map((l) => [
-      h("strong", {}, l.letter.toUpperCase()), l.students,
-      [bar(l.reachedPercent), `${pct(l.reachedPercent)} (${l.reached})`], [bar(l.bronzePercent), `${pct(l.bronzePercent)} (${l.bronze})`], [bar(l.silberPercent), `${pct(l.silberPercent)} (${l.silber})`], [bar(l.goldPercent), `${pct(l.goldPercent)} (${l.gold})`],
+  root.append(h("h3", {}, "Übersicht je Buchstabe"),
+    r.letters.length ? h("div", { class: "tablewrap" }, table(["Buchstabe", "Bronze", "Silber", "Gold"], r.letters.map((l) => [
+      h("strong", {}, l.letter.toUpperCase()), pct(l.bronzePercent), pct(l.silberPercent), pct(l.goldPercent),
     ]))) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."),
-    h("p", { class: "muted" }, "Erreicht = das Kind hat den Buchstaben in einer Runde geübt. Bronze, Silber, Gold = vergebene Auszeichnung nach den unveränderten Prozentgrenzen der Konfiguration.")));
+    h("p", { class: "muted" }, "Anteil der aktiven Kinder, die mindestens diese Stufe erreicht haben (Gold zählt auch bei Silber und Bronze)."));
   root.append(h("div", { class: "row" }, h("label", {}, "Mittelfeld ", slider, " ", val, " der Klasse")));
 }
