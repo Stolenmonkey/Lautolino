@@ -6,7 +6,7 @@ import { uebersicht } from "./uebersicht.js";
 import { silbenPanel } from "./silben.js";
 import { sperre } from "./sperre.js";
 
-export const schoolTabs = (role) => ({ lernplan: "Lernplan", uebersicht: "Übersicht", auswertung: "Auswertung", schueler: "Schüler", ...(role === "schulleitung" ? { klassen: "Klassen und Schuljahre", zugaenge: "Lehrerzugänge" } : {}) });
+export const schoolTabs = (role) => ({ lernplan: "Buchstaben", uebersicht: "Klasse", auswertung: "Statistik", schueler: "Einstellungen", ...(role === "schulleitung" ? { klassen: "Klassen und Schuljahre", zugaenge: "Lehrerzugänge" } : {}) });
 const state = { classId: null };
 
 export async function schoolView(tab, root, { api, user }) {
