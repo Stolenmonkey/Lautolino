@@ -19,10 +19,10 @@ function show() {
   (user.role === "admin" ? adminView : schoolView)(tab, clear(main), ctx).catch((e) => { if (e.status === 401) return signOut(); main.append(h("div", { class: "notice error" }, e.message)); });
 }
 function signedIn(u) {
-  user = u; tab = null; $("who").textContent = `${u.email} (${{ admin: "Administration", schulleitung: "Schulleitung", lehrer: "Lehrkraft" }[u.role]})`; $("logout").classList.remove("hidden"); show();
+  user = u; tab = null; $("who").textContent = { admin: "Administration", schulleitung: "Schulleitung", lehrer: "Lehrkraft" }[u.role]; $("who").classList.remove("hidden"); $("logout").classList.remove("hidden"); show();
 }
 function signOut() {
-  user = null; api.token = null; $("who").textContent = ""; $("logout").classList.add("hidden"); tabs.classList.add("hidden"); loginView(clear(main), { api, onLogin: signedIn, onForgot: () => forgotView(clear(main), { api, onBack: signOut }) });
+  user = null; api.token = null; $("who").textContent = ""; $("who").classList.add("hidden"); $("logout").classList.add("hidden"); tabs.classList.add("hidden"); loginView(clear(main), { api, onLogin: signedIn, onForgot: () => forgotView(clear(main), { api, onBack: signOut }) });
 }
 $("logout").addEventListener("click", async () => { await api.logout(); signOut(); });
 

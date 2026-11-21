@@ -5,7 +5,7 @@ import { elternPanel } from "./eltern.js";
 import { uebersicht } from "./uebersicht.js";
 import { silbenPanel } from "./silben.js";
 
-export const schoolTabs = (role) => ({ lernplan: "Lernplan", uebersicht: "Klassenübersicht", auswertung: "Auswertung", schueler: "Schüler", ...(role === "schulleitung" ? { klassen: "Klassen und Schuljahre", zugaenge: "Lehrerzugänge" } : {}) });
+export const schoolTabs = (role) => ({ lernplan: "Lernplan", uebersicht: "Übersicht", auswertung: "Auswertung", schueler: "Schüler", ...(role === "schulleitung" ? { klassen: "Klassen und Schuljahre", zugaenge: "Lehrerzugänge" } : {}) });
 const state = { classId: null };
 
 export async function schoolView(tab, root, { api, user }) {
@@ -17,7 +17,7 @@ export async function schoolView(tab, root, { api, user }) {
   if (!classes.some((c) => c.id === state.classId)) state.classId = classes[0].id;
   const sel = h("select", { "aria-label": "Klasse", onchange: () => { state.classId = sel.value; schoolView(tab, root, { api, user }); } }, classes.map((c) => h("option", { value: c.id, selected: c.id === state.classId }, c.name)));
   const slot = h("span");   // Platz neben der Klassenauswahl (Auswertung: Schüler-Dropdown)
-  root.append(h("div", { class: "row" }, h("label", {}, "Klasse ", sel), slot));
+  root.append(h("div", { class: "toprow" }, h("label", { class: "klasse" }, "Klasse ", sel), slot));
   const body = h("div"); root.append(body);
   await (tab === "lernplan" ? lernplan : tab === "auswertung" ? auswertung : tab === "uebersicht" ? uebersicht : schueler)(body, api, state.classId, classes, msg, slot);
 }
