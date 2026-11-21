@@ -30,7 +30,7 @@ export async function auswertung(root, api, cid, classes, msg, slot) {
   const sel = h("select", { "aria-label": "Schüler", onchange: () => { state.studentId = sel.value || null; clear(detail); const k = kids.find((x) => x.id === state.studentId); if (k) kind(detail, api, k, msg); } },
     [h("option", { value: "" }, "– Kind wählen –"), ...kids.map((k) => h("option", { value: k.id, selected: k.id === state.studentId }, k.display_name))]);
   const picker = h("label", {}, "Schüler ", sel);
-  if (slot) { clear(slot).append(picker); root.append(h("h2", {}, "Auswertung")); } else root.append(h("h2", {}, "Auswertung"), picker);
+  if (slot) { clear(slot).append(picker); root.append(h("h2", {}, "Statistik")); } else root.append(h("h2", {}, "Statistik"), picker);
   root.append(kids.length ? h("div", { class: "row" }, printAll) : h("p", { class: "muted" }, "Noch keine aktiven Kinder in dieser Klasse."), detail);
   const kid = kids.find((k) => k.id === state.studentId);
   if (kid) await kind(detail, api, kid, msg);

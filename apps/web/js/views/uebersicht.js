@@ -13,7 +13,7 @@ function childCard(k) {
   const go = (e) => { e.preventDefault(); selectStudent(k.id); document.dispatchEvent(new CustomEvent("silbenflug:tab", { detail: "auswertung" })); };
   const none = k.percent === null;
   return h("li", { class: "kidcard" },
-    h("div", { class: "kidtop" }, h("strong", {}, h("a", { href: "#", class: "kidlink", title: "Auswertung öffnen", onclick: go }, k.name)), none ? h("span", { class: "muted" }, "noch nichts geübt") : h("span", { class: "pill" }, `${k.rounds} ${k.rounds === 1 ? "Runde" : "Runden"}`)),
+    h("div", { class: "kidtop" }, h("strong", {}, h("a", { href: "#", class: "kidlink", title: "Statistik öffnen", onclick: go }, k.name)), none ? h("span", { class: "muted" }, "noch nichts geübt") : h("span", { class: "pill" }, `${k.rounds} ${k.rounds === 1 ? "Runde" : "Runden"}`)),
     none ? null : h("div", { class: "kidbot" }, h("span", { class: "kidstats" }, h("strong", {}, pct(k.percent)), ` · ${k.mastered} von ${k.total}`), h("span", { class: "meter" }, h("span", { style: `width:${Math.min(100, k.percent)}%` }))));
 }
 

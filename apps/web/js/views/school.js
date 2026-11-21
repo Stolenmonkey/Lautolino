@@ -42,7 +42,7 @@ async function schueler(root, api, cid, classes, msg) {
   const showCodes = (rows, text) => { const withParent = rows.some((r) => r.parentCode); clear(codes).append(h("div", { class: "card" }, h("p", {}, text + ""),
     table(["Name", ...(rows.some((r) => r.code) ? ["Schülercode (Merkschlüssel)"] : []), ...(withParent ? ["Elterncode"] : [])], rows.map((r) => [r.displayName, ...(rows.some((x) => x.code) ? [h("span", { class: "code" }, r.code || "")] : []), ...(withParent ? [h("span", { class: "code" }, r.parentCode || "")] : [])])), h("button", { type: "button", class: "noprint", onclick: () => window.print() }, "Drucken"))); };
   const names = h("textarea", { placeholder: "Ein Name pro Zeile" });
-  root.append(h("h2", {}, "Schüler"), list, codes, parents,
+  root.append(h("h2", {}, "Einstellungen"), list, codes, parents,
     h("div", { class: "row" }, h("button", { type: "button", id: "missingParent", onclick: () => act(msg, async () => { const r = await api.post(`/classes/${cid}/parent-codes/missing`); if (!r.length) clear(msg).append(notice("Alle aktiven Kinder haben schon einen Elterncode.", "ok")); else showCodes(r.map((x) => ({ displayName: x.displayName, parentCode: x.code })), `${r.length} Elterncodes erzeugt.`); }) }, "Elterncodes für Kinder ohne Code erzeugen")), h("h3", {}, "Kinder hinzufügen"), names, h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
     const list2 = names.value.split("\n").map((x) => x.trim()).filter(Boolean); if (!list2.length) return;
     const r = await api.post(`/classes/${cid}/students`, { names: list2 }); names.value = ""; showCodes(r, `${r.length} Kinder angelegt.`);
@@ -74,7 +74,7 @@ function freigabeTabelle(api, cid, releases, msg, sp) {
 async function lernplan(root, api, cid, classes, msg) {
   const plan = await api.get(`/classes/${cid}/plan`), students = await api.get(`/classes/${cid}/students`), reload = () => lernplan(clear(root), api, cid, classes, msg), sp = plan.releases.length ? await sperre(api, cid, msg) : null;
   const start = h("input", { type: "text", size: "8", style: "text-transform:uppercase", "aria-label": "Startbuchstaben" }), letter = h("input", { type: "text", maxlength: "1", size: "2", style: "text-transform:uppercase", "aria-label": "Neuer Buchstabe" });
-  root.append(h("h2", {}, "Lernplan der Klasse"),
+  root.append(h("h2", {}, "Buchstaben"),
     h("h3", {}, "Buchstabenfreigabe"), plan.releases.length ? freigabeTabelle(api, cid, plan.releases, msg, sp) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."),
     plan.releases.length
       ? h("div", { class: "row" }, h("label", {}, "Nächsten Buchstaben freigeben ", letter), h("button", { type: "button", class: "primary muted-blue", onclick: () => act(msg, async () => {
