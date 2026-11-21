@@ -50,6 +50,13 @@ async function schueler(root, api, cid, classes, msg) {
   await act(msg, load);
 }
 
+// Einfarbige SVG-Icons (Emoji-Zeichen wie ⏸ werden auf manchen Geräten gelb gezeichnet und ignorieren die Textfarbe).
+function svgIcon(d) {
+  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg"), path = document.createElementNS(ns, "path");
+  svg.setAttribute("viewBox", "0 0 16 16"); svg.setAttribute("width", "16"); svg.setAttribute("height", "16"); svg.setAttribute("aria-hidden", "true"); svg.style.verticalAlign = "middle";
+  path.setAttribute("d", d); path.setAttribute("fill", "currentColor"); svg.append(path); return svg;
+}
+
 // Freigaben: Klick auf "Silben ansehen" zeigt die Silben direkt unter dem Buchstaben, geordnet nach den 7 Lernstufen (bleibt stehen, kein Ein-/Ausklappen).
 function freigabeTabelle(api, cid, releases, msg, sp, reload) {
   const head = ["Buchstabe", "Datum", "Silbenumfang", "Aktion"];
@@ -81,11 +88,11 @@ function freigabeTabelle(api, cid, releases, msg, sp, reload) {
             const existing = await api.get(`/classes/${cid}/releases/${r.letter}/scope`);
             const res = await api.put(`/classes/${cid}/releases/${r.letter}/pause`, { paused: false, scope: m.computeResume(active, later, r.letter, existing, cfg) });
             clear(msg).append(notice(`${r.letter.toUpperCase()} wird wieder geübt.` + (res.added ? ` ${res.added} neue Silben ergänzt.` : ""), "ok"));
-          }, reload) }, "▶\uFE0E")
+          }, reload) }, svgIcon("M4 2l10 6-10 6z"))
         : h("button", { type: "button", class: "iconbtn", title: "Pausieren", "aria-label": "Pausieren", onclick: () => confirm(`Buchstabe ${r.letter.toUpperCase()} pausieren? Zeiten und Auszeichnungen bleiben, der Buchstabe kommt in keiner Übung mehr vor.`) && act(msg, async () => {
             await api.put(`/classes/${cid}/releases/${r.letter}/pause`, { paused: true });
             clear(msg).append(notice(`${r.letter.toUpperCase()} pausiert.`, "ok"));
-          }, reload) }, "⏸\uFE0E");
+          }, reload) }, svgIcon("M3 2h3v12H3zM10 2h3v12h-3z"));
     return [h("tr", {}, [h("strong", {}, r.letter.toUpperCase() + (r.paused_at ? " (pausiert)" : "")), r.released_at ? new Date(r.released_at).toLocaleDateString("de-DE") : "–", btn, h("div", { class: "row" }, aktion)].map((c) => h("td", {}, c))), detail, { r, cnt }];
   });
   // Sortierung per Klick auf die Überschrift (Buchstabe A–Z, Datum älteste zuerst, Silbenumfang aufsteigend); erneuter Klick dreht um.
