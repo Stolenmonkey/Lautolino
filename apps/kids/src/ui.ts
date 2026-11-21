@@ -109,7 +109,7 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     const d = data as Data, rel = new Set(d.plan ? d.plan.letters : []);
     const ok = !!(d.plan && d.config && canPractice(d.plan, d.config)), loading = !d.plan || !d.config;
     const info = loading ? "Einen Moment …" : !rel.size ? "Noch keine Buchstaben freigegeben. Frag deine Lehrerin oder deinen Lehrer." : !ok ? "Mit diesen Buchstaben gibt es noch zu wenige Silben." : "";
-    return head() + '<section class="card enter"><div class="hrow"><p class="hello">Hallo' + (session ? ", " + esc(session.name) : "") + '!</p><button type="button" class="outbtn" id="logout">Abmelden</button></div><div class="lgrid" id="lgrid">' + gridHtml() + '</div>' + '<div class="msg" id="msg" role="alert">' + esc(msg || info || (d.queue.length ? "Gemerkt, wird später gesendet: " + d.queue.length : "")) + '</div></section><button class="btn" id="start" type="button"' + (ok ? "" : " disabled") + '>Übung starten</button>';
+    return head() + '<section class="card enter"><div class="hrow"><p class="hello">Hallo' + (session ? ", " + esc(session.name) : "") + '!</p><button type="button" class="outbtn" id="logout">Abmelden</button></div><div class="lgrid" id="lgrid">' + gridHtml() + '</div>' + '<div class="msg" id="msg" role="alert">' + esc(msg || info || (d.queue.length ? "Gemerkt, wird später gesendet: " + d.queue.length : "")) + '</div></section><button class="btn" id="start" type="button"' + (ok ? "" : " disabled") + '>&#9654; Vorübung starten</button>';
   }
   function renderHome(): void {
     root.innerHTML = homeHtml();

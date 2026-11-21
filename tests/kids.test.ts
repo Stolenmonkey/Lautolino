@@ -128,7 +128,7 @@ describe("Kinder-App gegen echten Server", () => {
     await call("POST", "/student/awards/ack", kidTok);
     const a = mount(); await a.ready; await flush(); (a.root.querySelector("#code") as HTMLInputElement).value = code; click(a.root, "Anmelden"); await flush();
     while (a.root.querySelector(".dlg")) { const b = a.root.querySelector(".dlg button") as HTMLElement; b.click(); await flush(); }
-    click(a.root, "Übung starten"); play(a.root, 20);
+    click(a.root, "▶ Vorübung starten"); play(a.root, 20);
     expect(a.root.querySelectorAll(".dlg").length).toBe(1); expect(a.root.querySelector("#imp")!.textContent).toContain("verbessert");   // sofort, ohne auf den Server zu warten
     await flush(); expect(a.root.querySelectorAll(".dlg").length).toBe(1);
     click(a.root, "Ende"); await flush(); expect(a.root.querySelector(".dlg")).toBeNull();
@@ -137,7 +137,7 @@ describe("Kinder-App gegen echten Server", () => {
 
   it("Übung: 20 Aufgaben, Zeit am Rundenende, die Runde kommt beim Server an; Sitzung bleibt nach Neustart", async () => {
     const a = mount(); await a.ready; await flush(); (a.root.querySelector("#code") as HTMLInputElement).value = code; click(a.root, "Anmelden"); await flush();
-    click(a.root, "Übung starten"); expect(a.root.querySelector("#prog")!.textContent).toBe("Aufgabe 1 von 20");
+    click(a.root, "▶ Vorübung starten"); expect(a.root.querySelector("#prog")!.textContent).toBe("Aufgabe 1 von 20");
     clock += 1500; click(a.root, "Weiter"); expect(a.root.querySelector("#prog")!.textContent).toBe("Aufgabe 1 von 20");   // erst Sterne, dann Übergang
     await new Promise((r) => setTimeout(r, 400)); expect(a.root.querySelector("#prog")!.textContent).toBe("Aufgabe 2 von 20");
     play(a.root, 19); await flush();
@@ -151,10 +151,10 @@ describe("Kinder-App gegen echten Server", () => {
 
   it("ohne Netz: Runde wird gemerkt, später gesendet, nie doppelt", async () => {
     const a = mount(); await a.ready; await flush(); (a.root.querySelector("#code") as HTMLInputElement).value = code; click(a.root, "Anmelden"); await flush();
-    offline = true; click(a.root, "Übung starten"); play(a.root); await flush();
+    offline = true; click(a.root, "▶ Vorübung starten"); play(a.root); await flush();
     expect(a.root.textContent).toMatch(/Deine Zeit\s*\d+ Sekunden/); expect(roundsOnServer()).toBe(0);
     click(a.root, "Ende"); expect(a.root.textContent).toContain("Gemerkt, wird später gesendet: 1");
-    click(a.root, "Übung starten"); expect(a.root.querySelector("#prog")).not.toBeNull();   // Übung geht offline weiter
+    click(a.root, "▶ Vorübung starten"); expect(a.root.querySelector("#prog")).not.toBeNull();   // Übung geht offline weiter
     click(a.root, "×"); offline = false; window.dispatchEvent(new Event("online")); await flush();
     expect(roundsOnServer()).toBe(1); expect(a.root.textContent).not.toContain("Gemerkt");
     const q = JSON.parse(a.storage.getItem("silbenflug.kind.data." + (JSON.parse(a.storage.getItem("silbenflug.kind.session")!)).studentId)!).queue; expect(q).toEqual([]);
@@ -166,7 +166,7 @@ describe("Kinder-App gegen echten Server", () => {
     for (const x of [a, b]) { (x.root.querySelector("#code") as HTMLInputElement).value = code; click(x.root, "Anmelden"); await flush(); }
     const dataOf = (m: { storage: { getItem(k: string): string | null } }) => { const sess = JSON.parse(m.storage.getItem("silbenflug.kind.session")!); return JSON.parse(m.storage.getItem("silbenflug.kind.data." + sess.studentId)!); };
     expect(Object.keys(dataOf(b).st.sylTimes).length).toBe(0);
-    click(a.root, "Übung starten"); play(a.root); await flush(); click(a.root, "Ende");
+    click(a.root, "▶ Vorübung starten"); play(a.root); await flush(); click(a.root, "Ende");
     expect(Object.keys(dataOf(a).st.sylTimes).length).toBeGreaterThan(0);
     window.dispatchEvent(new Event("online")); await flush();   // Gerät B gleicht ab
     expect(Object.keys(dataOf(b).st.sylTimes).sort()).toEqual(Object.keys(dataOf(a).st.sylTimes).sort());
@@ -177,7 +177,7 @@ describe("Kinder-App gegen echten Server", () => {
 
   it("abgelaufene Anmeldung: zurück zur Anmeldung, gemerkte Runden bleiben erhalten", async () => {
     const a = mount(); await a.ready; await flush(); (a.root.querySelector("#code") as HTMLInputElement).value = code; click(a.root, "Anmelden"); await flush();
-    offline = true; click(a.root, "Übung starten"); play(a.root); await flush(); click(a.root, "Ende");
+    offline = true; click(a.root, "▶ Vorübung starten"); play(a.root); await flush(); click(a.root, "Ende");
     raw.prepare("DELETE FROM student_sessions").run(); offline = false; window.dispatchEvent(new Event("online")); await flush();
     expect(a.root.querySelector("#code")).not.toBeNull(); expect(roundsOnServer()).toBe(0);
     (a.root.querySelector("#code") as HTMLInputElement).value = code; click(a.root, "Anmelden"); await flush();
