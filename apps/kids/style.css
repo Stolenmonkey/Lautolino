@@ -86,7 +86,7 @@ html:has(.lgrid),body:has(.lgrid){overflow:hidden;height:100%}
 #app:has(.lgrid) .hello{font-size:1.45rem;font-weight:800;color:#2f5f9a;margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .outbtn{font:inherit;font-size:.85rem;padding:6px 12px;border:2px solid #b9d3f2;border-radius:14px;background:#fff;color:#2f5f9a;cursor:pointer;flex:none}
 .outbtn:active{background:#eef5fd}
-.outbtn::before{content:"\00d7";font-weight:700;margin-right:6px}
+.outbtn{display:inline-flex;align-items:center}.outbtn::before{content:"\00d7";font-size:1.9em;line-height:.8;font-weight:700;margin-right:6px;color:#e8505b}
 #app:has(.lgrid) .lgrid{grid-template-columns:repeat(4,1fr);gap:6px;flex:none;width:min(100%,calc((100vh - 383px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) * 4 / 5.95));width:min(100%,calc((100dvh - 383px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) * 4 / 5.95));margin:0 auto}
 #app:has(.lgrid) .lt{border-radius:18px}
 #app:has(.lgrid) .ring circle{stroke-width:7}
