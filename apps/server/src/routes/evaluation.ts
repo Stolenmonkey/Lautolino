@@ -10,7 +10,7 @@ import { authenticate, requireStaff } from "../middleware";
 import { canAccessClass, canAccessStudent } from "../permissions";
 import { activeConfig, assertSchoolWritable, body, fail } from "../util";
 import { studentLetters } from "./plan";
-import { loadScopes, studentSylPlan, studentTraining } from "./progress";
+import { loadBlocked, loadScopes, studentSylPlan, studentTraining } from "./progress";
 
 const MAX_ROWS = 1500;
 const DEFAULT_BAND = 50;   // Mittelfeld-Anteil in Prozent der Kinder (Rangbasis)
@@ -150,18 +150,19 @@ export function evaluationRoutes() {
     const d = c.get("deps"), cid = c.req.param("cid"), a = await canAccessClass(d.db, c.get("p"), cid);
     if (!a.ok) throw fail(404, "nicht gefunden");
     const rel = await d.db.all<{ letter: string }>("SELECT letter FROM class_letter_releases WHERE class_id=? ORDER BY release_order", [cid]), letters = rel.map((x) => x.letter);
-    const scopeRows = await loadScopes(d, cid, letters), possible = [...new Set(Object.values(scopeRows).flat())], con = contrastSet(possible), plan = stagePlan(possible);
-    const stageQ = c.req.query("stage"), summary = plan.map((g) => ({ stage: g.stage, name: g.name, structure: g.structure, total: g.syllables.length,
-      subs: g.subs.map((u) => ({ id: u.id, name: u.name, total: u.syllables.length })) }));
-    if (stageQ === undefined) return c.json({ letters, total: possible.length, stages: summary });
+    // Alle Silben des festen Umfangs (auch gesperrte, damit Lehrkräfte sie wieder freigeben können); Zahlen zählen nur nicht gesperrte
+    const blocked = await loadBlocked(d, cid), possible = [...new Set(Object.values(await loadScopes(d, cid, letters, true)).flat())], con = contrastSet(possible), plan = stagePlan(possible), active = (xs: string[]) => xs.filter((s) => !blocked.has(s)).length;
+    const stageQ = c.req.query("stage"), summary = plan.map((g) => ({ stage: g.stage, name: g.name, structure: g.structure, total: active(g.syllables), blocked: g.syllables.length - active(g.syllables),
+      subs: g.subs.map((u) => ({ id: u.id, name: u.name, total: active(u.syllables) })) }));
+    if (stageQ === undefined) return c.json({ letters, total: active(possible), blocked: possible.length - active(possible), stages: summary });
     const n = Number(stageQ);
     if (!Number.isInteger(n) || n < 1 || n > STAGE_COUNT) throw fail(400, "Stufe 1 bis 7 erwartet");
     const order = new Map(letters.map((l, i) => [l, i]));
     const g = plan.find((x) => x.stage === n)!, list = g.syllables.slice(0, MAX_ROWS);
-    return c.json({ stage: n, name: g.name, total: g.syllables.length, truncated: g.syllables.length > list.length,
+    return c.json({ stage: n, name: g.name, total: active(g.syllables), blocked: g.syllables.length - active(g.syllables), truncated: g.syllables.length > list.length,
       subs: g.subs.map((u) => ({ id: u.id, name: u.name, syllables: u.syllables.filter((s) => list.indexOf(s) >= 0).map((s) => {
         const cl = classifySyllable(s), ls = uniqLetters(s), newest = ls.slice().sort((p1, p2) => (order.get(p2) ?? 0) - (order.get(p1) ?? 0))[0];
-        return { syllable: s, parts: cl.parts, letters: ls, newestLetter: newest, length: s.length, contrast: con.has(s) };
+        return { syllable: s, parts: cl.parts, letters: ls, newestLetter: newest, length: s.length, contrast: con.has(s), blocked: blocked.has(s) };
       }) })) });
   });
   return r;

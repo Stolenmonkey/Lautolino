@@ -4,6 +4,7 @@ import { auswertung } from "./auswertung.js";
 import { elternPanel } from "./eltern.js";
 import { uebersicht } from "./uebersicht.js";
 import { silbenPanel } from "./silben.js";
+import { sperre } from "./sperre.js";
 
 export const schoolTabs = (role) => ({ lernplan: "Lernplan", uebersicht: "Übersicht", auswertung: "Auswertung", schueler: "Schüler", ...(role === "schulleitung" ? { klassen: "Klassen und Schuljahre", zugaenge: "Lehrerzugänge" } : {}) });
 const state = { classId: null };
@@ -50,27 +51,31 @@ async function schueler(root, api, cid, classes, msg) {
 }
 
 // Freigaben: Klick auf "Silben ansehen" zeigt die Silben direkt unter dem Buchstaben, geordnet nach den 7 Lernstufen (bleibt stehen, kein Ein-/Ausklappen).
-function freigabeTabelle(api, cid, releases, msg) {
+function freigabeTabelle(api, cid, releases, msg, sp) {
   const head = ["Buchstabe", "Freigegeben", "Silben im festen Umfang", ""];
   const rows = releases.map((r) => {
-    const cell = h("td", { colspan: String(head.length) }), detail = h("tr", { class: "scopedetail", hidden: "" }, cell), btn = h("button", { type: "button" }, "Silben ansehen");
+    const cell = h("td", { colspan: String(head.length) }), detail = h("tr", { class: "scopedetail", hidden: "" }, cell), btn = h("button", { type: "button" }, "Silben ansehen"), cnt = h("span", {}, String(r.syllable_count));
+    let all = null, title = null;   // all: alle Silben des Buchstabens inkl. gesperrter
+    const setTitle = () => { if (title) { const b = all.filter((x) => sp.has(x)).length; title.textContent = `Silben von ${r.letter.toUpperCase()} (${all.length - b}${b ? `, ${b} gesperrt` : ""})`; } };
+    sp.onChange(async () => { const p = await api.get(`/classes/${cid}/plan`), x = p.releases.find((q) => q.letter === r.letter); if (x) cnt.textContent = String(x.syllable_count); setTitle(); });
     btn.onclick = () => act(msg, async () => {
       if (!detail.hidden) { detail.hidden = true; btn.textContent = "Silben ansehen"; return; }
       const [s, m] = await Promise.all([api.get(`/classes/${cid}/releases/${r.letter}/scope`), import("../scope.bundle.js")]);
-      clear(cell).append(h("strong", {}, `Silben von ${r.letter.toUpperCase()} (${s.length})`), h("div", { class: "tablewrap" }, table(["Stufe", "Silben"], m.stageRows(s).map((g) => [
-        h("strong", {}, `${g.stage}. Stufe`), h("div", { class: "muted" }, g.structure), g.syllables.length ? h("div", { class: "chips" }, g.syllables.map((x) => h("span", {}, x.toUpperCase()))) : h("span", { class: "muted" }, "–") ]), { wide: true })));
+      all = s; title = h("strong"); setTitle();
+      clear(cell).append(title, h("p", { class: "muted" }, "Silbe anklicken = für die ganze Klasse sperren (rot), erneut anklicken = wieder freigeben."), h("div", { class: "tablewrap" }, table(["Stufe", "Silben"], m.stageRows(s).map((g) => [
+        h("strong", {}, `${g.stage}. Stufe`), h("div", { class: "muted" }, g.structure), g.syllables.length ? h("div", { class: "chips" }, g.syllables.map((x) => sp.chip(x, x.toUpperCase()))) : h("span", { class: "muted" }, "–") ]), { wide: true })));
       detail.hidden = false; btn.textContent = "Silben ausblenden";
     });
-    return [h("tr", {}, [h("strong", {}, r.letter.toUpperCase()), fmtDate(r.released_at), r.syllable_count, btn].map((c) => h("td", {}, c))), detail];
+    return [h("tr", {}, [h("strong", {}, r.letter.toUpperCase()), fmtDate(r.released_at), cnt, btn].map((c) => h("td", {}, c))), detail];
   });
   return h("div", { class: "tablewrap" }, h("table", { class: "wide" }, h("thead", {}, h("tr", {}, head.map((x) => h("th", {}, x)))), h("tbody", {}, rows.flat())));
 }
 
 async function lernplan(root, api, cid, classes, msg) {
-  const plan = await api.get(`/classes/${cid}/plan`), students = await api.get(`/classes/${cid}/students`), reload = () => lernplan(clear(root), api, cid, classes, msg);
+  const plan = await api.get(`/classes/${cid}/plan`), students = await api.get(`/classes/${cid}/students`), reload = () => lernplan(clear(root), api, cid, classes, msg), sp = plan.releases.length ? await sperre(api, cid, msg) : null;
   const start = h("input", { type: "text", size: "8", style: "text-transform:uppercase", "aria-label": "Startbuchstaben" }), letter = h("input", { type: "text", maxlength: "1", size: "2", style: "text-transform:uppercase", "aria-label": "Neuer Buchstabe" });
   root.append(h("h2", {}, "Lernplan der Klasse"),
-    h("h3", {}, "Buchstabenfreigabe"), plan.releases.length ? freigabeTabelle(api, cid, plan.releases, msg) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."),
+    h("h3", {}, "Buchstabenfreigabe"), plan.releases.length ? freigabeTabelle(api, cid, plan.releases, msg, sp) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."),
     plan.releases.length
       ? h("div", { class: "row" }, h("label", {}, "Nächsten Buchstaben freigeben ", letter), h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
           const r = await api.post(`/classes/${cid}/releases`, await mitUmfang(api, plan, [letter.value.trim().toLowerCase()])), x = r.released[0]; clear(msg).append(notice(`${x.letter.toUpperCase()} freigegeben. Fester Silbenumfang: ${x.syllableCount} Silben.` + (x.syllableCount ? "" : " (Mit den bisherigen Buchstaben ergeben sich keine neuen Silben.)"), "ok"));
@@ -79,7 +84,7 @@ async function lernplan(root, api, cid, classes, msg) {
           const r = await api.post(`/classes/${cid}/releases`, await mitUmfang(api, plan, [...new Set(start.value.toLowerCase().match(/[a-z]/g) || [])])); clear(msg).append(notice(`Freigegeben: ${r.released.map((x) => x.letter.toUpperCase() + " (" + x.syllableCount + " Silben)").join(", ")}.`, "ok"));
         }, reload) }, "Startbuchstaben freigeben"))),
     h("p", { class: "muted" }, "Eine Freigabe kann nicht zurückgenommen werden, weil der Silbenumfang dauerhaft festgelegt wird."));
-  if (plan.releases.length) { const box = h("div"); root.append(box); await klassenSilben(box, api, cid); }
+  if (plan.releases.length) { const box = h("div"); root.append(box); await klassenSilben(box, api, cid, sp); }
   if (plan.releases.length && students.length) {
     root.append(h("h3", {}, "Ausnahmen einzelner Kinder"), h("p", { class: "muted" }, "Haken = dieses Kind übt den Buchstaben (noch) nicht. Gilt nur für die Freigabe, nicht für Zeitpläne."),
       table(["Kind", ...plan.releases.map((r) => r.letter.toUpperCase()), ""], students.map((s) => {
@@ -89,7 +94,7 @@ async function lernplan(root, api, cid, classes, msg) {
   }
 }
 
-async function klassenSilben(root, api, cid) { await silbenPanel(root, api, cid); }
+async function klassenSilben(root, api, cid, sp) { await silbenPanel(root, api, cid, sp); }
 
 async function klassen(root, api, sid, classes, msg, reload) {
   const years = await api.get(`/schools/${sid}/years`);

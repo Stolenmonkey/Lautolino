@@ -25,6 +25,8 @@ button:disabled { opacity:.5; cursor:not-allowed; }
 .muted { color:var(--muted); } .hidden { display:none !important; } .mono { font-family:ui-monospace, Menlo, Consolas, monospace; }
 .code { font:600 1.05rem ui-monospace, Menlo, Consolas, monospace; }
 .chips span { display:inline-block; border:1px solid var(--line); border-radius:4px; padding:0 6px; margin:2px; font-family:ui-monospace, monospace; }
+.chips .sperrbar { cursor:pointer; user-select:none; } .chips .sperrbar:hover { border-color:var(--accent); }
+.chips .sperrbar.gesperrt { background:#fee2e2; border-color:#b91c1c; color:#991b1b; text-decoration:line-through; }
 label { display:inline-flex; gap:4px; align-items:center; }
 @media print { header, nav, .noprint { display:none !important; } body { background:#fff; color:#000; } }
 .chartbox { overflow-x:auto; max-width:100%; } .chartbox svg { display:block; }

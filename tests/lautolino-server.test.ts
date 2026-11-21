@@ -369,4 +369,57 @@ describe("Lautolino (Server und Oberfläche)", () => {
       expect(first.every((s) => KV.includes(s))).toBe(true);
     });
   });
+  // ---------------- Silbensperre (Lernplan) ----------------
+  describe("Gesperrte Silben der Klasse", () => {
+    const apiFor = (tok: string) => { const a = createApi({ base: "http://x", storage: mem(), fetchFn: fetchTo }); a.token = tok; return a; };
+    const mkRoot = () => { const r = document.createElement("div"); document.body.appendChild(r); return r; };
+    const planSyl = async (tok: string) => (await call("GET", "/student/plan", tok)).json.syllables as string[];
+    it("sperrt Silben für alle Kinder, zählt sie nicht mehr mit und gibt sie wieder frei", async () => {
+      const tok = await kidTok(codeA), before = await planSyl(tok), r0 = (await call("GET", `/classes/${cid}/syllables`, teacher)).json;
+      expect(before).toContain("la");
+      expect((await call("PUT", `/classes/${cid}/blocked-syllables`, teacher, { syllable: "la", blocked: true })).status).toBe(200);
+      expect((await call("GET", `/classes/${cid}/blocked-syllables`, teacher)).json.syllables).toEqual(["la"]);
+      const after = await planSyl(tok); expect(after).not.toContain("la"); expect(after.length).toBe(before.length - 1);
+      expect(Object.values((await call("GET", "/student/plan", tok)).json.scopes).flat()).not.toContain("la");
+      expect(await planSyl(await kidTok(codeB))).not.toContain("la");   // gilt für alle Kinder der Klasse
+      const r1 = (await call("GET", `/classes/${cid}/syllables`, teacher)).json; expect(r1.total).toBe(r0.total - 1); expect(r1.blocked).toBe(1);
+      const st1 = (await call("GET", `/classes/${cid}/syllables?stage=1`, teacher)).json, la = st1.subs.flatMap((u: any) => u.syllables).find((x: any) => x.syllable === "la");
+      expect(la && la.blocked).toBe(true);   // bleibt im Lernplan sichtbar, damit sie wieder freigegeben werden kann
+      expect((await call("GET", `/classes/${cid}/plan`, teacher)).json.releases[0].syllable_count).toBe(before.length - 1);
+      expect((await call("PUT", `/classes/${cid}/blocked-syllables`, teacher, { syllable: "la", blocked: false })).status).toBe(200);
+      expect(await planSyl(tok)).toContain("la"); expect((await call("GET", `/classes/${cid}/syllables`, teacher)).json.blocked).toBe(0);
+    });
+    it("Lernplan: Klick auf eine Silbe sperrt sie (rot) und gibt sie per erneutem Klick wieder frei, in Buchstaben- und Stufenansicht", async () => {
+      const root = mkRoot(); await schoolView("lernplan", root, { api: apiFor(teacher), user: { id: "x", role: "lehrer", schoolId: sid } }); await flush();
+      click(root, "Silben ansehen", 0); await flush();   // Buchstabe L
+      const chips = (t: string) => Array.from(root.querySelectorAll(`.sperrbar`)).filter((e) => e.textContent === t) as HTMLElement[];
+      expect(chips("LA").length).toBeGreaterThan(0); expect(chips("LA").every((e) => !e.classList.contains("gesperrt"))).toBe(true);
+      chips("LA")[0].click(); await flush();
+      expect((await call("GET", `/classes/${cid}/blocked-syllables`, teacher)).json.syllables).toEqual(["la"]);
+      expect(chips("LA").every((e) => e.classList.contains("gesperrt"))).toBe(true); expect(root.textContent).toContain("1 gesperrt");
+      chips("LA")[0].click(); await flush();
+      expect((await call("GET", `/classes/${cid}/blocked-syllables`, teacher)).json.syllables).toEqual([]); expect(chips("LA").every((e) => !e.classList.contains("gesperrt"))).toBe(true);
+    });
+    it("prüft Rechte und Eingaben", async () => {
+      expect((await call("PUT", `/classes/${cid}/blocked-syllables`, other, { syllable: "la", blocked: true })).status).toBe(404);
+      expect((await call("PUT", `/classes/${cid}/blocked-syllables`, teacher, { syllable: "xyz", blocked: true })).status).toBe(404);
+      expect((await call("PUT", `/classes/${cid}/blocked-syllables`, teacher, { syllable: "la" })).status).toBe(400);
+      expect((await call("GET", "/student/plan", await kidTok(codeA))).status).toBe(200);
+      expect((await call("PUT", `/classes/${cid}/blocked-syllables`, await kidTok(codeA), { syllable: "la", blocked: true })).status).toBeGreaterThanOrEqual(403);
+    });
+    it("Fortschritt bleibt erhalten; gesperrte Silben müssen für Auszeichnungen nicht sicher sein; sind alle gesperrt, ist der Buchstabe erfüllt", async () => {
+      const tok = await kidTok(codeA), all = await planSyl(tok);
+      await rounds(tok, ["la", "lo"], 1, 1, "x");
+      const times = async () => raw.prepare("SELECT COUNT(*) AS n FROM syllable_times WHERE student_id=? AND syllable='la'").get(kA).n;
+      expect(await times()).toBeGreaterThan(0);
+      await call("PUT", `/classes/${cid}/blocked-syllables`, teacher, { syllable: "la", blocked: true });
+      expect(await times()).toBeGreaterThan(0);   // Zeiten bleiben gespeichert
+      for (const s of all) await call("PUT", `/classes/${cid}/blocked-syllables`, teacher, { syllable: s, blocked: true });
+      expect(await planSyl(tok)).toEqual([]);
+      const pr = (await call("GET", `/students/${kA}/progress`, teacher)).json, rows = Array.isArray(pr) ? pr : pr.letters;
+      expect(rows.every((x: any) => x.percent === 100)).toBe(true);
+      await call("PUT", `/classes/${cid}/blocked-syllables`, teacher, { syllable: "la", blocked: false });
+      expect(await planSyl(tok)).toEqual(["la"]);
+    });
+  });
 });

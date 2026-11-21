@@ -30,7 +30,7 @@ export function planRoutes() {
 
   r.get("/classes/:cid/plan", staff, async (c) => {
     const d = c.get("deps"), cid = c.req.param("cid"); await cls(c);
-    const releases = await d.db.all<any>("SELECT l.letter, l.release_order, l.released_at, (SELECT COUNT(*) FROM letter_syllable_scope s WHERE s.class_id=l.class_id AND s.letter=l.letter) AS syllable_count FROM class_letter_releases l WHERE l.class_id=? ORDER BY l.release_order", [cid]);
+    const releases = await d.db.all<any>("SELECT l.letter, l.release_order, l.released_at, (SELECT COUNT(*) FROM letter_syllable_scope s WHERE s.class_id=l.class_id AND s.letter=l.letter AND s.syllable NOT IN (SELECT syllable FROM class_blocked_syllables WHERE class_id=l.class_id)) AS syllable_count FROM class_letter_releases l WHERE l.class_id=? ORDER BY l.release_order", [cid]);
     const ex = await d.db.all<{ student_id: string; letter: string }>("SELECT e.student_id, e.letter FROM student_letter_exclusions e JOIN student_class_history h ON h.student_id=e.student_id AND h.to_date IS NULL WHERE h.class_id=?", [cid]);
     const byStudent: Record<string, string[]> = {};
     ex.forEach((x) => { (byStudent[x.student_id] ||= []).push(x.letter); });
@@ -93,6 +93,24 @@ export function planRoutes() {
     const d = c.get("deps"); await cls(c);
     const rows = await d.db.all<{ syllable: string }>("SELECT syllable FROM letter_syllable_scope WHERE class_id=? AND letter=? ORDER BY syl_length, syllable", [c.req.param("cid"), c.req.param("letter").toLowerCase()]);
     return c.json(rows.map((x) => x.syllable));
+  });
+
+  // Gesperrte Silben der Klasse: gelten für alle Kinder, bleiben im festen Silbenumfang, zählen aber nicht mehr als freigegeben
+  r.get("/classes/:cid/blocked-syllables", staff, async (c) => {
+    const d = c.get("deps"); await cls(c);
+    const rows = await d.db.all<{ syllable: string }>("SELECT syllable FROM class_blocked_syllables WHERE class_id=? ORDER BY syllable", [c.req.param("cid")]);
+    return c.json({ syllables: rows.map((x) => x.syllable) });
+  });
+  r.put("/classes/:cid/blocked-syllables", staff, async (c) => {
+    const d = c.get("deps"), p = c.get("p"), cid = c.req.param("cid"), sid = await cls(c), b = await body(c);
+    await assertSchoolWritable(d, sid);
+    const syl = String(b.syllable ?? "").trim().toLowerCase();
+    if (!/^[a-z]{1,30}$/.test(syl) || typeof b.blocked !== "boolean") throw fail(400, "syllable (Text) und blocked (true/false) erwartet");
+    if (!(await d.db.first("SELECT 1 AS x FROM letter_syllable_scope WHERE class_id=? AND syllable=? LIMIT 1", [cid, syl]))) throw fail(404, "Diese Silbe gehört nicht zum Silbenumfang der Klasse");
+    if (b.blocked) await d.db.run("INSERT INTO class_blocked_syllables(class_id,syllable,blocked_at,blocked_by) VALUES(?,?,?,?) ON CONFLICT(class_id,syllable) DO NOTHING", [cid, syl, nowIso(d), p.id]);
+    else await d.db.run("DELETE FROM class_blocked_syllables WHERE class_id=? AND syllable=?", [cid, syl]);
+    await audit(d, p.id, b.blocked ? "syllable_blocked" : "syllable_unblocked", cid, { syllable: syl });
+    return c.json({ syllable: syl, blocked: b.blocked });
   });
 
   // Ausnahmen eines Kindes vom gemeinsamen Plan (nur Buchstaben, keine eigenen Zeitpläne)

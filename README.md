@@ -24,7 +24,7 @@ apps/
     js/{main,api,dom,chart}.js  js/views/{login,passwort,admin,school,auswertung,uebersicht,silben,stufen,eltern}.js
     src/{zug,pdf}.ts   js/zug.bundle.js (Build-Artefakt)
   eltern/   Elternansicht: index.html style.css config.js app.js
-db/migrations/  0001_init 0002_student_sessions 0003_parent_codes 0004_lautolino 0005_ohne_silbenlaengen 0006_ohne_automatik_laengen (.sql)
+db/migrations/  0001_init … 0009_code_klartext 0010_gesperrte_silben (.sql)
 docs/           lautolino-aenderungen.md (Phase 8: Änderungen/Schnittstellen/Mail-Setup/offene Punkte)  umzug.md
 tests/          *.test.ts + helpers.ts + fixtures/silbenzauber-logic.js (alte App, unverändert)
 ```
@@ -87,7 +87,7 @@ tests/          *.test.ts + helpers.ts + fixtures/silbenzauber-logic.js (alte Ap
 ### apps/web
 - `js/main.js`: Routing/Login-State. `api.js`: `createApi`. `dom.js`: `h`, `table`, `notice`, `act`, `passwordField`, Formatierer. `chart.js`: `zeitverlaufSvg`.
 - `views/admin.js`: Tabs Schulen/Konfiguration/Protokoll. `views/school.js`: Tabs Schüler/Auswertung/Lernplan/Klassen/Zugänge.
-- `views/auswertung.js`: Kind-/Klassenauswertung, PDF-Export. `uebersicht.js`: Klassenübersicht. `silben.js` + `stufen.js`: Silben-/Stufentabellen, Filter. `eltern.js`: Elterncode-Panel. `login.js`/`passwort.js`: Login, Passwort vergessen/setzen.
+- `views/auswertung.js`: Kind-/Klassenauswertung, PDF-Export. `uebersicht.js`: Klassenübersicht. `silben.js` + `sperre.js` (Silbe anklicken = klassenweit sperren) + `stufen.js`: Silben-/Stufentabellen, Filter. `eltern.js`: Elterncode-Panel. `login.js`/`passwort.js`: Login, Passwort vergessen/setzen.
 - `src/zug.ts`: Silben-Zug-PDF (`buildZugPdf`, `sheetPage`, `drawWord`, `downloadPdf`). `src/pdf.ts`: minimaler PDF-Writer (`Page`, `buildPdf`). `build.mjs`: esbuild → `js/zug.bundle.js`.
 
 ### apps/eltern
@@ -95,7 +95,7 @@ tests/          *.test.ts + helpers.ts + fixtures/silbenzauber-logic.js (alte Ap
 
 ### db/migrations
 - `0001_init`: schools, license_events, school_years, classes, staff_users, teacher_classes, sessions, students, student_class_history, student_codes, login_attempts, parent_activation_codes, parent_devices, class_letter_releases, student_letter_exclusions, letter_syllable_scope, class_learning_settings, config_versions, rounds, syllable_times, student_blocked_syllables, letter_mastery_cache, awards, award_popups, letter_markers, audit_log, retention_rules.
-- `0002`: student_sessions. `0003`: `code_lookup` in parent_activation_codes. `0004`: staff_tokens, rate_events, parent_codes, parent_sessions.
+- `0002`: student_sessions. `0003`: `code_lookup` in parent_activation_codes. `0004`: staff_tokens, rate_events, parent_codes, parent_sessions. `0010`: class_blocked_syllables (gesperrte Silben je Klasse).
 
 ### tests
 - `parity.test.ts` (alte vs. neue Logik, Fixture `silbenzauber-logic.js`), `engine`, `lautolino-logic`, `lautolino-server`, `server`, `kids`, `web`, `eltern`, `license`, `phase6`, `phase7` (Header, Größenlimit, Umzug-Wächter), `syllable-plan` (→ engine/syllablePlan), `words` (→ core/words); `helpers.ts`.
@@ -123,8 +123,8 @@ Alle Quelldateien sind klein (größte: `apps/kids/src/ui.ts` ≈ 21 KB, `server
 - `routes/auth.ts`: POST `/login /logout /forgot-password /set-password /change-password`, GET `/me`
 - `routes/admin.ts`: POST `/schools /schools/:id/license /staff /config`; GET `/schools /schools/:id/license-events /config/versions(/:v) /audit`
 - `routes/school.ts`: `/schools/:sid/{years,classes,staff}` (GET/POST), PATCH `/schools/:sid/staff/:uid`, PUT `…/staff/:uid/classes`, `/classes/:cid/students` (GET/POST), POST `/students/:id/code/regenerate`, PATCH `/students/:id`, POST `/students/:id/move`
-- `routes/plan.ts`: GET `/classes/:cid/plan`, POST `/classes/:cid/releases`, GET `/classes/:cid/releases/:letter/scope`, PUT `/students/:id/exclusions`, GET `/students/:id/plan`
-- `routes/progress.ts`: Kind: POST `/student/rounds`, GET `/student/awards`, POST `/student/awards/ack`, GET `/student/sync-data`; Staff: GET `/students/:id/{progress,rounds,syllable-train}`
+- `routes/plan.ts`: GET `/classes/:cid/plan`, POST `/classes/:cid/releases`, GET `/classes/:cid/releases/:letter/scope`, GET/PUT `/classes/:cid/blocked-syllables` (Silbensperre je Klasse, Body `{syllable, blocked}`), PUT `/students/:id/exclusions`, GET `/students/:id/plan`
+- `routes/progress.ts` (`loadScopes` liefert den Umfang ohne gesperrte Silben, `loadScopesEx` zusätzlich den vollen): Kind: POST `/student/rounds`, GET `/student/awards`, POST `/student/awards/ack`, GET `/student/sync-data`; Staff: GET `/students/:id/{progress,rounds,syllable-train}`
 - `routes/evaluation.ts`: GET `/students/:id/evaluation`, `/students/:id/stages/:n`, `/classes/:cid/overview`, `/classes/:cid/syllables`
 - `routes/student.ts`: POST `/login`, GET `/me`, `/plan` (Kinder)
 - `routes/parent.ts`: POST `/students/:id/parent-code/regenerate`, `/classes/:cid/parent-codes/missing`, `/parent/login`, `/parent/activate`; GET `/students/:id/parent-access`, `/parent/{me,letters,rounds}`

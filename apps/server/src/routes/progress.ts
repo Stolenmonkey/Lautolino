@@ -20,12 +20,21 @@ const num = (v: unknown, lo: number, hi: number, name: string): number => {
 };
 
 // Fester Silbenumfang je Buchstabe der aktuellen Klasse und gespeicherte Zeiten je Silbe (älteste zuerst)
-export async function loadScopes(d: Deps, classId: string, letters: string[]): Promise<Record<string, string[]>> {
-  const rows = await d.db.all<{ letter: string; syllable: string }>("SELECT letter, syllable FROM letter_syllable_scope WHERE class_id=?", [classId]);
-  const out: Record<string, string[]> = {};
-  letters.forEach((l) => { out[l] = []; });
-  rows.forEach((r) => { if (out[r.letter]) out[r.letter].push(r.syllable); });
-  return out;
+// Von Lehrkräften gesperrte Silben der Klasse (gelten für alle Kinder der Klasse)
+export async function loadBlocked(d: Deps, classId: string): Promise<Set<string>> {
+  return new Set((await d.db.all<{ syllable: string }>("SELECT syllable FROM class_blocked_syllables WHERE class_id=?", [classId])).map((x) => x.syllable));
+}
+// scopes: Umfang ohne gesperrte Silben (Übung, Wortschatz, Bewertung, Auszeichnungen); full: vollständiger Umfang inkl. gesperrter (nur Lernplan der Lehrkraft)
+export async function loadScopesEx(d: Deps, classId: string, letters: string[]): Promise<{ scopes: Record<string, string[]>; full: Record<string, string[]> }> {
+  const rows = await d.db.all<{ letter: string; syllable: string }>("SELECT letter, syllable FROM letter_syllable_scope WHERE class_id=?", [classId]), blocked = await loadBlocked(d, classId);
+  const scopes: Record<string, string[]> = {}, full: Record<string, string[]> = {};
+  letters.forEach((l) => { scopes[l] = []; full[l] = []; });
+  rows.forEach((r) => { if (full[r.letter]) { full[r.letter].push(r.syllable); if (!blocked.has(r.syllable)) scopes[r.letter].push(r.syllable); } });
+  return { scopes, full };
+}
+export async function loadScopes(d: Deps, classId: string, letters: string[], withBlocked = false): Promise<Record<string, string[]>> {
+  const r = await loadScopesEx(d, classId, letters);
+  return withBlocked ? r.full : r.scopes;
 }
 export async function loadTimes(d: Deps, studentId: string): Promise<{ times: Record<string, number[]>; maxSeq: Record<string, number> }> {
   const rows = await d.db.all<{ syllable: string; seconds: number; seq: number }>("SELECT syllable, seconds, seq FROM syllable_times WHERE student_id=? ORDER BY syllable, seq", [studentId]);
@@ -58,8 +67,9 @@ export function studentSylPlan(tr: { scopes: Record<string, string[]>; times: Re
 export async function progressOf(d: Deps, studentId: string, cfg: SilbenflugConfig) {
   const st = await studentLetters(d.db, studentId);
   if (!st.classId) return [];
-  const scopes = await loadScopes(d, st.classId, st.letters), { times } = await loadTimes(d, studentId), held = await heldAwards(d, studentId);
-  return st.letters.map((l, i) => ({ letter: l, order: i + 1, level: highestLevel(held[l] || []), ...letterProgress(scopes[l], times, cfg) }));
+  const { scopes, full } = await loadScopesEx(d, st.classId, st.letters), { times } = await loadTimes(d, studentId), held = await heldAwards(d, studentId);
+  // Sind alle Silben eines Buchstabens gesperrt, gilt der Buchstabe als erfüllt
+  return st.letters.map((l, i) => ({ letter: l, order: i + 1, level: highestLevel(held[l] || []), ...letterProgress(scopes[l], times, cfg), ...(!scopes[l].length && full[l].length ? { percent: 100 } : {}) }));
 }
 
 export function progressRoutes() {
@@ -104,9 +114,11 @@ export function progressRoutes() {
     // Auszeichnungen neu berechnen (nur Buchstaben, deren fester Silbenumfang in dieser Runde vorkam)
     const st = await studentLetters(d.db, p.id), awards: Array<{ letter: string; levels: AwardLevel[]; highest: AwardLevel }> = [];
     if (st.classId) {
-      const scopes = await loadScopes(d, st.classId, st.letters), held = await heldAwards(d, p.id), played = new Set(items.map((x) => x.s));
+      const { scopes, full } = await loadScopesEx(d, st.classId, st.letters), held = await heldAwards(d, p.id), played = new Set(items.map((x) => x.s));
       for (const l of st.letters) {
-        if (!scopes[l].some((s) => played.has(s))) continue;
+        // Buchstaben, deren Silben alle gesperrt sind, gelten als erfüllt und werden ausgezeichnet, sobald das Kind eine Runde spielt
+        const allBlocked = full[l].length > 0 && scopes[l].length === 0;
+        if (!allBlocked && !scopes[l].some((s) => played.has(s))) continue;
         const prog = letterProgress(scopes[l], after, cfg), fresh = newAwards(held[l] || [], scopes[l], after, cfg);
         stmts.push({ sql: "INSERT INTO letter_mastery_cache(student_id,letter,mastered_count,total_count,percent,computed_at) VALUES(?,?,?,?,?,?) ON CONFLICT(student_id,letter) DO UPDATE SET mastered_count=excluded.mastered_count,total_count=excluded.total_count,percent=excluded.percent,computed_at=excluded.computed_at", params: [p.id, l, prog.mastered, prog.total, prog.percent, at] });
         for (const lv of fresh) {
