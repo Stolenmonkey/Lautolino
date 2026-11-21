@@ -58,7 +58,6 @@ function svgIcon(d) {
 }
 
 // Freigaben: Klick auf "Silben ansehen" zeigt die Silben direkt unter dem Buchstaben, geordnet nach den 7 Lernstufen (bleibt stehen, kein Ein-/Ausklappen).
-const ORDINAL = ["Erstens", "Zweitens", "Drittens", "Viertens", "Fünftens", "Sechstens", "Siebtens"];
 function freigabeTabelle(api, cid, releases, msg, sp, reload) {
   const head = ["Buchstabe", "Datum", "Silbenumfang", "Aktion"];
   const rows = releases.map((r) => {
@@ -70,8 +69,8 @@ function freigabeTabelle(api, cid, releases, msg, sp, reload) {
       if (!detail.hidden) { detail.hidden = true; chev.textContent = "▾"; return; }
       const [s, m] = await Promise.all([api.get(`/classes/${cid}/releases/${r.letter}/scope`), import("../scope.bundle.js")]);
       all = s; title = h("strong"); setTitle();
-      clear(cell).append(title, h("p", { class: "muted" }, "Silbe anklicken = für die ganze Klasse sperren (rot), erneut anklicken = wieder freigeben."), h("div", { class: "panel flush tablewrap" }, h("table", { class: "plain freigaben" }, h("thead", {}, h("tr", {}, ["Stufe", "Info", "Silben"].map((x) => h("th", {}, x)))), h("tbody", {}, m.stageRows(s).map((g) => h("tr", {}, [
-        h("strong", {}, ORDINAL[g.stage - 1] || `${g.stage}.`), g.structure, g.syllables.length ? h("div", { class: "chips" }, g.syllables.map((x) => sp.chip(x, x.toUpperCase()))) : h("span", { class: "muted" }, "–") ].map((c) => h("td", {}, c))))))));
+      clear(cell).append(title, h("div", { class: "panel flush tablewrap" }, h("table", { class: "plain freigaben" }, h("thead", {}, h("tr", {}, ["Stufe", "Info", "Silben"].map((x) => h("th", {}, x)))), h("tbody", {}, m.stageRows(s).map((g) => h("tr", {}, [
+        h("strong", {}, `${g.stage}.`), g.structure, g.syllables.length ? h("div", { class: "chips" }, g.syllables.map((x) => sp.chip(x, x.toUpperCase()))) : h("span", { class: "muted" }, "–") ].map((c) => h("td", {}, c))))))));
       detail.hidden = false; chev.textContent = "▴";
     });
     // Vor der ersten gespielten Runde: Löschen (Tippfehler zurücknehmen). Danach nur Pausieren und Fortsetzen.
