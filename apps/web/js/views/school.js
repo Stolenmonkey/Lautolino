@@ -58,19 +58,20 @@ function svgIcon(d) {
 }
 
 // Freigaben: Klick auf "Silben ansehen" zeigt die Silben direkt unter dem Buchstaben, geordnet nach den 7 Lernstufen (bleibt stehen, kein Ein-/Ausklappen).
+const ORDINAL = ["Erstens", "Zweitens", "Drittens", "Viertens", "Fünftens", "Sechstens", "Siebtens"];
 function freigabeTabelle(api, cid, releases, msg, sp, reload) {
   const head = ["Buchstabe", "Datum", "Silbenumfang", "Aktion"];
   const rows = releases.map((r) => {
     const cell = h("td", { colspan: String(head.length) }), detail = h("tr", { class: "scopedetail", hidden: "" }, cell), cnt = h("span", {}, String(r.syllable_count)), chev = h("span", { class: "chev" }, "▾"), btn = h("button", { type: "button", class: "chevbtn", title: "Silben ansehen", "aria-label": "Silben ansehen" }, cnt, chev);
     let all = null, title = null;   // all: alle Silben des Buchstabens inkl. gesperrter
-    const setTitle = () => { if (title) { const b = all.filter((x) => sp.has(x)).length; title.textContent = `Silben von ${r.letter.toUpperCase()} (${all.length - b}${b ? `, ${b} gesperrt` : ""})`; } };
+    const setTitle = () => { if (title) { title.textContent = `Silben von ${r.letter.toUpperCase()}`; } };
     sp.onChange(async () => { const p = await api.get(`/classes/${cid}/plan`), x = p.releases.find((q) => q.letter === r.letter); if (x) cnt.textContent = String(x.syllable_count); setTitle(); });
     btn.onclick = () => act(msg, async () => {
       if (!detail.hidden) { detail.hidden = true; chev.textContent = "▾"; return; }
       const [s, m] = await Promise.all([api.get(`/classes/${cid}/releases/${r.letter}/scope`), import("../scope.bundle.js")]);
       all = s; title = h("strong"); setTitle();
-      clear(cell).append(title, h("p", { class: "muted" }, "Silbe anklicken = für die ganze Klasse sperren (rot), erneut anklicken = wieder freigeben."), h("div", { class: "tablewrap" }, table(["Stufe", "Silben"], m.stageRows(s).map((g) => [
-        h("strong", {}, `${g.stage}. Stufe`), h("div", { class: "muted" }, g.structure), g.syllables.length ? h("div", { class: "chips" }, g.syllables.map((x) => sp.chip(x, x.toUpperCase()))) : h("span", { class: "muted" }, "–") ]), { wide: true })));
+      clear(cell).append(title, h("p", { class: "muted" }, "Silbe anklicken = für die ganze Klasse sperren (rot), erneut anklicken = wieder freigeben."), h("div", { class: "panel flush tablewrap" }, h("table", { class: "plain freigaben" }, h("thead", {}, h("tr", {}, ["Stufe", "Info", "Silben"].map((x) => h("th", {}, x)))), h("tbody", {}, m.stageRows(s).map((g) => h("tr", {}, [
+        h("strong", {}, ORDINAL[g.stage - 1] || `${g.stage}.`), g.structure, g.syllables.length ? h("div", { class: "chips" }, g.syllables.map((x) => sp.chip(x, x.toUpperCase()))) : h("span", { class: "muted" }, "–") ].map((c) => h("td", {}, c))))))));
       detail.hidden = false; chev.textContent = "▴";
     });
     // Vor der ersten gespielten Runde: Löschen (Tippfehler zurücknehmen). Danach nur Pausieren und Fortsetzen.
