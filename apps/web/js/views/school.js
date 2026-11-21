@@ -16,9 +16,10 @@ export async function schoolView(tab, root, { api, user }) {
   if (!classes.length) { root.append(notice(user.role === "lehrer" ? "Dir ist noch keine Klasse zugewiesen. Bitte die Schulleitung bitten." : "Bitte zuerst unter „Klassen und Schuljahre“ eine Klasse anlegen.")); return; }
   if (!classes.some((c) => c.id === state.classId)) state.classId = classes[0].id;
   const sel = h("select", { "aria-label": "Klasse", onchange: () => { state.classId = sel.value; schoolView(tab, root, { api, user }); } }, classes.map((c) => h("option", { value: c.id, selected: c.id === state.classId }, c.name)));
-  root.append(h("div", { class: "row" }, h("label", {}, "Klasse ", sel)));
+  const slot = h("span");   // Platz neben der Klassenauswahl (Auswertung: Schüler-Dropdown)
+  root.append(h("div", { class: "row" }, h("label", {}, "Klasse ", sel), slot));
   const body = h("div"); root.append(body);
-  await (tab === "lernplan" ? lernplan : tab === "auswertung" ? auswertung : tab === "uebersicht" ? uebersicht : schueler)(body, api, state.classId, classes, msg);
+  await (tab === "lernplan" ? lernplan : tab === "auswertung" ? auswertung : tab === "uebersicht" ? uebersicht : schueler)(body, api, state.classId, classes, msg, slot);
 }
 
 async function schueler(root, api, cid, classes, msg) {

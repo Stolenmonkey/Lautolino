@@ -128,7 +128,7 @@ describe("Server und Oberfläche", () => {
     const user = { id: "x", role: "schulleitung", schoolId: sid }, root = document.createElement("div"); document.body.appendChild(root);
     await schoolView("auswertung", root, { api, user }); await flush();
     expect(root.textContent).toContain("Silben-Züge für alle Kinder (PDF)"); expect(root.querySelector("svg")).toBeNull();
-    click(root, "Mia"); await flush();
+    { const sel = root.querySelector('select[aria-label="Schüler"]') as HTMLSelectElement; sel.value = Array.from(sel.options).find((o) => o.text === "Mia")!.value; sel.dispatchEvent(new Event("change")); await flush(); }
     expect(root.querySelector("svg.zeitverlauf")).not.toBeNull(); expect(root.querySelectorAll("svg.zeitverlauf .pt").length).toBe(3); expect(root.querySelectorAll("svg.zeitverlauf .neu").length).toBe(1);
     expect(root.textContent).toContain("neu: "); expect(root.textContent).toContain("Sicher beherrscht"); expect(root.textContent).toContain("kein Nachweis der Lesekorrektheit");
     const saved: Array<{ b: Uint8Array; n: string }> = []; hooks.save = (b: Uint8Array, n: string) => saved.push({ b, n });

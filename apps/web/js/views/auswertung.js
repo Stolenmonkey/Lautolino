@@ -17,15 +17,20 @@ async function pdfFor(api, kids) {
   return { sheets, skipped, bytes: sheets.length ? m.buildZugPdf(sheets) : null };
 }
 
-export async function auswertung(root, api, cid, classes, msg) {
-  const kids = await api.get(`/classes/${cid}/students`), detail = h("div");
+export async function auswertung(root, api, cid, classes, msg, slot) {
+  const kids = (await api.get(`/classes/${cid}/students`)).filter((k) => k.active), detail = h("div");
   const printAll = h("button", { type: "button", onclick: () => act(msg, async () => {
-    const r = await pdfFor(api, kids.filter((k) => k.active));
+    const r = await pdfFor(api, kids);
     if (!r.bytes) { clear(msg).append(notice("Für diese Klasse gibt es noch nichts zu drucken (Buchstaben freigeben).", "error")); return; }
     await savePdf(r.bytes, "silben-zug-klasse.pdf");
     clear(msg).append(notice(`${r.sheets.length} Blätter erzeugt.` + (r.skipped.length ? ` Ohne Blatt (zu wenige Silben): ${r.skipped.join(", ")}.` : ""), "ok"));
   }) }, "Silben-Züge für alle Kinder (PDF)");
-  root.append(h("h2", {}, "Auswertung"), kids.length ? h("div", { class: "row" }, kids.map((k) => h("button", { type: "button", class: "kid", "aria-pressed": k.id === state.studentId, onclick: () => { state.studentId = k.id; auswertung(clear(root), api, cid, classes, msg); } }, k.display_name)), printAll) : h("p", { class: "muted" }, "Noch keine Kinder in dieser Klasse."), detail);
+  if (!kids.some((k) => k.id === state.studentId)) state.studentId = null;
+  const sel = h("select", { "aria-label": "Schüler", onchange: () => { state.studentId = sel.value || null; clear(detail); const k = kids.find((x) => x.id === state.studentId); if (k) kind(detail, api, k, msg); } },
+    [h("option", { value: "" }, "– Kind wählen –"), ...kids.map((k) => h("option", { value: k.id, selected: k.id === state.studentId }, k.display_name))]);
+  const picker = h("label", {}, "Schüler ", sel);
+  if (slot) { clear(slot).append(picker); root.append(h("h2", {}, "Auswertung")); } else root.append(h("h2", {}, "Auswertung"), picker);
+  root.append(kids.length ? h("div", { class: "row" }, printAll) : h("p", { class: "muted" }, "Noch keine aktiven Kinder in dieser Klasse."), detail);
   const kid = kids.find((k) => k.id === state.studentId);
   if (kid) await kind(detail, api, kid, msg);
 }

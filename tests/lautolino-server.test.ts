@@ -301,7 +301,7 @@ describe("Lautolino (Server und Oberfläche)", () => {
     it("Auswertung: Lernstufen, Buchstaben je Stufe und Silbenstatistik mit Filter", async () => {
       const tok = await kidTok(codeA); await rounds(tok, KV, 10, 1, "kv"); await rounds(tok, ["mal"], 3, 6, "m3");
       const root = mkRoot(); await schoolView("auswertung", root, { api: apiFor(lead), user: { id: "x", role: "schulleitung", schoolId: sid } }); await flush();
-      (Array.from(root.querySelectorAll("button.kid")).find((b) => b.textContent === "Mia") as HTMLElement).click(); await flush();
+      { const ks = root.querySelector('select[aria-label="Schüler"]') as HTMLSelectElement; ks.value = Array.from(ks.options).find((o) => o.text === "Mia")!.value; ks.dispatchEvent(new Event("change")); await flush(); }
       expect(root.textContent).toContain("Lernstufen"); expect(root.textContent).toContain("1. Einzelne offene Silben und Vokale"); expect(root.textContent).toContain("abgeschlossen"); expect(root.textContent).toContain("noch nicht dran");
       expect(root.textContent).toContain("Buchstaben und Lernstufen"); expect(root.textContent).toContain("Stufe 3");
       const rowsOf = () => Array.from(root.querySelectorAll("tr")).filter((tr) => tr.textContent!.includes("sicher beherrscht") || tr.textContent!.includes("noch nicht"));
