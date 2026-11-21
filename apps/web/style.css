@@ -156,3 +156,7 @@ table.plain td .v { justify-content:center; } table.plain td:first-child .v { ju
 .hd-row { display:flex; align-items:center; gap:8px; }
 .hd-row #who.role, .hd-row #logout { margin-left:0; }
 @media (max-width:640px) { .hd-right { gap:3px; flex:0 1 auto; } .hd-mail { font-size:.7rem; max-width:55vw; } .hd-row { gap:6px; } }
+
+.hd-row #who.role, .hd-row #logout { box-sizing:border-box; height:30px; min-height:0; padding:0 12px; display:inline-flex; align-items:center; font-size:.85rem; line-height:1; }
+.hd-row #logout { border-radius:999px; font-weight:600; }
+@media (max-width:640px) { .hd-row #who.role, .hd-row #logout { height:28px; padding:0 9px; font-size:clamp(.68rem, 3.2vw, .8rem); } }

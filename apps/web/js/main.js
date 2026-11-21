@@ -19,7 +19,7 @@ function show() {
   (user.role === "admin" ? adminView : schoolView)(tab, clear(main), ctx).catch((e) => { if (e.status === 401) return signOut(); main.append(h("div", { class: "notice error" }, e.message)); });
 }
 function signedIn(u) {
-  user = u; tab = null; $("mail").textContent = u.email || ""; $("who").textContent = { admin: "Administration", schulleitung: "Schulleitung", lehrer: "Lehrkraft" }[u.role]; $("who").classList.remove("hidden"); $("logout").classList.remove("hidden"); show();
+  user = u; tab = null; { let m = u.email; try { if (m) localStorage.setItem("lautolino_mail", m); else m = localStorage.getItem("lautolino_mail"); } catch {} u.email = m; } $("mail").textContent = u.email || ""; $("who").textContent = { admin: "Administration", schulleitung: "Schulleitung", lehrer: "Lehrkraft" }[u.role]; $("who").classList.remove("hidden"); $("logout").classList.remove("hidden"); show();
 }
 function signOut() {
   user = null; api.token = null; $("mail").textContent = ""; $("who").textContent = ""; $("who").classList.add("hidden"); $("logout").classList.add("hidden"); tabs.classList.add("hidden"); loginView(clear(main), { api, onLogin: signedIn, onForgot: () => forgotView(clear(main), { api, onBack: signOut }) });
