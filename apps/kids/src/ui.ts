@@ -16,13 +16,17 @@ const LEVEL_NAME: Record<AwardLevel, string> = { bronze: "Bronze", silber: "Silb
 const LEVEL_COLOR: Record<AwardLevel, string> = { bronze: "#cd7f32", silber: "#b9c3d1", gold: "#ffc928" };
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
 
-const OWL = '<path d="M25 66L27 36L52 54Z" fill="#f08a24" stroke="#f08a24" stroke-width="6" stroke-linejoin="round"/><path d="M95 66L93 36L68 54Z" fill="#f08a24" stroke="#f08a24" stroke-width="6" stroke-linejoin="round"/><path d="M31 56L31 44L43 53Z" fill="#ffe3b8"/><path d="M89 56L89 44L77 53Z" fill="#ffe3b8"/>' +
-  '<g class="wingL"><ellipse cx="30" cy="92" rx="11" ry="20" fill="#f08a24" transform="rotate(18 30 92)"/></g><g class="wingR"><ellipse cx="90" cy="92" rx="11" ry="20" fill="#f08a24" transform="rotate(-18 90 92)"/></g>' +
-  '<ellipse cx="60" cy="88" rx="38" ry="38" fill="#ffa63d"/><ellipse cx="60" cy="98" rx="24" ry="25" fill="#ffe3b8"/>' +
-  '<g class="eyes"><circle cx="45" cy="72" r="13" fill="#fff"/><circle cx="75" cy="72" r="13" fill="#fff"/><circle cx="47" cy="74" r="6" fill="#1f2a44"/><circle cx="73" cy="74" r="6" fill="#1f2a44"/><circle cx="49" cy="72" r="2" fill="#fff"/><circle cx="75" cy="72" r="2" fill="#fff"/></g>' +
-  '<path d="M53 83 L67 83 L60 95 Z" fill="#ff6b4a"/><circle cx="33" cy="88" r="6" fill="#ff9db5" opacity=".7"/><circle cx="87" cy="88" r="6" fill="#ff9db5" opacity=".7"/>' +
-  '<ellipse cx="46" cy="125" rx="10" ry="4" fill="#ff6b4a"/><ellipse cx="74" cy="125" rx="10" ry="4" fill="#ff6b4a"/>';
-const owl = (cls: string, id = ""): string => '<svg class="' + cls + '"' + (id ? ' id="' + id + '"' : "") + ' viewBox="8 30 104 102" aria-hidden="true">' + OWL + "</svg>";
+const OWL =
+  '<g><path d="M100 180C88 120 92 50 122 25C150 8 215 35 250 75Z" fill="#d98f3e"/><path d="M130 138L132 78Q162 62 196 70Z" fill="#f8e3c4"/></g><g transform="translate(650 0) scale(-1 1)"><path d="M100 180C88 120 92 50 122 25C150 8 215 35 250 75Z" fill="#d98f3e"/><path d="M130 138L132 78Q162 62 196 70Z" fill="#f8e3c4"/></g>' +
+  '<g class="wingL"><ellipse cx="52" cy="415" rx="48" ry="135" fill="#d98f3e" transform="rotate(10 52 415)"/></g>' +
+  '<g class="wingR"><ellipse cx="598" cy="415" rx="48" ry="135" fill="#d98f3e" transform="rotate(-10 598 415)"/></g>' +
+  '<ellipse cx="325" cy="330" rx="255" ry="275" fill="#e8a248"/><ellipse cx="325" cy="445" rx="165" ry="125" fill="#f8e3c4"/>' +
+  '<g class="lids" fill="none" stroke="#1f2a3d" stroke-width="11" stroke-linecap="round"><path d="M175 232Q228 278 281 232"/><path d="M369 232Q422 278 475 232"/></g>' +
+  '<g class="eyes"><circle cx="228" cy="235" r="102" fill="#fff"/><circle cx="422" cy="235" r="102" fill="#fff"/><circle cx="235" cy="232" r="52" fill="#1f2a3d"/><circle cx="415" cy="232" r="52" fill="#1f2a3d"/><circle cx="222" cy="212" r="15" fill="#fff"/><circle cx="262" cy="252" r="9" fill="#fff"/><circle cx="402" cy="212" r="15" fill="#fff"/><circle cx="442" cy="252" r="9" fill="#fff"/></g>' +
+  '<ellipse cx="147" cy="325" rx="40" ry="25" fill="#f08c8c" opacity=".8"/><ellipse cx="503" cy="325" rx="40" ry="25" fill="#f08c8c" opacity=".8"/>' +
+  '<path d="M290 282L362 282L327 338Z" fill="#e0694f" stroke="#e0694f" stroke-width="8" stroke-linejoin="round"/>' +
+  '<g fill="#e0694f"><ellipse cx="215" cy="600" rx="17" ry="32"/><ellipse cx="248" cy="606" rx="17" ry="32"/><ellipse cx="281" cy="598" rx="17" ry="32"/><ellipse cx="369" cy="598" rx="17" ry="32"/><ellipse cx="402" cy="606" rx="17" ry="32"/><ellipse cx="435" cy="600" rx="17" ry="32"/></g>';
+const owl = (cls: string, id = ""): string => '<svg class="' + cls + '"' + (id ? ' id="' + id + '"' : "") + ' viewBox="0 0 650 642" aria-hidden="true">' + OWL + "</svg>";
 const TITLE = renderWord("Lautolino");   // in der Schulschrift der App
 
 // Fortschrittsring um den Großbuchstaben: 5 Schritte, füllt sich im Uhrzeigersinn ab 12 Uhr; nach Gold bleibt er voll
