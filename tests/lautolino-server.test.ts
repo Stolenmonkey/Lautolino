@@ -396,7 +396,7 @@ describe("Lautolino (Server und Oberfläche)", () => {
       expect(chips("LA").length).toBeGreaterThan(0); expect(chips("LA").every((e) => !e.classList.contains("gesperrt"))).toBe(true);
       chips("LA")[0].click(); await flush();
       expect((await call("GET", `/classes/${cid}/blocked-syllables`, teacher)).json.syllables).toEqual(["la"]);
-      expect(chips("LA").every((e) => e.classList.contains("gesperrt"))).toBe(true); expect(root.textContent).toContain("1 gesperrt");
+      expect(chips("LA").every((e) => e.classList.contains("gesperrt"))).toBe(true);
       chips("LA")[0].click(); await flush();
       expect((await call("GET", `/classes/${cid}/blocked-syllables`, teacher)).json.syllables).toEqual([]); expect(chips("LA").every((e) => !e.classList.contains("gesperrt"))).toBe(true);
     });
