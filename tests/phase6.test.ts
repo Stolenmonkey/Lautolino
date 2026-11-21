@@ -105,7 +105,8 @@ describe("Server und Oberfläche", () => {
   });
   it("Silben-Zug ohne Lernstufen: nur sichere Silben der höchsten Stufe, keine Längenwahl", async () => {
     expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0 } }, note: "ohne Lernstufen" })).status).toBe(201);
-    const tok = await kidToken(0), all = structureWords(["o", "l"]), top = Math.max(...all.map((x) => classifySyllable(x).stage));
+    const tok = await kidToken(0), all = structureWords(["o", "l"]);
+    const evs = (await call("GET", `/students/${kA}/evaluation`, teacher)).json.stages as any[], top = Math.max(...evs.filter((g) => g.total > 0 && g.stage !== 2).map((g) => g.stage as number));  // höchste Stufe, die im (begrenzten) Umfang tatsächlich Silben hat
     for (let i = 0; i < 10; i++) expect((await call("POST", "/student/rounds", tok, { clientRoundId: "z" + i, seconds: 40, syllables: all.map((x) => ({ s: x, sec: 1 })), letters: ["o", "l"] })).status).toBe(201);
     const t = (await train(kA, teacher, "?seed=1")).json.syllables as string[];
     expect(t.length).toBeGreaterThan(0); expect(t.every((x) => classifySyllable(x).stage === top || classifySyllable(x).stage < top)).toBe(true); expect(t.some((x) => classifySyllable(x).stage === top)).toBe(true);

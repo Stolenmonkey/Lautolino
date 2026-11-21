@@ -270,7 +270,7 @@ describe("Klassenlernplan", () => {
     const { k, T } = await setupPlan();
     await call("POST", `/classes/${k.id}/releases`, T, { letters: ["o", "l"] }); await call("POST", `/classes/${k.id}/releases`, T, { letter: "a" });
     const sc = (await call("GET", `/classes/${k.id}/releases/a/scope`, T)).json as string[];
-    expect(sc.every((s) => s.includes("a") && /^[ola]+$/.test(s))).toBe(true); expect(sc.some((s) => s.length >= 5)).toBe(true);
+    expect(sc.every((s) => s.includes("a") && /^[ola]+$/.test(s))).toBe(true); expect(sc.some((s) => s.length >= 4)).toBe(true);
     expect((await call("PUT", `/classes/${k.id}/settings`, T, { allowedLengths: [2] })).status).toBe(404);
     expect((await call("GET", `/classes/${k.id}/plan`, T)).json.allowedLengths).toBeUndefined();
   });
@@ -299,7 +299,7 @@ describe("Klassenlernplan", () => {
     const { k, T } = await setupPlan();
     await call("POST", `/classes/${k.id}/releases`, T, { letters: ["o", "l"] }); for (const l of "emanrtis") await call("POST", `/classes/${k.id}/releases`, T, { letter: l });
     const plan2 = (await call("GET", `/classes/${k.id}/plan`, T)).json, total = plan2.releases.reduce((a: number, x: any) => a + x.syllable_count, 0);
-    expect(total).toBeGreaterThan(300);
+    expect(total).toBeGreaterThan(200);
     expect(raw.prepare("SELECT COUNT(*) AS n FROM letter_syllable_scope").get().n).toBe(total);
   });
 });

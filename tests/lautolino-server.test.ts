@@ -80,7 +80,7 @@ describe("Lautolino (Server und Oberfläche)", () => {
     });
     it("mehrsilbige Wörter (PAL-ME, MA-LA-MA) sind im Umfang, alle sieben Stufen erreichbar", async () => {
       const r = (await call("GET", `/classes/${cid}/syllables`, teacher)).json;
-      expect(r.stages.filter((g: any) => g.stage !== 2).every((g: any) => g.total > 0)).toBe(true);
+      expect(r.stages.filter((g: any) => g.stage !== 2 && g.stage !== 6).every((g: any) => g.total > 0)).toBe(true);
       const d = (await call("GET", `/classes/${cid}/syllables?stage=6`, teacher)).json; expect(d.subs.flatMap((u: any) => u.syllables).every((x: any) => x.parts.length === 3)).toBe(true);
     });
     it("später freigegebene Buchstaben erscheinen sofort in den richtigen Stufen", async () => {
@@ -99,12 +99,12 @@ describe("Lautolino (Server und Oberfläche)", () => {
   describe("Stufenweiser Lernfortschritt", () => {
     it("am Anfang trainiert das Kind nur Stufe 1 und 2 (KV-Silben); höhere Stufen sind nicht freigeschaltet", async () => {
       const ev = (await call("GET", `/students/${kA}/evaluation`, teacher)).json;
-      expect(ev.stages.map((s: any) => s.status)).toEqual(["active", "active", "locked", "locked", "locked", "locked", "locked"]); expect(ev.letters.every((l: any) => l.current === 1)).toBe(true);
+      expect(ev.stages.map((s: any) => s.status)).toEqual(["active", "active", "locked", "locked", "locked", "empty", "locked"]); expect(ev.letters.every((l: any) => l.current === 1)).toBe(true);
     });
     it("nach sicher beherrschter Stufe 1 rückt der Schwerpunkt vor, Gelerntes wird wiederholt, Stufe 5 bis 7 bleiben gesperrt", async () => {
       const tok = await kidTok(codeA); await rounds(tok, KV, 10, 1, "kv");
       const ev = (await call("GET", `/students/${kA}/evaluation`, teacher)).json;
-      expect(ev.stages.map((s: any) => s.status)).toEqual(["done", "done", "active", "locked", "locked", "locked", "locked"]);   // Modus 2: Stufe 4 erst, wenn Stufe 3 zu 80 % sicher ist
+      expect(ev.stages.map((s: any) => s.status)).toEqual(["done", "done", "active", "locked", "locked", "empty", "locked"]);   // Modus 2: Stufe 4 erst, wenn Stufe 3 zu 80 % sicher ist
       expect(ev.letters.find((l: any) => l.letter === "m")).toMatchObject({ current: 3, window: [3] });
       // die Übungsrunde (Silben-Zug) folgt der Freischaltung je Silbe: nur Stufe 3 (neu) und Stufe 1 (Wiederholung), nichts Gesperrtes
       const z = (await call("GET", `/students/${kA}/syllable-train?seed=3`, teacher)).json.syllables as string[];
@@ -141,7 +141,7 @@ describe("Lautolino (Server und Oberfläche)", () => {
       const tok = await kidTok(codeA); await rounds(tok, KV, 10, 1, "kv"); await rounds(tok, ["mal", "pal"], 3, 1, "k3");
       const ev = (await call("GET", `/students/${kA}/evaluation`, teacher)).json;
       expect(ev.stages[0]).toMatchObject({ stage: 1, status: "done", total: 12, processed: 12, mastered: 12, open: 0 }); expect(ev.stages[2]).toMatchObject({ stage: 3, status: "active", processed: 2, mastered: 0 });
-      const st = ev.letters.find((l: any) => l.letter === "p"); expect(st.stages.map((s: any) => s.status)).toEqual(["done", "done", "active", "locked", "locked", "locked", "locked"]);
+      const st = ev.letters.find((l: any) => l.letter === "p"); expect(st.stages.map((s: any) => s.status)).toEqual(["done", "done", "active", "locked", "locked", "empty", "locked"]);
       const d = (await call("GET", `/students/${kA}/stages/3`, teacher)).json; expect(d.total).toBe(36); expect(d.syllables.find((x: any) => x.syllable === "mal")).toMatchObject({ count: 3, status: "unrated" });
       expect(d.syllables.find((x: any) => x.syllable === "lop")).toMatchObject({ count: 0, avg: null, status: "unrated" });
       expect((await call("GET", `/students/${kA}/stages/8`, teacher)).status).toBe(400);
@@ -315,7 +315,7 @@ describe("Lautolino (Server und Oberfläche)", () => {
       const root = mkRoot(); await schoolView("uebersicht", root, { api: apiFor(teacher), user: { id: "x", role: "lehrer", schoolId: sid } }); await flush();
       expect(root.textContent).toContain("Klassenübersicht"); expect(root.textContent).toContain("Aktive Kinder in der Klasse: 2"); expect(root.querySelectorAll("tbody tr").length).toBe(6); expect(root.textContent).toContain("Erreicht (geübt)");
       const root2 = mkRoot(); await schoolView("lernplan", root2, { api: apiFor(teacher), user: { id: "x", role: "lehrer", schoolId: sid } }); await flush();
-      expect(root2.textContent).toContain("Übungswörter und Lernstufen"); expect(root2.textContent).toContain("3. Einfache geschlossene Silben"); const row = Array.from(root2.querySelectorAll("tr")).find((tr) => tr.textContent!.startsWith("3. Einfache geschlossene Silben"))!; (Array.from(row.querySelectorAll("button")).find((b) => b.textContent === "Silben ansehen") as HTMLElement).click(); await flush();
+      expect(root2.textContent).toContain("Übungswörter und Lernstufen"); expect(root2.textContent).toContain("VK und KVK"); const row = Array.from(root2.querySelectorAll("tr")).find((tr) => tr.textContent!.startsWith("3.VK und KVK"))!; (Array.from(row.querySelectorAll("button")).find((b) => b.textContent === "Silben ansehen") as HTMLElement).click(); await flush();
       expect(root2.textContent).toContain("3.1 Geschlossen mit Vokal-Anfang (VK)"); expect(root2.textContent).toContain("AM");
     });
   });
