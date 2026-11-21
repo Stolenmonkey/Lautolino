@@ -49,8 +49,8 @@ async function childGroups(d: Deps, cid: string, letters: string[], excluded: Se
     const scope = new Set<string>(); letters.filter((l) => !excluded.has(k.id + "|" + l)).forEach((l) => (scopes[l] || []).forEach((s) => scope.add(s)));
     const own = times[k.id] || {}, total = scope.size, hasData = total > 0 && Object.keys(own).length > 0;
     const mastered = hasData ? [...scope].filter((s) => own[s] && isMastered(own[s], cfg, s).status === "mastered").length : 0;
-    const rounds = roundsOf[k.id] || 0;   // Effizienz = sicher beherrschte Silben / durchgespielte Runden (nur Anzeige, ohne Einfluss auf die Gruppe)
-    return { id: k.id, name: k.name, mastered, total, rounds, efficiency: hasData && rounds > 0 ? Math.round((mastered / rounds) * 100) / 100 : null as number | null, percent: hasData ? Math.round((mastered / total) * 1000) / 10 : null as number | null, group: "nodata" as string, rank: null as number | null };
+    const rounds = roundsOf[k.id] || 0;
+    return { id: k.id, name: k.name, mastered, total, rounds, percent: hasData ? Math.round((mastered / total) * 1000) / 10 : null as number | null, group: "nodata" as string, rank: null as number | null };
   });
   const rated = list.filter((x) => x.percent !== null), med = rated.length ? median(rated.map((x) => x.percent as number)) : null, eps = 1e-9;
   const pcts = rated.map((x) => x.percent as number);
