@@ -173,3 +173,8 @@ header { align-items:center; }
 :root { --accent-muted:#4a6fa5; }
 nav button[aria-current=true] { color:var(--accent-muted); border-bottom-color:var(--accent-muted); }
 button.primary.muted-blue { background:var(--accent-muted); border-color:var(--accent-muted); color:#fff; }
+
+/* Buchstaben-Freigabe: eine Zeile, kompakte Controls */
+.freigabe-row { flex-wrap:nowrap; }
+.freigabe-row input.freigabe-input { width:3em; padding:3px 6px; text-align:center; background:#e8f0fb; border-color:#c3d6f0; }
+.freigabe-row button { padding:3px 12px; }
