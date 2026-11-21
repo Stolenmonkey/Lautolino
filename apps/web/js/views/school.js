@@ -23,10 +23,11 @@ export async function schoolView(tab, root, { api, user }) {
 }
 
 async function schueler(root, api, cid, classes, msg) {
+  const kidsUrl = window.SILBENFLUG_KIDS_URL || "https://stolenmonkey.github.io/Lautolino/apps/kids/";
   const list = h("div"), codes = h("div"), parents = h("div"), load = async () => {
     const rows = await api.get(`/classes/${cid}/students`);
     const missing = rows.some((s) => s.active && (!s.code || !s.parent_code));
-    clear(list).append(rows.length ? table(["Name", "Status", "", "Passwort Kind", "Passwort Eltern", ""], rows.map((s) => [s.display_name, s.active ? "aktiv" : "deaktiviert",
+    clear(list).append(rows.length ? table(["Name", "Status", "", "Passwort Kind", "Passwort Eltern", ""], rows.map((s) => [s.code ? h("a", { href: kidsUrl + "#code=" + encodeURIComponent(s.code), target: "_blank", rel: "noopener", title: "Kinder-App mit Passwort öffnen (Test)" }, s.display_name) : s.display_name, s.active ? "aktiv" : "deaktiviert",
       h("button", { type: "button", onclick: () => act(msg, () => api.patch(`/students/${s.id}`, { active: !s.active }), load) }, s.active ? "Deaktivieren" : "Aktivieren"),
       h("span", { class: "code" }, s.code || "—"), h("span", { class: "code" }, s.parent_code || "—"),
       h("details", { class: "more" }, h("summary", { "aria-label": "Weitere Aktionen" }, "⋯"), h("span", { class: "row" },

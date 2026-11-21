@@ -93,6 +93,7 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
   function renderLogin(): void {
     root.innerHTML = head() + '<section class="card enter"><label for="code">Dein Merkschlüssel</label><input id="code" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="z. B. SonneWald7"><div class="msg" id="msg" role="alert">' + esc(msg) + '</div><button class="btn" id="login" type="button" style="margin-top:12px">Anmelden</button></section>' + LAWN;
     const inp = root.querySelector("#code") as HTMLInputElement;
+    const pre = /^#code=(.+)$/.exec(window.location.hash); if (pre) { try { inp.value = decodeURIComponent(pre[1]); } catch { /* ungültig, ignorieren */ } window.history.replaceState(null, "", window.location.pathname + window.location.search); }
     const doLogin = async (): Promise<void> => {
       const code = inp.value.trim(); if (!code) { msg = "Bitte gib deinen Merkschlüssel ein."; render(); return; }
       try {
