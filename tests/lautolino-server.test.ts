@@ -315,7 +315,7 @@ describe("Lautolino (Server und Oberfläche)", () => {
       const root = mkRoot(); await schoolView("uebersicht", root, { api: apiFor(teacher), user: { id: "x", role: "lehrer", schoolId: sid } }); await flush();
       expect(root.textContent).toContain("Klassenübersicht"); expect(root.textContent).toContain("Aktive Kinder: 2"); expect(root.querySelectorAll("tbody tr").length).toBe(6); expect(root.textContent).toContain("Bronze");
       const root2 = mkRoot(); await schoolView("lernplan", root2, { api: apiFor(teacher), user: { id: "x", role: "lehrer", schoolId: sid } }); await flush();
-      expect(root2.textContent).toContain("Übungswörter und Lernstufen"); expect(root2.textContent).toContain("VK und KVK"); const row = Array.from(root2.querySelectorAll("tr")).find((tr) => tr.textContent!.startsWith("3.VK und KVK"))!; (Array.from(row.querySelectorAll("button")).find((b) => b.textContent === "Silben ansehen") as HTMLElement).click(); await flush();
+      expect(root2.textContent).toContain("Übungswörter und Lernstufen"); expect(root2.textContent).toContain("VK und KVK"); const row = Array.from(root2.querySelectorAll("tr")).find((tr) => tr.textContent!.startsWith("3.VK und KVK"))!; (Array.from(row.querySelectorAll("button")).find((b) => b.title === "Silben ansehen") as HTMLElement).click(); await flush();
       expect(root2.textContent).toContain("3.1 Geschlossen mit Vokal-Anfang (VK)"); expect(root2.textContent).toContain("AM");
     });
   });
@@ -391,7 +391,7 @@ describe("Lautolino (Server und Oberfläche)", () => {
     });
     it("Lernplan: Klick auf eine Silbe sperrt sie (rot) und gibt sie per erneutem Klick wieder frei, in Buchstaben- und Stufenansicht", async () => {
       const root = mkRoot(); await schoolView("lernplan", root, { api: apiFor(teacher), user: { id: "x", role: "lehrer", schoolId: sid } }); await flush();
-      click(root, "Silben ansehen", 0); await flush();   // Buchstabe L
+      (root.querySelectorAll("table.freigaben")[1].querySelector('button[title="Silben ansehen"]') as HTMLElement).click(); await flush();   // Stufenansicht
       const chips = (t: string) => Array.from(root.querySelectorAll(`.sperrbar`)).filter((e) => e.textContent === t) as HTMLElement[];
       expect(chips("LA").length).toBeGreaterThan(0); expect(chips("LA").every((e) => !e.classList.contains("gesperrt"))).toBe(true);
       chips("LA")[0].click(); await flush();
