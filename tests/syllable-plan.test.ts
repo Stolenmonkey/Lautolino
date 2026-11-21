@@ -11,7 +11,7 @@ const stage1 = (l: string[]) => pool(l).filter((s) => classifySyllable(s).stage 
 
 describe("Standardwerte und Prüfung", () => {
   it("Standard: 80 % Gate, Mix 45/30/25, gültig; Mix muss 100 ergeben", () => {
-    expect(cfg.stages).toMatchObject({ gate_percent: 80, mix_new_percent: 45, mix_weak_percent: 30, mix_review_percent: 25 });
+    expect(cfg.stages).toMatchObject({ gate_percent: 80, mix_new_percent: 40, mix_weak_percent: 55, mix_review_percent: 5 });
     expect(validateConfig(cfg)).toEqual([]);
     expect(validateConfig({ ...cfg, stages: { ...cfg.stages, mix_new_percent: 50 } }).join()).toMatch(/100/);
     expect(validateConfig({ ...cfg, stages: { ...cfg.stages, gate_percent: 120 } }).length).toBe(1);
@@ -50,22 +50,23 @@ describe("syllablePlan: Freischaltung je Silbe", () => {
 });
 
 describe("groupedTasks: Rundenmix", () => {
-  const g = { fresh: ["la", "le"], building: ["lo"], weak: ["ol", "ul"], solid: ["al", "el", "ma"] }, info = { count: { lo: 4 }, ratio: { ol: 1.5 }, minMeasure: 10 };
-  const mix = { fresh: 45, weak: 30, review: 25 };
-  it("20 Aufgaben im Verhältnis 45/30/25, Platz 1 nie aus der Wiederholung, keine direkten Wiederholer", () => {
+  const g = { fresh: ["la", "le", "li"], building: ["lo", "lu"], weak: ["ol", "ul", "il", "el"], solid: ["al", "ma", "me"] }, info = { count: { lo: 4 }, ratio: { ol: 1.5 }, minMeasure: 10 };
+  const mix = { fresh: 40, weak: 55, review: 5 };
+  it("20 Aufgaben im Verhältnis 40/55/5, max. 3 je Silbe, Platz 1 nie aus der Wiederholung, keine direkten Wiederholer", () => {
     for (let seed = 1; seed <= 20; seed++) {
       const t = groupedTasks(20, g, mix, info, mulberry32(seed));
       expect(t.length).toBe(20);
-      expect(t.filter((s) => ["la", "le", "lo"].includes(s)).length).toBe(9);
-      expect(t.filter((s) => s === "ol" || s === "ul").length).toBe(6);
-      expect(t.filter((s) => ["al", "el", "ma"].includes(s)).length).toBe(5);
-      expect(["al", "el", "ma"]).not.toContain(t[0]);
-      t.forEach((s, i) => { if (i) expect(s).not.toBe(t[i - 1]); });
+      expect(t.filter((s) => ["la", "le", "li", "lo", "lu"].includes(s)).length).toBe(8);
+      expect(t.filter((s) => ["ol", "ul", "il", "el"].includes(s)).length).toBe(11);
+      expect(t.filter((s) => ["al", "ma", "me"].includes(s)).length).toBe(1);
+      expect(["al", "ma", "me"]).not.toContain(t[0]);
+      t.forEach((s, i) => { if (i) expect(s).not.toBe(t[i - 1]); expect(t.filter((x) => x === s).length).toBeLessThanOrEqual(3); });
     }
   });
-  it("leere Gruppen: Anteil geht an neu/schwach, nicht an die Wiederholung", () => {
-    const t = groupedTasks(20, { fresh: ["la", "le"], building: [], weak: [], solid: ["al", "el"] }, mix, info, mulberry32(3));
-    expect(t.filter((s) => ["al", "el"].includes(s)).length).toBe(5);
+  it("Limit 3: Rest wird aufgefüllt (neu/angefangen, schwach, sicher); danach sichere Silben aus der Stufe darunter", () => {
+    const t = groupedTasks(20, { fresh: ["la", "le"], building: [], weak: ["ol", "ul"], solid: ["al", "el", "ma", "me"] }, mix, info, mulberry32(3));
+    expect(t.length).toBe(20);
+    t.forEach((s) => expect(t.filter((x) => x === s).length).toBeLessThanOrEqual(3));
     const only = groupedTasks(10, { fresh: [], building: [], weak: [], solid: ["al", "el"] }, mix, info, mulberry32(3));
     expect(only.length).toBe(10);
   });

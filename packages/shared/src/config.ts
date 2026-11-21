@@ -37,7 +37,7 @@ export const DEFAULT_CONFIG: SilbenflugConfig = {
     invite_hours: 72, reset_minutes: 60, reset_max_per_email_hour: 3, reset_max_per_ip_hour: 10, parent_session_days: 90,
   },
   scope: { cap_stage_1_4: 10, cap_stage_5_7: 8, freq_percent: 100 },
-  stages: { enabled: 1, gate_percent: 80, mix_new_percent: 45, mix_weak_percent: 30, mix_review_percent: 25 },
+  stages: { enabled: 1, gate_percent: 80, mix_new_percent: 40, mix_weak_percent: 55, mix_review_percent: 5 },
 };
 
 // Prüft eine Konfiguration. Leere Liste = gültig. Der Server speichert nur gültige Versionen.
