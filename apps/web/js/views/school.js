@@ -68,7 +68,7 @@ function freigabeTabelle(api, cid, releases, msg, sp) {
     });
     return [h("tr", {}, [h("strong", {}, r.letter.toUpperCase()), fmtDate(r.released_at), cnt, btn].map((c) => h("td", {}, c))), detail];
   });
-  return h("div", { class: "tablewrap" }, h("table", { class: "wide" }, h("thead", {}, h("tr", {}, head.map((x) => h("th", {}, x)))), h("tbody", {}, rows.flat())));
+  return h("div", { class: "panel flush tablewrap" }, h("table", { class: "plain" }, h("thead", {}, h("tr", {}, head.map((x) => h("th", {}, x)))), h("tbody", {}, rows.flat())));
 }
 
 // Ausnahmen je Kind: Funktion bleibt erhalten, Abschnitt ist vorerst ausgeblendet (auf true setzen zum Anzeigen).
@@ -85,7 +85,7 @@ async function lernplan(root, api, cid, classes, msg) {
       : h("div", { class: "card" }, h("p", {}, "Die Klasse startet mit mindestens 2 Buchstaben, darunter ein Vokal (z. B. O L)."), h("div", { class: "row" }, h("label", {}, "Startbuchstaben ", start), h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
           const r = await api.post(`/classes/${cid}/releases`, await mitUmfang(api, plan, [...new Set(start.value.toLowerCase().match(/[a-z]/g) || [])])); clear(msg).append(notice(`Freigegeben: ${r.released.map((x) => x.letter.toUpperCase() + " (" + x.syllableCount + " Silben)").join(", ")}.`, "ok"));
         }, reload) }, "Startbuchstaben freigeben"))),
-    h("h3", {}, "Buchstabenfreigabe"), plan.releases.length ? freigabeTabelle(api, cid, plan.releases, msg, sp) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."));
+    h("div", { class: "sechead" }, h("h2", {}, "Freigegebene Buchstaben"), h("span", { class: "muted" }, `${plan.releases.length} Buchstaben`)), plan.releases.length ? freigabeTabelle(api, cid, plan.releases, msg, sp) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."));
   if (plan.releases.length) { const box = h("div"); root.append(box); await klassenSilben(box, api, cid, sp); }
   if (SHOW_AUSNAHMEN && plan.releases.length && students.length) {
     root.append(h("h3", {}, "Ausnahmen einzelner Kinder"), h("p", { class: "muted" }, "Haken = dieses Kind übt den Buchstaben (noch) nicht. Gilt nur für die Freigabe, nicht für Zeitpläne."),
