@@ -191,3 +191,4 @@ table.freigaben button.iconbtn { font-size:1.05rem; } table.freigaben button.che
 table.freigaben button.chevbtn { color:var(--fg); } table.freigaben th[title] { user-select:none; }
 .freigabe-row label { font-size:1.05rem; font-weight:700; letter-spacing:-.01em; }
 .freigabe-row button { margin-left:auto; }
+table.freigaben button.iconbtn { color:var(--accent-muted); border:1px solid var(--accent-muted); border-radius:8px; background:none; padding:3px 9px; }
