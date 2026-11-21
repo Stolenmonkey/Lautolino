@@ -11,7 +11,8 @@
 *,*:before,*:after{box-sizing:inherit}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"Trebuchet MS",system-ui,sans-serif}
 main{max-width:640px;margin:0 auto;padding:22px 16px 32px}
-h1{margin:0 0 4px;font-size:1.7rem}
+h1{margin:0 0 16px}
+h1 img{display:block;width:100%;height:auto;background:#fff;border-radius:20px;border:3px solid var(--line)}
 p.sub{margin:0 0 20px;color:var(--sub)}
 .grid{display:grid;gap:14px}
 a.tile{display:block;background:var(--card);border:3px solid var(--line);border-left:12px solid var(--c);border-radius:20px;padding:16px 18px;color:inherit;text-decoration:none}
@@ -27,8 +28,8 @@ label{display:flex;align-items:center;gap:8px;margin-top:16px;color:var(--sub);f
 </head>
 <body>
 <main>
-<h1>Silbenflug – Entwicklung</h1>
-<p class="sub">Schnell zwischen den drei Oberflächen wechseln.</p>
+<h1><img src="lautolino-logo.jpg" alt="Lautolino" width="1024" height="254"></h1>
+<p class="sub">Silbenflug – Entwicklung. Schnell zwischen den drei Oberflächen wechseln.</p>
 <div class="grid">
   <a class="tile" style="--c:var(--c1)" href="https://stolenmonkey.github.io/Lautolino/apps/web/" data-t><b>Verwaltung</b><span>Admin, Schulleitung, Lehrkräfte</span></a>
   <a class="tile" style="--c:var(--c2)" href="https://stolenmonkey.github.io/Lautolino/apps/kids/" data-t><b>Kinder-App</b><span>Anmeldung mit Merkschlüssel, Silbenrunden</span></a>
