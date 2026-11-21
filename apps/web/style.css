@@ -88,7 +88,7 @@ details.more[open] > .row { margin-top:6px; }
 :root { --bg:#f6f8fc; --card:#fff; --line:#e3e8f0; --soft:#f1f4f9; --fg:#0f172a; --muted:#7a8497; --accent:#2563eb; --accent-soft:#e8f0fe; --r:16px; --green:#10b981; --green-soft:#ecfdf5; --amber:#f59e0b; --amber-soft:#fffbeb; --shadow:0 1px 2px rgba(15,23,42,.04); }
 body { background:var(--bg); font-family:Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
 header { background:var(--card); border-bottom:0; padding:14px 16px; align-items:center; gap:10px; }
-.logo { width:40px; height:40px; border-radius:12px; background:var(--accent); color:#fff; font-weight:700; font-size:1.2rem; display:inline-flex; align-items:center; justify-content:center; }
+.logo { height:40px; width:auto; display:block; }
 .brand { font-size:1.45rem; letter-spacing:-.01em; }
 #who.role { flex:1; color:var(--muted); background:var(--soft); border:1px solid var(--line); border-radius:999px; padding:2px 12px; font-size:.9rem; flex:0 0 auto; }
 #logout { margin-left:auto; border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:12px; padding:9px 16px; font-weight:600; text-decoration:none; }
@@ -136,7 +136,7 @@ table.plain td .v { justify-content:center; } table.plain td:first-child .v { ju
 @media (max-width:640px) { nav button { font-size:.95rem; padding:14px 2px; } table.plain { display:table; } table.plain thead { position:static; width:auto; height:auto; clip:auto; } table.plain tr { display:table-row; } }
 @media (max-width:640px) {
   header { flex-wrap:nowrap; gap:6px; padding:10px 8px; } header > * { min-width:0; }
-  .logo { width:30px; height:30px; font-size:1rem; border-radius:9px; flex:0 0 auto; }
+  .logo { height:30px; width:auto; flex:0 1 auto; min-width:0; }
   .brand { font-size:clamp(.9rem, 4.4vw, 1.2rem); white-space:nowrap; flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; }
   #who.role { font-size:clamp(.68rem, 3.2vw, .8rem); padding:2px 8px; white-space:nowrap; flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; }
   #logout { padding:0 10px; min-height:34px; font-size:clamp(.72rem, 3.4vw, .85rem); white-space:nowrap; flex:0 0 auto; }
