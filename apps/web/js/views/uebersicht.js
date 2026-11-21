@@ -40,12 +40,12 @@ export async function uebersicht(root, api, cid, classes, msg, slot) {
   if (slot) slot.append(h("span", { class: "pill blue dot" }, `Aktive Kinder: ${r.students}`));
   const bandCard = h("div", { class: "panel" }, h("div", { class: "panelhead" }, h("div", {}, h("div", { class: "eyebrow" }, "Gruppierung"), h("strong", {}, "Mittelfeld-Bereich")), val),
     slider, h("div", { class: "scale muted" }, h("span", {}, "10 % (schmal)"), h("span", {}, "50 %"), h("span", {}, "90 % (breit)")), h("div", { class: "segbar" }, segU, segM, segO), expl);
-  root.append(h("div", { class: "sechead" }, h("h2", {}, "Klassenübersicht"), total ? h("span", { class: "muted" }, `${total} Aufgaben gesamt`) : null), bandCard, out);
+  root.append(h("div", { class: "sechead" }, h("h2", {}, "Klassenübersicht"), total ? h("span", { class: "muted" }, `${total} Aufgaben gesamt`) : null), out);
   setBand(Math.min(90, r.band)); render(r.band);
   const medal = (v, c) => h("span", { class: "medal " + (v > 0 ? c : "zero") }, pct(v));
   root.append(h("div", { class: "sechead" }, h("h2", {}, "Übersicht je Buchstabe"), h("span", { class: "muted" }, `${r.letters.length} Buchstaben`)),
     r.letters.length ? h("div", { class: "panel flush tablewrap" }, table(["Buchstabe", "Bronze", "Silber", "Gold"], r.letters.map((l) => [
       h("strong", {}, l.letter.toUpperCase()), medal(l.bronzePercent, "bronze"), medal(l.silberPercent, "silber"), medal(l.goldPercent, "gold"),
     ]), { plain: true })) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."),
-    h("div", { class: "infobox" }, h("span", { class: "i", "aria-hidden": "true" }, "i"), h("span", {}, "Anteil der aktiven Kinder, die mindestens diese Stufe erreicht haben (Gold zählt auch bei Silber und Bronze).")));
+    h("div", { class: "infobox" }, h("span", { class: "i", "aria-hidden": "true" }, "i"), h("span", {}, "Anteil der aktiven Kinder, die mindestens diese Stufe erreicht haben (Gold zählt auch bei Silber und Bronze).")), bandCard);
 }

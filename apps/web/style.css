@@ -132,3 +132,16 @@ table.plain td .v { justify-content:center; } table.plain td:first-child .v { ju
 .infobox { display:flex; gap:12px; align-items:flex-start; background:var(--accent-soft); border:1px solid #d3e1fb; color:#334155; border-radius:var(--r); padding:14px 16px; margin:14px 0; }
 .infobox .i { flex:0 0 22px; height:22px; border:2px solid var(--accent); color:var(--accent); border-radius:50%; font:700 .8rem/18px Georgia,serif; text-align:center; }
 @media (max-width:640px) { nav button { font-size:.95rem; padding:14px 2px; } table.plain { display:table; } table.plain thead { position:static; width:auto; height:auto; clip:auto; } table.plain tr { display:table-row; } }
+@media (max-width:640px) {
+  header { flex-wrap:nowrap; gap:6px; padding:10px 8px; } header > * { min-width:0; }
+  .logo { width:30px; height:30px; font-size:1rem; border-radius:9px; flex:0 0 auto; }
+  .brand { font-size:clamp(.9rem, 4.4vw, 1.2rem); white-space:nowrap; flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; }
+  #who.role { font-size:clamp(.68rem, 3.2vw, .8rem); padding:2px 8px; white-space:nowrap; flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; }
+  #logout { padding:0 10px; min-height:34px; font-size:clamp(.72rem, 3.4vw, .85rem); white-space:nowrap; flex:0 0 auto; }
+  .tablewrap, .panel.flush { overflow-x:hidden; }
+  table.plain { table-layout:fixed; width:100%; margin:0; }
+  table.plain th, table.plain td { padding:10px 4px; font-size:.82rem; }
+  table.plain th:first-child, table.plain td:first-child { width:22%; padding-left:10px; }
+  table.plain td .v { flex-wrap:nowrap; }
+  .medal { min-width:0; padding:2px 6px; font-size:.8rem; white-space:nowrap; }
+}
