@@ -32,7 +32,7 @@ input[type=text]:focus{outline:none;border-color:#4a8fe0}
 .foot{text-align:center;font-size:1rem;color:#4b5b7a;margin:0}
 .link{font:inherit;font-size:1rem;color:#2f5f9a;background:none;border:0;text-decoration:underline;cursor:pointer;padding:12px 8px}
 .pbar{display:flex;align-items:center;justify-content:space-between;gap:12px}.prog{text-align:center;font-size:1.3rem;color:#4b5b7a}
-.stage{position:relative;border:6px solid #ffd93d;min-height:240px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:1}
+.stage{position:relative;border:6px solid #ffd93d;min-height:0;padding:8px 12px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none}
 .sylwrap{position:relative}
 .big{position:relative;--fit:1;font-size:calc(clamp(2.6rem,11vw,6.5rem) * var(--fit));line-height:1.5;white-space:nowrap;letter-spacing:.03em;display:flex;align-items:flex-start;justify-content:center;gap:.45em}
 .big .cur{display:inline-block}.big .cur.out{position:absolute;pointer-events:none}.big .nxt{display:inline-flex;gap:.35em;font-size:.42em;line-height:1.5;margin-top:.5em;align-items:flex-start}
