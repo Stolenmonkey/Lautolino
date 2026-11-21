@@ -20,13 +20,9 @@ const OWL = '<g class="wingL"><ellipse cx="30" cy="92" rx="11" ry="20" fill="#f0
   '<ellipse cx="60" cy="88" rx="38" ry="38" fill="#ffa63d"/><ellipse cx="60" cy="98" rx="24" ry="25" fill="#ffe3b8"/>' +
   '<g class="eyes"><circle cx="45" cy="72" r="13" fill="#fff"/><circle cx="75" cy="72" r="13" fill="#fff"/><circle cx="47" cy="74" r="6" fill="#1f2a44"/><circle cx="73" cy="74" r="6" fill="#1f2a44"/><circle cx="49" cy="72" r="2" fill="#fff"/><circle cx="75" cy="72" r="2" fill="#fff"/></g>' +
   '<path d="M53 83 L67 83 L60 95 Z" fill="#ff6b4a"/><circle cx="33" cy="88" r="6" fill="#ff9db5" opacity=".7"/><circle cx="87" cy="88" r="6" fill="#ff9db5" opacity=".7"/>' +
-  '<ellipse cx="46" cy="125" rx="10" ry="4" fill="#ff6b4a"/><ellipse cx="74" cy="125" rx="10" ry="4" fill="#ff6b4a"/>' +
-  '<path d="M26 56 L60 8 L94 56 Z" fill="#7b5fd6"/><ellipse cx="60" cy="56" rx="40" ry="8" fill="#6249c0"/>' +
-  '<g class="star"><path d="M60 -2 l4 9 10 1 -8 7 3 10 -9 -6 -9 6 3 -10 -8 -7 10 -1z" fill="#ffd93d" transform="translate(0 6)"/></g>' +
-  '<circle cx="50" cy="40" r="3" fill="#ffd93d"/><circle cx="68" cy="30" r="2.5" fill="#ffd93d"/><circle cx="72" cy="46" r="2.5" fill="#fff"/>';
-const owl = (cls: string, id = ""): string => '<svg class="' + cls + '"' + (id ? ' id="' + id + '"' : "") + ' viewBox="0 0 120 130" aria-hidden="true">' + OWL + "</svg>";
-const TITLE = "Silbenzauber".split("").map((c, i) => '<span style="color:' + ["#e8505b", "#f08a24", "#e2b400", "#2faa5a", "#2f7fd8", "#7b5fd6"][i % 6] + '">' + c + "</span>").join("");
-const LAWN = '<div class="lawn" aria-hidden="true"><svg viewBox="0 0 400 100" preserveAspectRatio="xMidYMax slice"><path d="M0 58Q80 30 170 50T400 40V100H0Z" fill="#c4ecba"/><path d="M0 70Q110 45 220 66T400 58V100H0Z" fill="#a6dea0"/><path d="M0 82Q100 66 200 80T400 74V100H0Z" fill="#82d08a"/></svg></div>';
+  '<ellipse cx="46" cy="125" rx="10" ry="4" fill="#ff6b4a"/><ellipse cx="74" cy="125" rx="10" ry="4" fill="#ff6b4a"/>';
+const owl = (cls: string, id = ""): string => '<svg class="' + cls + '"' + (id ? ' id="' + id + '"' : "") + ' viewBox="8 46 104 86" aria-hidden="true">' + OWL + "</svg>";
+const TITLE = "Lautolino";
 
 // Fortschrittsring um den Großbuchstaben: 5 Schritte, füllt sich im Uhrzeigersinn ab 12 Uhr; nach Gold bleibt er voll
 function ring(p: { next: AwardLevel; segments: number } | null | undefined, held: AwardLevel | null, on: boolean): string {
@@ -91,7 +87,7 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
   function head(): string { return '<header class="head">' + owl("mascot owl calm") + "<h1>" + TITLE + "</h1></header>"; }
 
   function renderLogin(): void {
-    root.innerHTML = head() + '<section class="card enter"><label for="code">Dein Merkschlüssel</label><input id="code" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="z. B. SonneWald7"><div class="msg" id="msg" role="alert">' + esc(msg) + '</div><button class="btn" id="login" type="button" style="margin-top:12px">Anmelden</button></section>' + LAWN;
+    root.innerHTML = head() + '<section class="card enter"><label for="code">Dein Merkschlüssel</label><input id="code" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="z. B. SonneWald7"><div class="msg" id="msg" role="alert">' + esc(msg) + '</div><button class="btn" id="login" type="button" style="margin-top:12px">Anmelden</button></section>';
     const inp = root.querySelector("#code") as HTMLInputElement;
     const pre = /^#code=(.+)$/.exec(window.location.hash); if (pre) { try { inp.value = decodeURIComponent(pre[1]); } catch { /* ungültig, ignorieren */ } window.history.replaceState(null, "", window.location.pathname + window.location.search); }
     const doLogin = async (): Promise<void> => {
@@ -118,8 +114,7 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     const d = data as Data, rel = new Set(d.plan ? d.plan.letters : []);
     const ok = !!(d.plan && d.config && canPractice(d.plan, d.config)), loading = !d.plan || !d.config;
     const info = loading ? "Einen Moment …" : !rel.size ? "Noch keine Buchstaben freigegeben. Frag deine Lehrerin oder deinen Lehrer." : !ok ? "Mit diesen Buchstaben gibt es noch zu wenige Silben." : "";
-    return head() + '<section class="card enter"><p class="hello">Hallo' + (session ? ", " + esc(session.name) : "") + '!</p><div class="lgrid" id="lgrid">' + gridHtml() + '</div>' + '<div class="msg" id="msg" role="alert">' + esc(msg || info) + '</div><button class="btn" id="start" type="button"' + (ok ? "" : " disabled") + '>Übung starten</button></section>' +
-      '<p class="foot">' + (d.queue.length ? "Gemerkt, wird später gesendet: " + d.queue.length + " · " : "") + '<button type="button" class="link" id="logout">Abmelden</button></p>' + LAWN;
+    return head() + '<section class="card enter"><div class="hrow"><p class="hello">Hallo' + (session ? ", " + esc(session.name) : "") + '!</p><button type="button" class="outbtn" id="logout">Abmelden</button></div><div class="lgrid" id="lgrid">' + gridHtml() + '</div>' + '<div class="msg" id="msg" role="alert">' + esc(msg || info || (d.queue.length ? "Gemerkt, wird später gesendet: " + d.queue.length : "")) + '</div><button class="btn" id="start" type="button"' + (ok ? "" : " disabled") + '>Übung starten</button></section>';
   }
   function renderHome(): void {
     root.innerHTML = homeHtml();
@@ -133,7 +128,7 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
   }
   function renderPractice(): void {
     root.innerHTML = '<section class="pbar"><button type="button" class="iconbtn" id="quit" aria-label="Runde beenden">&times;</button><div class="prog" id="prog"></div>' + owl("mascot owl2", "pbarOwl") + "</section>" +
-      '<section class="card stage"><div class="sylwrap"><div class="big" id="syl" role="img"></div><div class="spark" id="spark" aria-hidden="true">' + "<i></i>".repeat(14) + '</div></div></section><button class="btn" id="next" type="button">Weiter</button>' + LAWN;
+      '<section class="card stage"><div class="sylwrap"><div class="big" id="syl" role="img"></div><div class="spark" id="spark" aria-hidden="true">' + "<i></i>".repeat(14) + '</div></div></section><button class="btn" id="next" type="button">Weiter</button>';
     (root.querySelector("#quit") as HTMLElement).onclick = () => { setup = null; go("home"); };
     (root.querySelector("#next") as HTMLElement).onclick = next;
     if (setup) paintTask();
@@ -340,6 +335,7 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     await sync(); if (session && cur() === "home") render();
   })();
   const again = (): void => { if (session && view !== "practice") void sync().then(() => { if (session && cur() === "home") render(); }); };
+  if (typeof document !== "undefined") for (const g of ["gesturestart", "gesturechange"]) document.addEventListener(g, (e) => e.preventDefault());   // kein Zoom per Pinch (iOS)
   if (typeof document !== "undefined") document.addEventListener("visibilitychange", () => { if (!document.hidden) again(); });
   if (typeof window !== "undefined") window.addEventListener("online", again);
   return { ready };
