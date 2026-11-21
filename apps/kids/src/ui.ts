@@ -1,5 +1,5 @@
 // Oberfläche der Kinder-App im Silbenzauber-Design: Anmeldung, Buchstabenübersicht, Übung, Rundenende, Glückwunsch-Popup.
-import { renderWord, renderWordWithArcs } from "@silbenflug/core";
+import { GLYPHS, renderWord, renderWordWithArcs } from "@silbenflug/core";
 import type { AwardLevel, Rng, SilbenflugConfig } from "@silbenflug/shared";
 import { ApiError, createKidsApi, flushQueue, newRoundId } from "./api";
 import type { FetchFn, KV, QueuedRound } from "./api";
@@ -34,6 +34,15 @@ function medal(level: AwardLevel | null, big = false): string {
   if (!level) return "";
   return '<svg class="medal' + (big ? " big" : "") + '" viewBox="0 0 40 44" role="img" aria-label="' + LEVEL_NAME[level] + '"><path d="M12 2L20 18L28 2Z" fill="#e8505b"/><circle cx="20" cy="27" r="14" fill="' + LEVEL_COLOR[level] + '" stroke="#1f2a44" stroke-width="2"/><path d="M20 19l2.6 5.4 5.9.8-4.3 4.1 1 5.9L20 32.4l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z" fill="#fff" opacity=".85"/></svg>';
 }
+const UMLAUT: Record<string, string> = { "ä": "a", "ö": "o", "ü": "u", "Ä": "A", "Ö": "O", "Ü": "U" };
+// Text in der Strichschrift der Spielrunde (Umlaute = Grundglyphe + 2 Punkte); Rest als Text per CSS, damit textContent nur im .sr-Text steht.
+function glyphChar(ch: string): string {
+  const base = UMLAUT[ch], g = GLYPHS[base || ch];
+  if (!g) return ch === " " ? '<span class="gsp"></span>' : '<span class="fb" data-c="' + esc(ch) + '"></span>';
+  const dots = base ? [-12, 12].map((dx) => '<circle class="d" cx="' + (g[0] / 2 + dx) + '" cy="' + (ch === ch.toUpperCase() ? -6 : 34) + '" r="7.5"/>').join("") : "";
+  return '<svg viewBox="0 0 ' + g[0] + ' 140" style="width:' + (g[0] / 100) + 'em" aria-hidden="true">' + g[1] + dots + "</svg>";
+}
+const strich = (text: string): string => '<span class="sr">' + esc(text) + '</span><span class="gl" aria-hidden="true">' + Array.from(text).map(glyphChar).join("") + "</span>";
 const pair = (l: string): string => renderWord(l.toUpperCase()) + renderWord(l.toLowerCase());
 export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void> } {
   const api = createKidsApi({ base: deps.base, fetchFn: deps.fetchFn }), rng: Rng = deps.rng || Math.random, now = deps.now || (() => Date.now());
@@ -109,7 +118,7 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     const d = data as Data, rel = new Set(d.plan ? d.plan.letters : []);
     const ok = !!(d.plan && d.config && canPractice(d.plan, d.config)), loading = !d.plan || !d.config;
     const info = loading ? "Einen Moment …" : !rel.size ? "Noch keine Buchstaben freigegeben. Frag deine Lehrerin oder deinen Lehrer." : !ok ? "Mit diesen Buchstaben gibt es noch zu wenige Silben." : "";
-    return head() + '<section class="card enter"><div class="hrow"><p class="hello">Hallo' + (session ? ", " + esc(session.name) : "") + '!</p><button type="button" class="outbtn" id="logout">Abmelden</button></div><div class="lgrid" id="lgrid">' + gridHtml() + '</div>' + '<div class="msg" id="msg" role="alert">' + esc(msg || info || (d.queue.length ? "Gemerkt, wird später gesendet: " + d.queue.length : "")) + '</div></section><button class="btn" id="start" type="button"' + (ok ? "" : " disabled") + '>&#9654; Übung starten</button>';
+    return head() + '<section class="card enter"><div class="hrow"><p class="hello">' + strich("Hallo" + (session ? ", " + session.name : "") + "!") + '</p><button type="button" class="outbtn" id="logout">' + strich("Abmelden") + '</button></div><div class="lgrid" id="lgrid">' + gridHtml() + '</div>' + '<div class="msg" id="msg" role="alert">' + esc(msg || info || (d.queue.length ? "Gemerkt, wird später gesendet: " + d.queue.length : "")) + '</div></section><button class="btn" id="start" type="button"' + (ok ? "" : " disabled") + '>' + strich("\u25B6 Übung starten") + '</button>';
   }
   function renderHome(): void {
     root.innerHTML = homeHtml();
