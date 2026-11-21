@@ -178,3 +178,11 @@ button.primary.muted-blue { background:var(--accent-muted); border-color:var(--a
 .freigabe-row { flex-wrap:nowrap; }
 .freigabe-row input.freigabe-input { width:3em; padding:3px 6px; text-align:center; background:#e8f0fb; border-color:#c3d6f0; }
 .freigabe-row button { padding:3px 12px; }
+
+/* Verwaltung > Lernplan: Freigaben-Tabelle */
+.sechead h2.small { font-size:1.05rem; }
+table.freigaben th, table.freigaben td { text-align:center; vertical-align:middle; }
+table.freigaben td { padding-top:8px; padding-bottom:8px; }
+table.freigaben .row { justify-content:center; margin:0; flex-wrap:nowrap; }
+table.freigaben tr.scopedetail[hidden] { display:none !important; }
+table.freigaben button.iconbtn { padding:2px 8px; min-height:0; line-height:1.3; font-size:.9rem; }

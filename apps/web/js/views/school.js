@@ -1,5 +1,5 @@
 // Schul- und Lehrerbereich: Klassen, Schüler, Lernplan, Zugänge (Schulleitung).
-import { h, clear, table, notice, act, fmtDate } from "../dom.js";
+import { h, clear, table, notice, act } from "../dom.js";
 import { auswertung } from "./auswertung.js";
 import { elternPanel } from "./eltern.js";
 import { uebersicht } from "./uebersicht.js";
@@ -52,7 +52,7 @@ async function schueler(root, api, cid, classes, msg) {
 
 // Freigaben: Klick auf "Silben ansehen" zeigt die Silben direkt unter dem Buchstaben, geordnet nach den 7 Lernstufen (bleibt stehen, kein Ein-/Ausklappen).
 function freigabeTabelle(api, cid, releases, msg, sp, reload) {
-  const head = ["Buchstabe", "Freigegeben", "Silben im festen Umfang", ""];
+  const head = ["Buchstabe", "Datum", "Silbenumfang", ""];
   const rows = releases.map((r) => {
     const cell = h("td", { colspan: String(head.length) }), detail = h("tr", { class: "scopedetail", hidden: "" }, cell), btn = h("button", { type: "button" }, "Silben ansehen"), cnt = h("span", {}, String(r.syllable_count));
     let all = null, title = null;   // all: alle Silben des Buchstabens inkl. gesperrter
@@ -68,27 +68,27 @@ function freigabeTabelle(api, cid, releases, msg, sp, reload) {
     });
     // Vor der ersten gespielten Runde: Löschen (Tippfehler zurücknehmen). Danach nur Pausieren und Fortsetzen.
     const aktion = !r.played
-      ? h("button", { type: "button", onclick: () => confirm(`Buchstabe ${r.letter.toUpperCase()} wirklich löschen? Es wurde noch nicht gespielt.`) && act(msg, async () => {
+      ? h("button", { type: "button", class: "iconbtn", title: "Löschen", "aria-label": "Löschen", onclick: () => confirm(`Buchstabe ${r.letter.toUpperCase()} wirklich löschen? Es wurde noch nicht gespielt.`) && act(msg, async () => {
           const plan = await api.get(`/classes/${cid}/plan`), m = await import("../scope.bundle.js"), cfg = (await api.get("/config")).config;
           const order = plan.releases.map((x) => ({ letter: x.letter, start: !!x.start_group, paused: !!x.paused_at }));
           await api.del(`/classes/${cid}/releases/${r.letter}`, { scopes: m.computeDeleteScopes(order, r.letter, cfg) });
           clear(msg).append(notice(`${r.letter.toUpperCase()} gelöscht.`, "ok"));
-        }, reload) }, "Löschen")
+        }, reload) }, "✕")
       : r.paused_at
-        ? h("button", { type: "button", onclick: () => act(msg, async () => {
+        ? h("button", { type: "button", class: "iconbtn", title: "Fortsetzen", "aria-label": "Fortsetzen", onclick: () => act(msg, async () => {
             const plan = await api.get(`/classes/${cid}/plan`), m = await import("../scope.bundle.js"), cfg = (await api.get("/config")).config, me = plan.releases.find((x) => x.letter === r.letter);
             const active = plan.releases.filter((x) => !x.paused_at).map((x) => x.letter), later = plan.releases.filter((x) => !x.paused_at && x.release_order > me.release_order).map((x) => x.letter);
             const existing = await api.get(`/classes/${cid}/releases/${r.letter}/scope`);
             const res = await api.put(`/classes/${cid}/releases/${r.letter}/pause`, { paused: false, scope: m.computeResume(active, later, r.letter, existing, cfg) });
             clear(msg).append(notice(`${r.letter.toUpperCase()} wird wieder geübt.` + (res.added ? ` ${res.added} neue Silben ergänzt.` : ""), "ok"));
-          }, reload) }, "Fortsetzen")
-        : h("button", { type: "button", onclick: () => confirm(`Buchstabe ${r.letter.toUpperCase()} pausieren? Zeiten und Auszeichnungen bleiben, der Buchstabe kommt in keiner Übung mehr vor.`) && act(msg, async () => {
+          }, reload) }, "▶")
+        : h("button", { type: "button", class: "iconbtn", title: "Pausieren", "aria-label": "Pausieren", onclick: () => confirm(`Buchstabe ${r.letter.toUpperCase()} pausieren? Zeiten und Auszeichnungen bleiben, der Buchstabe kommt in keiner Übung mehr vor.`) && act(msg, async () => {
             await api.put(`/classes/${cid}/releases/${r.letter}/pause`, { paused: true });
             clear(msg).append(notice(`${r.letter.toUpperCase()} pausiert.`, "ok"));
-          }, reload) }, "Pausieren");
-    return [h("tr", {}, [h("strong", {}, r.letter.toUpperCase() + (r.paused_at ? " (pausiert)" : "")), fmtDate(r.released_at), cnt, h("div", { class: "row" }, btn, aktion)].map((c) => h("td", {}, c))), detail];
+          }, reload) }, "⏸");
+    return [h("tr", {}, [h("strong", {}, r.letter.toUpperCase() + (r.paused_at ? " (pausiert)" : "")), r.released_at ? new Date(r.released_at).toLocaleDateString("de-DE") : "–", cnt, h("div", { class: "row" }, btn, aktion)].map((c) => h("td", {}, c))), detail];
   });
-  return h("div", { class: "panel flush tablewrap" }, h("table", { class: "plain" }, h("thead", {}, h("tr", {}, head.map((x) => h("th", {}, x)))), h("tbody", {}, rows.flat())));
+  return h("div", { class: "panel flush tablewrap" }, h("table", { class: "plain freigaben" }, h("thead", {}, h("tr", {}, head.map((x) => h("th", {}, x)))), h("tbody", {}, rows.flat())));
 }
 
 // Ausnahmen je Kind: Funktion bleibt erhalten, Abschnitt ist vorerst ausgeblendet (auf true setzen zum Anzeigen).
@@ -105,7 +105,7 @@ async function lernplan(root, api, cid, classes, msg) {
       : h("div", { class: "card" }, h("p", {}, "Die Klasse startet mit mindestens 2 Buchstaben, darunter ein Vokal (z. B. O L)."), h("div", { class: "row" }, h("label", {}, "Startbuchstaben ", start), h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
           const r = await api.post(`/classes/${cid}/releases`, await mitUmfang(api, plan, [...new Set(start.value.toLowerCase().match(/[a-z]/g) || [])])); clear(msg).append(notice(`Freigegeben: ${r.released.map((x) => x.letter.toUpperCase() + " (" + x.syllableCount + " Silben)").join(", ")}.`, "ok"));
         }, reload) }, "Startbuchstaben freigeben"))),
-    h("div", { class: "sechead" }, h("h2", {}, "Freigegebene Buchstaben"), h("span", { class: "muted" }, `${plan.releases.length} Buchstaben`)), plan.releases.length ? freigabeTabelle(api, cid, plan.releases, msg, sp, reload) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."));
+    h("div", { class: "sechead" }, h("h2", { class: "small" }, "Freigegebene Buchstaben")), plan.releases.length ? freigabeTabelle(api, cid, plan.releases, msg, sp, reload) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."));
   if (plan.releases.length) { const box = h("div"); root.append(box); await klassenSilben(box, api, cid, sp); }
   if (SHOW_AUSNAHMEN && plan.releases.length && students.length) {
     root.append(h("h3", {}, "Ausnahmen einzelner Kinder"), h("p", { class: "muted" }, "Haken = dieses Kind übt den Buchstaben (noch) nicht. Gilt nur für die Freigabe, nicht für Zeitpläne."),
