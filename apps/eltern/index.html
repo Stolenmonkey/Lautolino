@@ -10,6 +10,7 @@
 <body>
 <main id="app"></main>
 <script src="config.js"></script>
+<script>if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});</script>
 <script type="module">
 import { mount } from "./app.js";
 mount(document.getElementById("app"), { base: window.SILBENFLUG_API || "", storage: window.localStorage });
