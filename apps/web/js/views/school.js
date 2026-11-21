@@ -69,7 +69,7 @@ function freigabeTabelle(api, cid, releases, msg, sp, reload) {
       if (!detail.hidden) { detail.hidden = true; chev.textContent = "▾"; return; }
       const [s, m] = await Promise.all([api.get(`/classes/${cid}/releases/${r.letter}/scope`), import("../scope.bundle.js")]);
       all = s; title = h("strong"); setTitle();
-      clear(cell).append(title, h("div", { class: "stufenliste" }, m.stageRows(s).map((g) => h("div", { class: "stufe" },
+      clear(cell).append(h("div", { class: "stufenliste" }, m.stageRows(s).map((g) => h("div", { class: "stufe" },
         h("div", { class: "stufenkopf" }, h("strong", {}, `${g.stage}.`), h("span", { class: "muted" }, g.structure)),
         g.syllables.length ? h("div", { class: "chips" }, g.syllables.map((x) => sp.chip(x, x.toUpperCase()))) : h("span", { class: "muted" }, "–")))));
       detail.hidden = false; chev.textContent = "▴";
