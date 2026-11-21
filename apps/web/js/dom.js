@@ -13,7 +13,7 @@ export const fmtDate = (s) => (s ? new Date(s).toLocaleString("de-DE", { dateSty
 export const fmtDay = (s) => (s ? new Date(s).toLocaleDateString("de-DE") : "–");
 // opts.wide: echte Tabelle mit Querscrollen (Matrizen); sonst werden Zeilen auf schmalen Displays zu Karten (data-label je Zelle).
 export function table(head, rows, opts) {
-  return h("table", { class: opts && opts.wide ? "wide" : "stack" }, h("thead", {}, h("tr", {}, head.map((x) => h("th", {}, x)))), h("tbody", {}, rows.map((r) => h("tr", {}, r.map((c, i) => h("td", { "data-label": head[i] || false }, h("span", { class: "v" }, c)))))));
+  return h("table", { class: opts && opts.plain ? "plain" : opts && opts.wide ? "wide" : "stack" }, h("thead", {}, h("tr", {}, head.map((x) => h("th", {}, x)))), h("tbody", {}, rows.map((r) => h("tr", {}, r.map((c, i) => h("td", { "data-label": head[i] || false }, h("span", { class: "v" }, c)))))));
 }
 // Meldungsfeld; kind: "", "ok", "error"
 export function notice(text, kind = "") { return h("div", { class: "notice " + kind, role: kind === "error" ? "alert" : "status" }, text); }

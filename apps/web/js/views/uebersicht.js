@@ -33,7 +33,7 @@ export async function uebersicht(root, api, cid, classes, msg, slot) {
   root.append(h("h3", {}, "Übersicht je Buchstabe"),
     r.letters.length ? h("div", { class: "tablewrap" }, table(["Buchstabe", "Bronze", "Silber", "Gold"], r.letters.map((l) => [
       h("strong", {}, l.letter.toUpperCase()), pct(l.bronzePercent), pct(l.silberPercent), pct(l.goldPercent),
-    ]))) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."),
+    ]), { plain: true })) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."),
     h("p", { class: "muted" }, "Anteil der aktiven Kinder, die mindestens diese Stufe erreicht haben (Gold zählt auch bei Silber und Bronze)."));
   root.append(h("div", { class: "row" }, h("label", {}, "Mittelfeld ", slider, " ", val, " der Klasse")));
 }
