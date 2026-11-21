@@ -1,5 +1,5 @@
 // Lernlogik der Kinder-App: reine Funktionen auf core und engine (unverändert). Kein Zugriff auf Oberfläche oder Netz.
-import { groupedTasks, randomCase } from "@silbenflug/core";
+import { groupedTasks, wortCase } from "@silbenflug/core";
 import { secureTasks, recordSyl, roundParams, syllablePlan, levelProgress, levelsReached, highestLevel } from "@silbenflug/engine";
 import type { AwardLevel, Rng, SilbenflugConfig } from "@silbenflug/shared";
 
@@ -28,7 +28,7 @@ export function prepareRound(plan: Plan, cfg: SilbenflugConfig, st: LocalState, 
       tasks = groupedTasks(cfg.round.task_count, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, roundParams(cfg));
   }
   if (!tasks) tasks = secureTasks(plan.syllables, st.sylTimes, cfg, cfg.round.task_count, rng, roundParams(cfg));
-  return { letters: plan.letters.slice(), tasks, shown: tasks.map((s) => randomCase(s, rng)) };
+  return { letters: plan.letters.slice(), tasks, shown: tasks.map((s) => wortCase(s, rng)) };
 }
 // Rundenende: Silbenzeiten merken.
 export function finishRound(st: LocalState, res: RoundResult, cfg: SilbenflugConfig): LocalState {

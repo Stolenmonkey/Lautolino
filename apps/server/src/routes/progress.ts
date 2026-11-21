@@ -1,7 +1,7 @@
 // Messwerte, Bewertung sicher beherrschter Silben und Auszeichnungen.
 // Einziger Messwert ist die Zeit bis „Weiter“. Die Bewertung ist zeitbasiert und kein Nachweis der Lesekorrektheit.
 import { Hono } from "hono";
-import { groupedTasks, randomCase, sylProbs } from "@silbenflug/core";
+import { groupedTasks, wortCase, sylProbs } from "@silbenflug/core";
 import { secureTasks, syllablePlan } from "@silbenflug/engine";
 import type { SyllablePlan } from "@silbenflug/engine";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
@@ -205,7 +205,7 @@ export function progressRoutes() {
       ? groupedTasks(20, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, rp)
       : secureTasks([...new Set(Object.values(tr.scopes).flat())], tr.times, cfg, 20, rng, rp);
     const stu = await d.db.first<{ display_name: string }>("SELECT display_name FROM students WHERE id=?", [id]);
-    return c.json({ student: { id, name: stu ? stu.display_name : "" }, letters: st.letters, syllables, shown: syllables.map((x) => randomCase(x, rng)), generatedAt: nowIso(d) });
+    return c.json({ student: { id, name: stu ? stu.display_name : "" }, letters: st.letters, syllables, shown: syllables.map((x) => wortCase(x, rng)), generatedAt: nowIso(d) });
   });
   return r;
 }

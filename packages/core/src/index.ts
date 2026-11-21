@@ -8,3 +8,4 @@ export * from "./arcs";
 export * from "./stagedRound";
 export * from "./words";
 export * from "./wordRank";
+export * from "./wortCase";
