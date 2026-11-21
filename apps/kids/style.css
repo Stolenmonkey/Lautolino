@@ -86,7 +86,7 @@ html:has(.lgrid),body:has(.lgrid){overflow:hidden;height:100%}
 #app:has(.lgrid) .hello{font-size:1.2rem;margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .outbtn{font:inherit;font-size:.85rem;padding:6px 12px;border:2px solid #b9d3f2;border-radius:14px;background:#fff;color:#2f5f9a;cursor:pointer;flex:none}
 .outbtn:active{background:#eef5fd}
-#app:has(.lgrid) .lgrid{grid-template-columns:repeat(4,1fr);gap:6px;flex:none;width:min(100%,calc((100vh - 383px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) * 4 / 7));width:min(100%,calc((100dvh - 383px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) * 4 / 7));margin:0 auto}
+#app:has(.lgrid) .lgrid{grid-template-columns:repeat(4,1fr);gap:6px;flex:none;width:min(100%,calc((100vh - 383px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) * 4 / 5.95));width:min(100%,calc((100dvh - 383px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) * 4 / 5.95));margin:0 auto}
 #app:has(.lgrid) .lt{border-radius:18px}
 #app:has(.lgrid) .ring circle{stroke-width:7}
 #app:has(.lgrid) .msg{margin:0;font-size:.9rem;min-height:0;flex:none;text-align:center}
@@ -100,3 +100,4 @@ html:has(.stage),body:has(.stage){overflow:hidden;height:100%}
 #app:has(.lgrid) .lgrid{flex:1;min-height:0;grid-template-rows:repeat(7,1fr)}
 #app:has(.lgrid) .lt{aspect-ratio:auto;min-height:0}
 #app:has(.lgrid) .rw{top:50%;left:50%;width:70cqw;transform:translate(-50%,-50%)}
+#app:has(.lgrid) .lt .tstar{top:1cqw}
