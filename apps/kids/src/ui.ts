@@ -274,9 +274,50 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     box.innerHTML = '<div class="card award">' + owl("bigmascot owl") + "<h2>Glückwunsch!</h2>" + aw.pending.map((p) => '<div class="arow">' + pair(p.letter) + medal(p.level, true) + "<span>" + LEVEL_NAME[p.level] + "</span></div>").join("") + '<button class="btn" id="awOk" type="button" style="margin-top:14px">Toll!</button></div>';
     root.appendChild(box);
     (box.querySelector("#awOk") as HTMLElement).onclick = () => {
+      const won = aw.pending.slice();
       box.remove(); popupOpen = false; if (data && data.awards) data.awards.pending = []; save();
+      flyStars(won);
       void api.post("/student/awards/ack").catch(() => { /* offline: beim nächsten Abgleich kommt es noch einmal */ });
     };
+  }
+
+  // ---------- Sternenflug: 20 Sterne fliegen spiralförmig auf den frisch gewonnenen Stern ----------
+  function flyStars(won: Array<{ letter: string; level: AwardLevel }>): void {
+    const targets = won.map((w) => ({ w, el: root.querySelector('.lt[data-letter="' + w.letter + '"] .tstar') as SVGElement | null })).filter((t) => !!t.el) as Array<{ w: { letter: string; level: AwardLevel }; el: SVGElement }>;
+    if (!targets.length) return;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;   // Stern ist bereits gefüllt sichtbar
+    targets.forEach((t) => { t.el.style.opacity = "0"; });
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const ov = document.createElement("div"); ov.setAttribute("aria-hidden", "true");
+      ov.style.cssText = "position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:9999";
+      document.body.appendChild(ov);
+      const vw = window.innerWidth, vh = window.innerHeight, N = 20, STEPS = 80, M = 40;
+      let open = 0; const cleanup = (): void => { if (!--open) ov.remove(); };
+      targets.forEach((t) => {
+        const r = t.el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, size = r.width, color = LEVEL_COLOR[t.w.level];
+        const revs = Array.from({ length: N }, (_, i) => 1 + (3 * i) / (N - 1));
+        for (let i = N - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const x = revs[i]; revs[i] = revs[j]; revs[j] = x; }
+        let first = Infinity, last = 0, arrived = 0; open++;
+        const done = (): void => { if (++arrived === N) { t.el.animate([{ transform: "translateX(-50%) scale(1.5)" }, { transform: "translateX(-50%) scale(1.95)" }, { transform: "translateX(-50%) scale(1.5)" }], { duration: 350, easing: "ease-in-out" }); cleanup(); } };
+        for (let i = 0; i < N; i++) {
+          const side = Math.floor(Math.random() * 4), u = Math.random();
+          const sx = side === 1 ? vw + M : side === 3 ? -M : u * vw, sy = side === 0 ? -M : side === 2 ? vh + M : u * vh;
+          const dx = sx - cx, dy = sy - cy, R0 = Math.hypot(dx, dy), a0 = Math.atan2(dy, dx), dir = Math.random() < 0.5 ? -1 : 1, dur = 2000 + Math.random() * 2000;
+          const star = document.createElementNS("http://www.w3.org/2000/svg", "svg"); star.setAttribute("viewBox", "0 0 24 24");
+          star.style.cssText = "position:absolute;left:0;top:0;width:" + size + "px;height:" + size + "px;will-change:transform;overflow:visible";
+          star.innerHTML = '<polygon points="12,3 14.7,8.8 21,9.5 16.3,13.8 17.6,20 12,16.9 6.4,20 7.7,13.8 3,9.5 9.3,8.8" fill="' + color + '" stroke="#1f2a44" stroke-width="1.6" stroke-linejoin="round"/>';
+          const frames: Keyframe[] = [];
+          for (let k = 0; k <= STEPS; k++) {
+            const tt = k / STEPS, p = tt * tt * (3 - 2 * tt), rad = R0 * (1 - p), a = a0 + dir * revs[i] * 2 * Math.PI * p;
+            frames.push({ offset: tt, transform: "translate(" + (cx + rad * Math.cos(a) - size / 2).toFixed(2) + "px," + (cy + rad * Math.sin(a) - size / 2).toFixed(2) + "px) scale(" + (2 - p).toFixed(4) + ") rotate(" + (dir * 360 * p).toFixed(2) + "deg)" });
+          }
+          ov.appendChild(star); first = Math.min(first, dur); last = Math.max(last, dur);
+          const an = star.animate(frames, { duration: dur, easing: "linear", fill: "forwards" });
+          an.onfinish = () => { star.remove(); done(); };
+        }
+        setTimeout(() => { t.el.style.opacity = ""; }, first);   // erster Stern kommt an: Ziel-Stern füllen
+      });
+    }));
   }
 
   // ---------- Start ----------
