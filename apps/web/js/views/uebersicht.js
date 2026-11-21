@@ -11,7 +11,7 @@ const GROUPS = [
 ];
 
 function childCard(k) {
-  return h("li", { class: "kidcard" }, h("strong", {}, h("a", { href: "#", class: "kidlink", title: "Auswertung öffnen", onclick: (e) => { e.preventDefault(); selectStudent(k.id); document.dispatchEvent(new CustomEvent("silbenflug:tab", { detail: "auswertung" })); } }, k.name)), " ", k.percent === null ? h("span", { class: "muted" }, "noch nichts geübt") : `${pct(k.percent)} (${k.mastered} von ${k.total}) · ${k.rounds} ${k.rounds === 1 ? "Runde" : "Runden"}`);
+  return h("li", { class: "kidcard" }, h("strong", {}, h("a", { href: "#", class: "kidlink", title: "Auswertung öffnen", onclick: (e) => { e.preventDefault(); selectStudent(k.id); document.dispatchEvent(new CustomEvent("silbenflug:tab", { detail: "auswertung" })); } }, k.name)), h("span", { class: "kidstats" + (k.percent === null ? " muted" : "") }, k.percent === null ? "noch nichts geübt" : `${pct(k.percent)} (${k.mastered} von ${k.total}) · ${k.rounds} ${k.rounds === 1 ? "Runde" : "Runden"}`));
 }
 
 export async function uebersicht(root, api, cid, classes, msg, slot) {
