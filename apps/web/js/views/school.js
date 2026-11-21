@@ -69,8 +69,9 @@ function freigabeTabelle(api, cid, releases, msg, sp, reload) {
       if (!detail.hidden) { detail.hidden = true; chev.textContent = "▾"; return; }
       const [s, m] = await Promise.all([api.get(`/classes/${cid}/releases/${r.letter}/scope`), import("../scope.bundle.js")]);
       all = s; title = h("strong"); setTitle();
-      clear(cell).append(title, h("div", { class: "panel flush tablewrap" }, h("table", { class: "plain freigaben" }, h("thead", {}, h("tr", {}, ["Stufe", "Info", "Silben"].map((x) => h("th", {}, x)))), h("tbody", {}, m.stageRows(s).map((g) => h("tr", {}, [
-        h("strong", {}, `${g.stage}.`), g.structure, g.syllables.length ? h("div", { class: "chips" }, g.syllables.map((x) => sp.chip(x, x.toUpperCase()))) : h("span", { class: "muted" }, "–") ].map((c) => h("td", {}, c))))))));
+      clear(cell).append(title, h("div", { class: "stufenliste" }, m.stageRows(s).map((g) => h("div", { class: "stufe" },
+        h("div", { class: "stufenkopf" }, h("strong", {}, `${g.stage}.`), h("span", { class: "muted" }, g.structure)),
+        g.syllables.length ? h("div", { class: "chips" }, g.syllables.map((x) => sp.chip(x, x.toUpperCase()))) : h("span", { class: "muted" }, "–")))));
       detail.hidden = false; chev.textContent = "▴";
     });
     // Vor der ersten gespielten Runde: Löschen (Tippfehler zurücknehmen). Danach nur Pausieren und Fortsetzen.

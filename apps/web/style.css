@@ -199,3 +199,12 @@ table.freigaben button.iconbtn { color:var(--accent-muted); border:1px solid var
 
 /* Trennlinie zwischen "Nächster Buchstabe" und "Freigegebene Buchstaben" */
 .freigabe-row { border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:6px; }
+
+/* Silbenliste unter einem freigegebenen Buchstaben: getönter Block mit Akzentlinie, Stufen als Liste */
+table.freigaben tr.scopedetail > td { padding:0; text-align:left; }
+table.freigaben tr.scopedetail > td > * { margin-left:0; }
+.scopedetail td > strong { display:block; padding:12px 16px 4px; border-left:3px solid var(--accent-muted); background:#eef4fc; text-align:left; }
+.stufenliste { border-left:3px solid var(--accent-muted); background:#eef4fc; padding:0 16px 8px; text-align:left; }
+.stufe { padding:8px 0; border-top:1px solid var(--line); }
+.stufenkopf { display:flex; gap:8px; align-items:baseline; font-size:.92rem; }
+.stufe .chips { margin-top:4px; display:flex; flex-wrap:wrap; text-align:left; }
