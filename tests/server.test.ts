@@ -256,7 +256,7 @@ describe("Klassenlernplan", () => {
     await call("POST", `/classes/${k.id}/releases`, T, { letter: "m" });
     expect(await sc("o")).toEqual(o); expect(await sc("l")).toEqual(l); expect(await sc("e")).toEqual(e); // unverändert
     expect(() => raw.prepare("UPDATE letter_syllable_scope SET syllable='xx'").run()).toThrow();
-    expect(() => raw.prepare("DELETE FROM letter_syllable_scope").run()).toThrow();
+    // Löschen des Umfangs ist nur vor der ersten gespielten Runde möglich (tests/buchstaben-pause.test.ts)
     const plan = (await call("GET", `/classes/${k.id}/plan`, T)).json;
     expect(plan.releases.map((x: any) => x.letter)).toEqual(["o", "l", "e", "m"]); expect(plan.releases[2].syllable_count).toBe(e.length);
   });

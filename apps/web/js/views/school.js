@@ -51,7 +51,7 @@ async function schueler(root, api, cid, classes, msg) {
 }
 
 // Freigaben: Klick auf "Silben ansehen" zeigt die Silben direkt unter dem Buchstaben, geordnet nach den 7 Lernstufen (bleibt stehen, kein Ein-/Ausklappen).
-function freigabeTabelle(api, cid, releases, msg, sp) {
+function freigabeTabelle(api, cid, releases, msg, sp, reload) {
   const head = ["Buchstabe", "Freigegeben", "Silben im festen Umfang", ""];
   const rows = releases.map((r) => {
     const cell = h("td", { colspan: String(head.length) }), detail = h("tr", { class: "scopedetail", hidden: "" }, cell), btn = h("button", { type: "button" }, "Silben ansehen"), cnt = h("span", {}, String(r.syllable_count));
@@ -66,7 +66,27 @@ function freigabeTabelle(api, cid, releases, msg, sp) {
         h("strong", {}, `${g.stage}. Stufe`), h("div", { class: "muted" }, g.structure), g.syllables.length ? h("div", { class: "chips" }, g.syllables.map((x) => sp.chip(x, x.toUpperCase()))) : h("span", { class: "muted" }, "–") ]), { wide: true })));
       detail.hidden = false; btn.textContent = "Silben ausblenden";
     });
-    return [h("tr", {}, [h("strong", {}, r.letter.toUpperCase()), fmtDate(r.released_at), cnt, btn].map((c) => h("td", {}, c))), detail];
+    // Vor der ersten gespielten Runde: Löschen (Tippfehler zurücknehmen). Danach nur Pausieren und Fortsetzen.
+    const aktion = !r.played
+      ? h("button", { type: "button", onclick: () => confirm(`Buchstabe ${r.letter.toUpperCase()} wirklich löschen? Es wurde noch nicht gespielt.`) && act(msg, async () => {
+          const plan = await api.get(`/classes/${cid}/plan`), m = await import("../scope.bundle.js"), cfg = (await api.get("/config")).config;
+          const order = plan.releases.map((x) => ({ letter: x.letter, start: !!x.start_group, paused: !!x.paused_at }));
+          await api.del(`/classes/${cid}/releases/${r.letter}`, { scopes: m.computeDeleteScopes(order, r.letter, cfg) });
+          clear(msg).append(notice(`${r.letter.toUpperCase()} gelöscht.`, "ok"));
+        }, reload) }, "Löschen")
+      : r.paused_at
+        ? h("button", { type: "button", onclick: () => act(msg, async () => {
+            const plan = await api.get(`/classes/${cid}/plan`), m = await import("../scope.bundle.js"), cfg = (await api.get("/config")).config, me = plan.releases.find((x) => x.letter === r.letter);
+            const active = plan.releases.filter((x) => !x.paused_at).map((x) => x.letter), later = plan.releases.filter((x) => !x.paused_at && x.release_order > me.release_order).map((x) => x.letter);
+            const existing = await api.get(`/classes/${cid}/releases/${r.letter}/scope`);
+            const res = await api.put(`/classes/${cid}/releases/${r.letter}/pause`, { paused: false, scope: m.computeResume(active, later, r.letter, existing, cfg) });
+            clear(msg).append(notice(`${r.letter.toUpperCase()} wird wieder geübt.` + (res.added ? ` ${res.added} neue Silben ergänzt.` : ""), "ok"));
+          }, reload) }, "Fortsetzen")
+        : h("button", { type: "button", onclick: () => confirm(`Buchstabe ${r.letter.toUpperCase()} pausieren? Zeiten und Auszeichnungen bleiben, der Buchstabe kommt in keiner Übung mehr vor.`) && act(msg, async () => {
+            await api.put(`/classes/${cid}/releases/${r.letter}/pause`, { paused: true });
+            clear(msg).append(notice(`${r.letter.toUpperCase()} pausiert.`, "ok"));
+          }, reload) }, "Pausieren");
+    return [h("tr", {}, [h("strong", {}, r.letter.toUpperCase() + (r.paused_at ? " (pausiert)" : "")), fmtDate(r.released_at), cnt, h("div", { class: "row" }, btn, aktion)].map((c) => h("td", {}, c))), detail];
   });
   return h("div", { class: "panel flush tablewrap" }, h("table", { class: "plain" }, h("thead", {}, h("tr", {}, head.map((x) => h("th", {}, x)))), h("tbody", {}, rows.flat())));
 }
@@ -85,7 +105,7 @@ async function lernplan(root, api, cid, classes, msg) {
       : h("div", { class: "card" }, h("p", {}, "Die Klasse startet mit mindestens 2 Buchstaben, darunter ein Vokal (z. B. O L)."), h("div", { class: "row" }, h("label", {}, "Startbuchstaben ", start), h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
           const r = await api.post(`/classes/${cid}/releases`, await mitUmfang(api, plan, [...new Set(start.value.toLowerCase().match(/[a-z]/g) || [])])); clear(msg).append(notice(`Freigegeben: ${r.released.map((x) => x.letter.toUpperCase() + " (" + x.syllableCount + " Silben)").join(", ")}.`, "ok"));
         }, reload) }, "Startbuchstaben freigeben"))),
-    h("div", { class: "sechead" }, h("h2", {}, "Freigegebene Buchstaben"), h("span", { class: "muted" }, `${plan.releases.length} Buchstaben`)), plan.releases.length ? freigabeTabelle(api, cid, plan.releases, msg, sp) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."));
+    h("div", { class: "sechead" }, h("h2", {}, "Freigegebene Buchstaben"), h("span", { class: "muted" }, `${plan.releases.length} Buchstaben`)), plan.releases.length ? freigabeTabelle(api, cid, plan.releases, msg, sp, reload) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."));
   if (plan.releases.length) { const box = h("div"); root.append(box); await klassenSilben(box, api, cid, sp); }
   if (SHOW_AUSNAHMEN && plan.releases.length && students.length) {
     root.append(h("h3", {}, "Ausnahmen einzelner Kinder"), h("p", { class: "muted" }, "Haken = dieses Kind übt den Buchstaben (noch) nicht. Gilt nur für die Freigabe, nicht für Zeitpläne."),
@@ -109,12 +129,12 @@ async function klassen(root, api, sid, classes, msg, reload) {
 
 // Berechnet den Silbenumfang im Browser und liefert den Body für POST /releases (Server prüft und speichert nur).
 async function mitUmfang(api, plan, group) {
-  const known = plan.releases.map((r) => r.letter);
-  if (known.length && !/^[a-z]$/.test(group[0] || "")) throw new Error("Bitte einen Buchstaben von A bis Z eingeben");
-  if (!known.length && group.length < 2) return { letters: group };
+  const first = !plan.releases.length, known = plan.releases.filter((r) => !r.paused_at).map((r) => r.letter);   // pausierte Buchstaben kommen in neuen Silben nicht vor
+  if (!first && !/^[a-z]$/.test(group[0] || "")) throw new Error("Bitte einen Buchstaben von A bis Z eingeben");
+  if (first && group.length < 2) return { letters: group };
   const [{ config }, m] = await Promise.all([api.get("/config"), import("../scope.bundle.js")]);
   const scopes = m.computeScopes(known, group, config);
-  return known.length ? { letter: group[0], scopes } : { letters: group, scopes };
+  return first ? { letters: group, scopes } : { letter: group[0], scopes };
 }
 
 async function zugaenge(root, api, sid, classes, msg, reload) {

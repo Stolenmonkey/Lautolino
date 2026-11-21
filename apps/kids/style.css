@@ -24,6 +24,7 @@ input[type=text]:focus{outline:none;border-color:#4a8fe0}
 .lt svg:not(.medal):not(.ring){display:inline-block;height:1.4em;width:.64em;vertical-align:-.3em;overflow:visible}
 .lt.on.t1{background:#fbe4e8;--trk:#f3c5cf;--fil:#e5718f}.lt.on.t2{background:#e4dff6;--trk:#cfc8ee;--fil:#8e83e0}.lt.on.t3{background:#e1f2e1;--trk:#bfe0c2;--fil:#5fb878}
 .lt.off{background:#f1f5fa;opacity:.4}
+.lt.pz{filter:grayscale(1);opacity:.55}
 .rw{position:absolute;left:15%;top:15%;width:70%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:1.9rem;font-size:26cqw;line-height:1}
 .ring{position:absolute;inset:0;width:100%;height:100%}.ring circle{fill:none;stroke-width:8}.ring .trk{stroke:var(--trk)}.ring .fil{stroke:var(--fil);stroke-linecap:round;transition:stroke-dasharray .4s ease-out}
 .rw svg:not(.ring){position:relative}

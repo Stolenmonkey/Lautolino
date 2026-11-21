@@ -27,9 +27,11 @@ export async function loadBlocked(d: Deps, classId: string): Promise<Set<string>
 // scopes: Umfang ohne gesperrte Silben (Übung, Wortschatz, Bewertung, Auszeichnungen); full: vollständiger Umfang inkl. gesperrter (nur Lernplan der Lehrkraft)
 export async function loadScopesEx(d: Deps, classId: string, letters: string[]): Promise<{ scopes: Record<string, string[]>; full: Record<string, string[]> }> {
   const rows = await d.db.all<{ letter: string; syllable: string }>("SELECT letter, syllable FROM letter_syllable_scope WHERE class_id=?", [classId]), blocked = await loadBlocked(d, classId);
+  // Pausierte Buchstaben: Silben, in denen sie vorkommen, zählen nicht (weder in Runden noch in Stufen, Quote und Auszeichnungen)
+  const paused = (await d.db.all<{ letter: string }>("SELECT letter FROM class_letter_releases WHERE class_id=? AND paused_at IS NOT NULL", [classId])).map((x) => x.letter);
   const scopes: Record<string, string[]> = {}, full: Record<string, string[]> = {};
   letters.forEach((l) => { scopes[l] = []; full[l] = []; });
-  rows.forEach((r) => { if (full[r.letter]) { full[r.letter].push(r.syllable); if (!blocked.has(r.syllable)) scopes[r.letter].push(r.syllable); } });
+  rows.forEach((r) => { if (full[r.letter] && !paused.some((q) => r.syllable.includes(q))) { full[r.letter].push(r.syllable); if (!blocked.has(r.syllable)) scopes[r.letter].push(r.syllable); } });
   return { scopes, full };
 }
 export async function loadScopes(d: Deps, classId: string, letters: string[], withBlocked = false): Promise<Record<string, string[]>> {
@@ -151,8 +153,9 @@ export function progressRoutes() {
     const pending = await d.db.all<{ aid: string; letter: string; level: AwardLevel }>("SELECT a.id AS aid, a.letter, a.level FROM awards a JOIN award_popups o ON o.award_id=a.id WHERE a.student_id=? AND o.shown_at IS NULL", [p.id]);
     const byLetter: Record<string, AwardLevel[]> = {};
     pending.forEach((x) => { (byLetter[x.letter] ||= []).push(x.level); });
+    const pz = st.classId ? new Set((await d.db.all<{ letter: string }>("SELECT letter FROM class_letter_releases WHERE class_id=? AND paused_at IS NOT NULL", [st.classId])).map((x) => x.letter)) : new Set<string>();
     return c.json({
-      letters: "abcdefghijklmnopqrstuvwxyz".split("").map((l) => ({ letter: l, released: st.letters.includes(l), level: highestLevel(held[l] || []), progress: seg[l] || null })),
+      letters: "abcdefghijklmnopqrstuvwxyz".split("").map((l) => ({ letter: l, released: st.letters.includes(l), level: highestLevel(held[l] || []), progress: seg[l] || null, ...(pz.has(l) ? { paused: true } : {}) })),
       pending: Object.keys(byLetter).map((l) => ({ letter: l, level: highestLevel(byLetter[l]) })), // Glückwunsch nur für die höchste neue Stufe
     });
   });

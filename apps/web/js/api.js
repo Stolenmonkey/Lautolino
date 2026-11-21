@@ -17,7 +17,7 @@ export function createApi({ base, storage, fetchFn }) {
       return json;
     },
     get: (p) => api.request("GET", p), post: (p, b) => api.request("POST", p, b ?? {}),
-    put: (p, b) => api.request("PUT", p, b ?? {}), patch: (p, b) => api.request("PATCH", p, b ?? {}),
+    put: (p, b) => api.request("PUT", p, b ?? {}), patch: (p, b) => api.request("PATCH", p, b ?? {}), del: (p, b) => api.request("DELETE", p, b ?? {}),
     async login(email, password) { const r = await api.post("/auth/login", { email, password }); api.token = r.token; return r.user; },
     async logout() { try { await api.post("/auth/logout"); } catch { /* egal */ } api.token = null; },
   };

@@ -47,3 +47,40 @@ export function groupScope(group: string[], p?: ScopeParams): string[] {
   if (!p) return structureWords(ls);
   return limitScope(structureWords(ls, undefined, { weight: partWeight, capPerSub: Infinity }), p, ls.length, ls.join(""));
 }
+
+// Eine Freigabe einer Klasse für die Neuberechnung (Reihenfolge wie freigegeben).
+export interface ReleaseRef { letter: string; start: boolean; paused: boolean }
+
+// Neuer fester Umfang, nachdem ein Buchstabe gelöscht wurde (nur möglich, solange seit seiner Freigabe nicht gespielt wurde).
+// order: alle Freigaben der Klasse in Reihenfolge (inklusive des gelöschten). Gibt den Umfang für alle Buchstaben zurück, die sich ändern:
+// war es ein Startbuchstabe, werden alle neu berechnet (Startgruppe gemeinsam), sonst nur die später freigegebenen. Pausierte Buchstaben zählen nicht mit.
+export function rebuildAfterDelete(order: ReleaseRef[], deleted: string, p?: ScopeParams): Record<string, string[]> {
+  const d = deleted.toLowerCase(), idx = order.findIndex((x) => x.letter === d), out: Record<string, string[]> = {};
+  if (idx < 0) return out;
+  const rest = order.filter((x) => x.letter !== d);
+  let known: string[];
+  let from: number;
+  if (order[idx].start) {
+    const start = rest.filter((x) => x.start).map((x) => x.letter), group = groupScope(start, p);
+    start.forEach((l) => { out[l] = group; });
+    known = start; from = rest.findIndex((x) => !x.start);
+    if (from < 0) return out;
+  } else {
+    from = idx; known = rest.slice(0, idx).filter((x) => !x.paused).map((x) => x.letter);
+  }
+  for (const x of rest.slice(from)) {
+    if (x.start || x.paused) continue;
+    out[x.letter] = syllableScope(known, x.letter, p);
+    known = [...known, x.letter];
+  }
+  return out;
+}
+
+// Ergänzung des Umfangs beim Fortsetzen eines pausierten Buchstabens: neue Silben mit dem Buchstaben aus den jetzt aktiven Buchstaben,
+// die mindestens einen nach ihm freigegebenen Buchstaben enthalten. Bestehende Silben (existing) bleiben unverändert; es wird nichts entfernt.
+// Die Obergrenze je Lernstufe gilt wie bei einer Freigabe (limitScope).
+export function resumeScope(active: string[], later: string[], letter: string, existing: string[], p?: ScopeParams): string[] {
+  const nl = letter.toLowerCase(), act = active.map((x) => x.toLowerCase()).filter((x) => x !== nl).concat([nl]), lat = new Set(later.map((x) => x.toLowerCase())), have = new Set(existing);
+  const cands = (p ? structureWords(act, nl, { weight: partWeight, capPerSub: Infinity }) : structureWords(act, nl)).filter((w) => !have.has(w) && [...w].some((ch) => lat.has(ch)));
+  return p ? limitScope(cands, p, 1, nl + "+") : cands;
+}

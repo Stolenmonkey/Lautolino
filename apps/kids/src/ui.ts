@@ -7,7 +7,7 @@ import { adoptServer, canPractice, emptyState, finishRound, localAwards, prepare
 import type { LocalState, Plan, RoundSetup } from "./logic";
 
 export interface Deps { base: string; storage: KV; fetchFn?: FetchFn; rng?: Rng; now?: () => number }
-interface AwardsView { letters: Array<{ letter: string; released: boolean; level: AwardLevel | null; progress?: { next: AwardLevel; segments: number } | null }>; pending: Array<{ letter: string; level: AwardLevel }> }
+interface AwardsView { letters: Array<{ letter: string; released: boolean; level: AwardLevel | null; paused?: boolean; progress?: { next: AwardLevel; segments: number } | null }>; pending: Array<{ letter: string; level: AwardLevel }> }
 interface Data { st: LocalState; queue: QueuedRound[]; plan: Plan | null; config: SilbenflugConfig | null; awards: AwardsView | null; seen?: string[] }
 interface Session { token: string; studentId: string; name: string }
 
@@ -103,7 +103,9 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
   function gridHtml(): string {
     const d = data as Data, aw = d.awards, rel = new Set(d.plan ? d.plan.letters : []);
     const lv: Record<string, AwardLevel | null> = {}, pg: Record<string, AwL["progress"]> = {}; (aw ? aw.letters : []).forEach((x) => { lv[x.letter] = x.level; pg[x.letter] = x.progress; });
-    return "abcdefghijklmnopqrstuvwxyz".split("").map((l) => tile(l, rel.has(l), lv[l] || null, pg[l])).join("");
+    // Pausierte Buchstaben (von der Lehrkraft): grau, mit der erreichten Auszeichnung, kommen in der Übung nicht vor
+    const pz = new Set((aw ? aw.letters : []).filter((x) => x.paused).map((x) => x.letter));
+    return "abcdefghijklmnopqrstuvwxyz".split("").map((l) => { const t = tile(l, rel.has(l) || (pz.has(l) && !!lv[l]), lv[l] || null, pg[l]); return pz.has(l) ? t.replace('class="lt ', 'class="lt pz ') : t; }).join("");
   }
   function homeHtml(): string {
     const d = data as Data, rel = new Set(d.plan ? d.plan.letters : []);

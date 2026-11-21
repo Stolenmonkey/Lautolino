@@ -24,7 +24,7 @@ apps/
     js/{main,api,dom,chart}.js  js/views/{login,passwort,admin,school,auswertung,uebersicht,silben,stufen,eltern}.js
     src/{zug,pdf}.ts   js/zug.bundle.js (Build-Artefakt)
   eltern/   Elternansicht: index.html style.css config.js app.js
-db/migrations/  0001_init … 0009_code_klartext 0010_gesperrte_silben (.sql)
+db/migrations/  0001_init … 0010_gesperrte_silben 0011_buchstaben_pause (.sql)
 docs/           lautolino-aenderungen.md (Phase 8: Änderungen/Schnittstellen/Mail-Setup/offene Punkte)  umzug.md
 tests/          *.test.ts + helpers.ts + fixtures/silbenzauber-logic.js (alte App, unverändert)
 ```
@@ -50,7 +50,7 @@ tests/          *.test.ts + helpers.ts + fixtures/silbenzauber-logic.js (alte Ap
 - `sylTime.ts`: `sylStat` (Ø nach Streichen längster), `recordSyl`; Typen `SylTimeParams`, `SylStat`.
 - `automatik.ts`: `autoAdjust`, `avgLast`, `sdFromLen`, `comboKey`, `startVal`; Typen `AutoParams`, `AutoState`.
 - `mastery.ts`: `isMastered`, `letterProgress`, `levelsReached`, `newAwards`, `highestLevel`; Typ `SylStatus`.
-- `scope.ts`: `syllableScope(releasedBefore,newLetter)` – Silbenumfang je Buchstabe (strukturbasiert, `structureWords`).
+- `scope.ts`: `syllableScope(releasedBefore,newLetter)` – Silbenumfang je Buchstabe (strukturbasiert, `structureWords`); `rebuildAfterDelete` (Umfang nach Löschen eines Buchstabens), `resumeScope` (Ergänzung beim Fortsetzen).
 - `syllablePlan.ts`: `syllablePlan` – Freischaltung je Silbe (Gate) und Gruppen aus Silbenzeiten.
 - `params.ts`: Config → `sylTimeParams`/`autoParams`/`roundParams`.
 
@@ -95,10 +95,10 @@ tests/          *.test.ts + helpers.ts + fixtures/silbenzauber-logic.js (alte Ap
 
 ### db/migrations
 - `0001_init`: schools, license_events, school_years, classes, staff_users, teacher_classes, sessions, students, student_class_history, student_codes, login_attempts, parent_activation_codes, parent_devices, class_letter_releases, student_letter_exclusions, letter_syllable_scope, class_learning_settings, config_versions, rounds, syllable_times, student_blocked_syllables, letter_mastery_cache, awards, award_popups, letter_markers, audit_log, retention_rules.
-- `0002`: student_sessions. `0003`: `code_lookup` in parent_activation_codes. `0004`: staff_tokens, rate_events, parent_codes, parent_sessions. `0010`: class_blocked_syllables (gesperrte Silben je Klasse).
+- `0002`: student_sessions. `0003`: `code_lookup` in parent_activation_codes. `0004`: staff_tokens, rate_events, parent_codes, parent_sessions. `0010`: class_blocked_syllables (gesperrte Silben je Klasse). `0011`: class_letter_releases.paused_at/start_group; Umfang (letter_syllable_scope) nur noch vor der ersten gespielten Runde löschbar (Trigger scope_delete_guard).
 
 ### tests
-- `parity.test.ts` (alte vs. neue Logik, Fixture `silbenzauber-logic.js`), `engine`, `lautolino-logic`, `lautolino-server`, `server`, `kids`, `web`, `eltern`, `license`, `phase6`, `phase7` (Header, Größenlimit, Umzug-Wächter), `syllable-plan` (→ engine/syllablePlan), `words` (→ core/words); `helpers.ts`.
+- `parity.test.ts` (alte vs. neue Logik, Fixture `silbenzauber-logic.js`), `engine`, `lautolino-logic`, `lautolino-server`, `server`, `kids`, `web`, `eltern`, `license`, `phase6`, `phase7` (Header, Größenlimit, Umzug-Wächter), `syllable-plan` (→ engine/syllablePlan), `words` (→ core/words), `buchstaben-pause` (Löschen/Pausieren/Fortsetzen); `helpers.ts`.
 
 ## Schnellnavigation (statt Repo-Scan)
 Alle Quelldateien sind klein (größte: `apps/kids/src/ui.ts` ≈ 21 KB, `server/routes/progress.ts` ≈ 15 KB) → Datei direkt öffnen, kein Suchen im Repo. `node_modules/`, `package-lock.json`, `tests/fixtures/`, `*.bundle.js`, `dist/` nie lesen.
@@ -123,7 +123,7 @@ Alle Quelldateien sind klein (größte: `apps/kids/src/ui.ts` ≈ 21 KB, `server
 - `routes/auth.ts`: POST `/login /logout /forgot-password /set-password /change-password`, GET `/me`
 - `routes/admin.ts`: POST `/schools /schools/:id/license /staff /config`; GET `/schools /schools/:id/license-events /config/versions(/:v) /audit`
 - `routes/school.ts`: `/schools/:sid/{years,classes,staff}` (GET/POST), PATCH `/schools/:sid/staff/:uid`, PUT `…/staff/:uid/classes`, `/classes/:cid/students` (GET/POST), POST `/students/:id/code/regenerate`, PATCH `/students/:id`, POST `/students/:id/move`
-- `routes/plan.ts`: GET `/classes/:cid/plan`, POST `/classes/:cid/releases`, GET `/classes/:cid/releases/:letter/scope`, GET/PUT `/classes/:cid/blocked-syllables` (Silbensperre je Klasse, Body `{syllable, blocked}`), PUT `/students/:id/exclusions`, GET `/students/:id/plan`
+- `routes/plan.ts`: GET `/classes/:cid/plan`, POST `/classes/:cid/releases`, DELETE `/classes/:cid/releases/:letter` (nur vor der ersten gespielten Runde, Body `{scopes}`), PUT `/classes/:cid/releases/:letter/pause` (Body `{paused, scope?}`; Pausieren erst nach gespielter Runde, mind. 2 aktive Buchstaben; pausierte Buchstaben fehlen in Runden/Stufen/Quote, `loadScopesEx` filtert deren Silben), GET `/classes/:cid/releases/:letter/scope`, GET/PUT `/classes/:cid/blocked-syllables` (Silbensperre je Klasse, Body `{syllable, blocked}`), PUT `/students/:id/exclusions`, GET `/students/:id/plan`
 - `routes/progress.ts` (`loadScopes` liefert den Umfang ohne gesperrte Silben, `loadScopesEx` zusätzlich den vollen): Kind: POST `/student/rounds`, GET `/student/awards`, POST `/student/awards/ack`, GET `/student/sync-data`; Staff: GET `/students/:id/{progress,rounds,syllable-train}`
 - `routes/evaluation.ts`: GET `/students/:id/evaluation`, `/students/:id/stages/:n`, `/classes/:cid/overview`, `/classes/:cid/syllables`
 - `routes/student.ts`: POST `/login`, GET `/me`, `/plan` (Kinder)

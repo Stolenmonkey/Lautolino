@@ -42,7 +42,7 @@ export function adoptServer(data: { sylTimes?: Record<string, number[]> } | null
 }
 
 // Stand eines Buchstabens in der Übersicht (wie /student/awards): höchste Stufe und Fortschritt zur nächsten in 5 Segmenten.
-export interface LetterAward { letter: string; released: boolean; level: AwardLevel | null; progress?: { next: AwardLevel; segments: number } | null }
+export interface LetterAward { letter: string; released: boolean; level: AwardLevel | null; paused?: boolean; progress?: { next: AwardLevel; segments: number } | null }
 const ORDER: AwardLevel[] = ["bronze", "silber", "gold"];
 // Rechnet den Stand nach einer Runde lokal aus (gleiche Funktionen und Regeln wie der Server in POST /student/rounds):
 // nur Buchstaben, deren fester Silbenumfang in der Runde vorkam; Stufen werden nie entfernt. Der Server bleibt maßgeblich.
