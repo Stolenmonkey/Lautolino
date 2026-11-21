@@ -82,7 +82,11 @@ export function authRoutes() {
     return c.json({ ok: true });
   });
 
-  r.get("/me", authenticate, (c) => c.json({ principal: c.get("p") }));
+  r.get("/me", authenticate, async (c) => {
+    const p = c.get("p") as any;
+    if (p?.kind === "staff") { const u = await c.get("deps").db.first<{ email: string }>("SELECT email FROM staff_users WHERE id=?", [p.id]); return c.json({ principal: { ...p, email: u?.email } }); }
+    return c.json({ principal: p });
+  });
 
   r.post("/change-password", authenticate, async (c) => {
     const d = c.get("deps"), p = c.get("p"), b = await body(c);

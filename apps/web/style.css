@@ -148,3 +148,11 @@ table.plain td .v { justify-content:center; } table.plain td:first-child .v { ju
   table.plain td .v { flex-wrap:nowrap; }
   .medal { min-width:0; padding:2px 6px; font-size:.8rem; white-space:nowrap; }
 }
+
+/* Header: E-Mail oben, darunter Rollen-Clip und Abmelden auf gleicher Höhe */
+.hd-right { margin-left:auto; display:flex; flex-direction:column; align-items:flex-end; gap:6px; min-width:0; }
+.hd-mail { font-size:.8rem; color:var(--muted); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hd-mail:empty { display:none; }
+.hd-row { display:flex; align-items:center; gap:8px; }
+.hd-row #who.role, .hd-row #logout { margin-left:0; }
+@media (max-width:640px) { .hd-right { gap:3px; flex:0 1 auto; } .hd-mail { font-size:.7rem; max-width:55vw; } .hd-row { gap:6px; } }

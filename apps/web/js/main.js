@@ -19,10 +19,10 @@ function show() {
   (user.role === "admin" ? adminView : schoolView)(tab, clear(main), ctx).catch((e) => { if (e.status === 401) return signOut(); main.append(h("div", { class: "notice error" }, e.message)); });
 }
 function signedIn(u) {
-  user = u; tab = null; $("who").textContent = { admin: "Administration", schulleitung: "Schulleitung", lehrer: "Lehrkraft" }[u.role]; $("who").classList.remove("hidden"); $("logout").classList.remove("hidden"); show();
+  user = u; tab = null; $("mail").textContent = u.email || ""; $("who").textContent = { admin: "Administration", schulleitung: "Schulleitung", lehrer: "Lehrkraft" }[u.role]; $("who").classList.remove("hidden"); $("logout").classList.remove("hidden"); show();
 }
 function signOut() {
-  user = null; api.token = null; $("who").textContent = ""; $("who").classList.add("hidden"); $("logout").classList.add("hidden"); tabs.classList.add("hidden"); loginView(clear(main), { api, onLogin: signedIn, onForgot: () => forgotView(clear(main), { api, onBack: signOut }) });
+  user = null; api.token = null; $("mail").textContent = ""; $("who").textContent = ""; $("who").classList.add("hidden"); $("logout").classList.add("hidden"); tabs.classList.add("hidden"); loginView(clear(main), { api, onLogin: signedIn, onForgot: () => forgotView(clear(main), { api, onBack: signOut }) });
 }
 $("logout").addEventListener("click", async () => { await api.logout(); signOut(); });
 
@@ -31,7 +31,7 @@ $("logout").addEventListener("click", async () => { await api.logout(); signOut(
   const m = /^#(einladung|passwort-neu)=([0-9a-f]{32,128})$/.exec(location.hash || "");
   if (m) { history.replaceState(null, "", location.pathname + location.search); return setPasswordView(clear(main), { api, token: m[2], mode: m[1], onDone: signOut }); }
   if (api.token) {
-    try { const me = await api.get("/auth/me"); if (me.principal.kind === "staff") { const p = me.principal; return signedIn({ id: p.id, role: p.role, schoolId: p.schoolId, email: "angemeldet" }); } } catch { /* Anmeldung nötig */ }
+    try { const me = await api.get("/auth/me"); if (me.principal.kind === "staff") { const p = me.principal; return signedIn({ id: p.id, role: p.role, schoolId: p.schoolId, email: p.email }); } } catch { /* Anmeldung nötig */ }
   }
   signOut();
 })();
