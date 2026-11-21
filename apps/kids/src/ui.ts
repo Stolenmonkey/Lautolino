@@ -226,7 +226,10 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     const nm = session ? (session.name.trim().split(/\s+/)[0] || "") : "", n = Math.round(lastSecs);
     root.innerHTML = homeHtml() + '<div class="dlg col" role="dialog" aria-modal="true"><section class="card end award enter">' + owl("bigmascot owl") + "<h2>" + (nm ? "Herzlichen Glückwunsch, " + esc(nm) + "!" : "Geschafft!") + '</h2><p class="time"><span class="tl">Deine Zeit</span>' + (n === 1 ? "1 Sekunde" : n + " Sekunden") + '</p><div id="imp"></div><div class="endbtns"><button class="btn" id="again" type="button">Noch mal?</button><button class="btn red" id="stop" type="button">Ende</button></div></section></div>';
     const host = root.querySelector("#imp") as HTMLElement | null; if (host && endBefore) { host.innerHTML = improvementHtml(endBefore); fitDialog(host); }
-    (root.querySelector("#again") as HTMLElement).onclick = startPractice; (root.querySelector("#stop") as HTMLElement).onclick = () => go("home");
+    (root.querySelector("#again") as HTMLElement).onclick = startPractice; (root.querySelector("#stop") as HTMLElement).onclick = () => {
+      const b = endBefore, ups = data && data.awards && b ? data.awards.letters.filter((x) => x.level && b[x.letter] && RANK[x.level] > (b[x.letter].level ? RANK[b[x.letter].level as string] : 0)).map((x) => ({ letter: x.letter, level: x.level as AwardLevel })) : [];
+      go("home"); flyStars(ups);
+    };
   }
   // Stand der Fortschrittskreise und Sterne vor der Runde, um danach Verbesserungen zu zeigen
   const RANK: Record<string, number> = { bronze: 1, silber: 2, gold: 3 };
