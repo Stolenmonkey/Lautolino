@@ -83,8 +83,7 @@ describe("Oberfläche gegen echten Server", () => {
     (root.querySelector('input[aria-label="Neuer Buchstabe"]') as HTMLInputElement).value = "e"; click(root, "Freigeben"); await flush();
     expect(root.textContent).toContain("E freigegeben"); expect(root.querySelectorAll("tbody tr").length).toBeGreaterThanOrEqual(3);
     const kids = await tApi.get(`/classes/${classes[0].id}/students`), mia = kids.find((k: any) => k.display_name === "Mia");
-    const ex = root.querySelector(`input[aria-label="Mia ohne e"]`) as HTMLInputElement; ex.checked = true;
-    const row = ex.closest("tr")!; click(row, "Speichern"); await flush();
+    await tApi.put(`/students/${mia.id}/exclusions`, { letters: ["e"] });   // Ausnahmen-Abschnitt ist ausgeblendet, API bleibt
     // Kind: Anmeldung und eigener Plan
     const kApi = mk(); const r = await kApi.post("/student/login", { code: codes[0] }); kApi.token = r.token;
     expect((await kApi.get("/student/plan")).letters).toEqual(r.student.displayName === "Mia" ? ["o", "l"] : ["o", "l", "e"]);
