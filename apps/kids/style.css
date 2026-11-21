@@ -83,16 +83,17 @@ html:has(.lgrid),body:has(.lgrid){overflow:hidden;height:100%}
 #app:has(.lgrid) .head{gap:12px;flex:none;height:75px}#app:has(.lgrid) h1{font-size:1.6rem}
 #app:has(.lgrid) .card{padding:12px;border-radius:24px;flex:1;min-height:0;display:flex;flex-direction:column;gap:6px}
 .hrow{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none}
-#app:has(.lgrid) .hello{font-size:1.2rem;margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#app:has(.lgrid) .hello{font-size:1.45rem;font-weight:800;color:#2f5f9a;margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .outbtn{font:inherit;font-size:.85rem;padding:6px 12px;border:2px solid #b9d3f2;border-radius:14px;background:#fff;color:#2f5f9a;cursor:pointer;flex:none}
 .outbtn:active{background:#eef5fd}
+.outbtn::before{content:"\00d7";font-weight:700;margin-right:6px}
 #app:has(.lgrid) .lgrid{grid-template-columns:repeat(4,1fr);gap:6px;flex:none;width:min(100%,calc((100vh - 383px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) * 4 / 5.95));width:min(100%,calc((100dvh - 383px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) * 4 / 5.95));margin:0 auto}
 #app:has(.lgrid) .lt{border-radius:18px}
 #app:has(.lgrid) .ring circle{stroke-width:7}
 #app:has(.lgrid) .msg{margin:0;font-size:.9rem;min-height:0;flex:none;text-align:center}
 #app:has(.lgrid) > .card{border:6px solid #ffd93d}
 #app:has(.lgrid) .btn{min-height:56px;font-size:1.5rem;margin-top:auto;flex:none}
-#app:has(.lgrid) > .btn{margin-top:0;min-height:84px;font-size:1.7rem}
+#app:has(.lgrid) > .btn{margin-top:0;min-height:84px;font-size:1.7rem;width:min(100%,300px);align-self:center}
 
 html:has(.stage),body:has(.stage){overflow:hidden;height:100%}
 #app:has(.stage){gap:12px;padding:12px 16px 28px;height:calc(100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));min-height:0;overflow:hidden}
