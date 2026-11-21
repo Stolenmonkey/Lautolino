@@ -52,7 +52,7 @@ async function schueler(root, api, cid, classes, msg) {
 
 // Freigaben: Klick auf "Silben ansehen" zeigt die Silben direkt unter dem Buchstaben, geordnet nach den 7 Lernstufen (bleibt stehen, kein Ein-/Ausklappen).
 function freigabeTabelle(api, cid, releases, msg, sp, reload) {
-  const head = ["Buchstabe", "Datum", "Silbenumfang", ""];
+  const head = ["Buchstabe", "Datum", "Silbenumfang", "Aktion"];
   const rows = releases.map((r) => {
     const cell = h("td", { colspan: String(head.length) }), detail = h("tr", { class: "scopedetail", hidden: "" }, cell), cnt = h("span", {}, String(r.syllable_count)), chev = h("span", { class: "chev" }, "▾"), btn = h("button", { type: "button", class: "chevbtn", title: "Silben ansehen", "aria-label": "Silben ansehen" }, cnt, chev);
     let all = null, title = null;   // all: alle Silben des Buchstabens inkl. gesperrter
@@ -81,14 +81,24 @@ function freigabeTabelle(api, cid, releases, msg, sp, reload) {
             const existing = await api.get(`/classes/${cid}/releases/${r.letter}/scope`);
             const res = await api.put(`/classes/${cid}/releases/${r.letter}/pause`, { paused: false, scope: m.computeResume(active, later, r.letter, existing, cfg) });
             clear(msg).append(notice(`${r.letter.toUpperCase()} wird wieder geübt.` + (res.added ? ` ${res.added} neue Silben ergänzt.` : ""), "ok"));
-          }, reload) }, "▶")
+          }, reload) }, "▶\uFE0E")
         : h("button", { type: "button", class: "iconbtn", title: "Pausieren", "aria-label": "Pausieren", onclick: () => confirm(`Buchstabe ${r.letter.toUpperCase()} pausieren? Zeiten und Auszeichnungen bleiben, der Buchstabe kommt in keiner Übung mehr vor.`) && act(msg, async () => {
             await api.put(`/classes/${cid}/releases/${r.letter}/pause`, { paused: true });
             clear(msg).append(notice(`${r.letter.toUpperCase()} pausiert.`, "ok"));
-          }, reload) }, "⏸");
-    return [h("tr", {}, [h("strong", {}, r.letter.toUpperCase() + (r.paused_at ? " (pausiert)" : "")), r.released_at ? new Date(r.released_at).toLocaleDateString("de-DE") : "–", btn, aktion].map((c) => h("td", {}, c))), detail];
+          }, reload) }, "⏸\uFE0E");
+    return [h("tr", {}, [h("strong", {}, r.letter.toUpperCase() + (r.paused_at ? " (pausiert)" : "")), r.released_at ? new Date(r.released_at).toLocaleDateString("de-DE") : "–", btn, h("div", { class: "row" }, aktion)].map((c) => h("td", {}, c))), detail, { r, cnt }];
   });
-  return h("div", { class: "panel flush tablewrap" }, h("table", { class: "plain freigaben" }, h("thead", {}, h("tr", {}, head.map((x) => h("th", {}, x)))), h("tbody", {}, rows.flat())));
+  // Sortierung per Klick auf die Überschrift (Buchstabe A–Z, Datum älteste zuerst, Silbenumfang aufsteigend); erneuter Klick dreht um.
+  const tbody = h("tbody", {}), keys = [(x) => x.r.letter, (x) => x.r.release_order, (x) => Number(x.cnt.textContent)];
+  let sortCol = -1, dir = 1;
+  const render = () => {
+    const list = rows.slice();
+    if (sortCol >= 0) list.sort((a, b) => { const x = keys[sortCol](a[2]), y = keys[sortCol](b[2]); return (x < y ? -1 : x > y ? 1 : a[2].r.release_order - b[2].r.release_order) * dir; });
+    tbody.replaceChildren(...list.flatMap((q) => [q[0], q[1]]));
+  };
+  const ths = head.map((x, i) => { const th = h("th", {}, x); if (i < 3) { th.style.cursor = "pointer"; th.title = "Sortieren"; th.onclick = () => { dir = sortCol === i ? -dir : 1; sortCol = i; ths.forEach((t, j) => j < 3 && t.setAttribute("aria-sort", j === i ? (dir > 0 ? "ascending" : "descending") : "none")); render(); }; } return th; });
+  render();
+  return h("div", { class: "panel flush tablewrap" }, h("table", { class: "plain freigaben" }, h("thead", {}, h("tr", {}, ths)), tbody));
 }
 
 // Ausnahmen je Kind: Funktion bleibt erhalten, Abschnitt ist vorerst ausgeblendet (auf true setzen zum Anzeigen).
