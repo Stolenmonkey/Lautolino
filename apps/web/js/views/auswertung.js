@@ -40,6 +40,9 @@ async function kind(root, api, kid, msg) {
   const [progress, rr, conf, ev] = await Promise.all([api.get(`/students/${kid.id}/progress`), api.get(`/students/${kid.id}/rounds`), api.get("/config"), api.get(`/students/${kid.id}/evaluation`)]);
   const target = conf && conf.config && conf.config.auto ? conf.config.auto.target_seconds : null, rounds = rr.rounds.slice(-100);
   root.append(h("h3", {}, kid.display_name),
+    h("h4", {}, `Aktive Silben (${ev.active.length})`),
+    h("p", { class: "muted" }, "Freigeschaltete, noch nicht sicher beherrschte Silben – diese übt das Kind gerade."),
+    ev.enabled ? silbenTabelle(ev.active, ev.minMeasurements) : h("p", { class: "muted" }, "Die Silbenauswahl nach Lernstufen ist derzeit nicht aktiv."),
     h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
       const r = await pdfFor(api, [kid]); if (!r.bytes) { clear(msg).append(notice("Mit den freigegebenen Buchstaben gibt es noch zu wenige Silben.", "error")); return; }
       await savePdf(r.bytes, "silben-zug-" + (kid.display_name || "kind").toLowerCase().replace(/[^a-z0-9]+/g, "-") + ".pdf");

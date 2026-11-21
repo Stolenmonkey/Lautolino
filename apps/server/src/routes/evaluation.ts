@@ -93,8 +93,11 @@ export function evaluationRoutes() {
     // Trainierte Silben (mindestens eine Messung), nach Stufe sortiert
     const trained = Object.keys(tr.times).map((s) => sylRow(s, tr.times, tr.maxSeq, cfg, con))
       .sort((x, y) => x.stage - y.stage || x.length - y.length || (x.syllable < y.syllable ? -1 : 1));
+    // Aktive Silben: freigeschaltet und noch nicht sicher (werden gerade geübt)
+    const active = [...openNow].map((s) => sylRow(s, tr.times, tr.maxSeq, cfg, con))
+      .sort((x, y) => x.stage - y.stage || x.length - y.length || (x.syllable < y.syllable ? -1 : 1)).slice(0, MAX_ROWS);
     return c.json({
-      student: { id, name: name ? name.display_name : "" }, enabled: !!cfg.stages.enabled, gatePercent: cfg.stages.gate_percent, mix: { fresh: cfg.stages.mix_new_percent, weak: cfg.stages.mix_weak_percent, review: cfg.stages.mix_review_percent },
+      student: { id, name: name ? name.display_name : "" }, active, enabled: !!cfg.stages.enabled, gatePercent: cfg.stages.gate_percent, mix: { fresh: cfg.stages.mix_new_percent, weak: cfg.stages.mix_weak_percent, review: cfg.stages.mix_review_percent },
       minMeasurements: cfg.mastery.min_measurements, timeLimits: cfg.mastery.time_limit_seconds,
       stages, letters, syllables: trained,
     });
