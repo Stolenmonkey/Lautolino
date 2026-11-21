@@ -8,6 +8,7 @@ import { schoolTabs, schoolView } from "./views/school.js";
 const api = createApi({ base: window.SILBENFLUG_API || "http://localhost:8787", storage: window.localStorage });
 const $ = (id) => document.getElementById(id), main = $("main"), tabs = $("tabs");
 let user = null, tab = null;
+document.addEventListener("silbenflug:tab", (e) => { if (user) { tab = e.detail; show(); } });   // Tab-Wechsel aus Ansichten (Klassenübersicht → Auswertung)
 
 function show() {
   const defs = user.role === "admin" ? adminTabs : schoolTabs(user.role);

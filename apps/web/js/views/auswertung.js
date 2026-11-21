@@ -4,6 +4,7 @@ import { zeitverlaufSvg, svgNode, levelName } from "../chart.js";
 import { stufenTabelle, buchstabenStufen, silbenTabelle, filterRows } from "./stufen.js";
 
 const state = { studentId: null };
+export const selectStudent = (id) => { state.studentId = id; };   // z. B. aus der Klassenübersicht
 const today = () => new Date().toLocaleDateString("de-DE");
 // Speichern der PDF-Datei; in Tests austauschbar
 export const hooks = { save: null };

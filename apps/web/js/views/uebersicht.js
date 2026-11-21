@@ -1,6 +1,7 @@
 // Klassenübersicht: Kinder in drei Gruppen (über-/durchschnittlich/unterdurchschnittlich) nach Quote sicher beherrschter Silben; Mittelfeld = mittlere x % der Kinder nach Rang (Slider in 5er-Schritten).
 // Darunter (eingeklappt): je Buchstabe, wie viel Prozent der Kinder den Buchstaben erreicht haben und wie viele Bronze, Silber, Gold erreicht haben.
 import { h, table, act, clear } from "../dom.js";
+import { selectStudent } from "./auswertung.js";
 
 const pct = (v) => String(v).replace(".", ",") + " %";
 const bar = (v) => h("span", { class: "barbox", title: pct(v) }, h("span", { class: "bar", style: `width:${Math.min(100, v)}%` }));
@@ -10,7 +11,7 @@ const GROUPS = [
 ];
 
 function childCard(k) {
-  return h("li", { class: "kidcard" }, h("strong", {}, k.name), " ", k.percent === null ? h("span", { class: "muted" }, "noch nichts geübt") : [bar(k.percent), `${pct(k.percent)} (${k.mastered} von ${k.total})`, " · ", k.efficiency === null ? h("span", { class: "muted" }, "Effizienz: –") : h("span", { title: `${k.mastered} sicher beherrschte Silben ÷ ${k.rounds} Runden` }, `Effizienz: ${String(k.efficiency).replace(".", ",")} Silben/Runde (${k.rounds} Runden)`)]);
+  return h("li", { class: "kidcard" }, h("strong", {}, h("a", { href: "#", class: "kidlink", title: "Auswertung öffnen", onclick: (e) => { e.preventDefault(); selectStudent(k.id); document.dispatchEvent(new CustomEvent("silbenflug:tab", { detail: "auswertung" })); } }, k.name)), " ", k.percent === null ? h("span", { class: "muted" }, "noch nichts geübt") : [bar(k.percent), `${pct(k.percent)} (${k.mastered} von ${k.total})`, " · ", k.efficiency === null ? h("span", { class: "muted" }, "Effizienz: –") : h("span", { title: `${k.mastered} sicher beherrschte Silben ÷ ${k.rounds} Runden` }, `Effizienz: ${String(k.efficiency).replace(".", ",")} Silben/Runde (${k.rounds} Runden)`)]);
 }
 
 export async function uebersicht(root, api, cid, classes, msg) {
