@@ -166,5 +166,10 @@ header { align-items:center; }
 .hd-right { align-items:center; gap:4px; }
 .hd-mail { text-align:center; }
 .hd-row #who.role, .hd-row #logout { height:24px; padding:0 10px; font-size:.78rem; }
-.hd-row #logout::before { content:"\2715"; font-size:1.25em; line-height:1; margin-right:5px; color:inherit; }
+.hd-row #logout::before { content:"\2715"; font-size:1em; line-height:1; margin-right:5px; color:inherit; }
 @media (max-width:640px) { .hd-row #who.role, .hd-row #logout { height:22px; padding:0 8px; font-size:clamp(.64rem, 3vw, .74rem); } .hd-row #logout::before { margin-right:4px; } }
+
+/* Dezenteres Blau für aktiven Tab und Freigabe-Button */
+:root { --accent-muted:#4a6fa5; }
+nav button[aria-current=true] { color:var(--accent-muted); border-bottom-color:var(--accent-muted); }
+button.primary.muted-blue { background:var(--accent-muted); border-color:var(--accent-muted); color:#fff; }

@@ -77,7 +77,7 @@ async function lernplan(root, api, cid, classes, msg) {
   root.append(h("h2", {}, "Lernplan der Klasse"),
     h("h3", {}, "Buchstabenfreigabe"), plan.releases.length ? freigabeTabelle(api, cid, plan.releases, msg, sp) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."),
     plan.releases.length
-      ? h("div", { class: "row" }, h("label", {}, "Nächsten Buchstaben freigeben ", letter), h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
+      ? h("div", { class: "row" }, h("label", {}, "Nächsten Buchstaben freigeben ", letter), h("button", { type: "button", class: "primary muted-blue", onclick: () => act(msg, async () => {
           const r = await api.post(`/classes/${cid}/releases`, await mitUmfang(api, plan, [letter.value.trim().toLowerCase()])), x = r.released[0]; clear(msg).append(notice(`${x.letter.toUpperCase()} freigegeben. Fester Silbenumfang: ${x.syllableCount} Silben.` + (x.syllableCount ? "" : " (Mit den bisherigen Buchstaben ergeben sich keine neuen Silben.)"), "ok"));
         }, reload) }, "Freigeben"))
       : h("div", { class: "card" }, h("p", {}, "Die Klasse startet mit mindestens 2 Buchstaben, darunter ein Vokal (z. B. O L)."), h("div", { class: "row" }, h("label", {}, "Startbuchstaben ", start), h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
