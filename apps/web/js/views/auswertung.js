@@ -43,8 +43,6 @@ async function kind(root, api, kid, msg) {
   root.append(
     karte("Buchstaben und Lernstufen", buchstabenStufen(ev.letters)),
     druckKarte(kid.display_name, "Silben-Zug dieses Kindes", "Persönliches Übungsblatt als PDF.", print),
-    karte(`Aktive Silben (${ev.active.length})`, h("p", { class: "muted" }, "Freigeschaltete, noch nicht sicher beherrschte Silben – diese übt das Kind gerade."),
-      ev.enabled ? silbenTabelle(ev.active, ev.minMeasurements) : h("p", { class: "muted" }, "Die Silbenauswahl nach Lernstufen ist derzeit nicht aktiv.")),
     ...stufenBereich(ev));
 }
 
