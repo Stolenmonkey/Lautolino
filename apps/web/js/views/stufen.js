@@ -36,7 +36,7 @@ export function rahmenTabelle(head, rows, opts = {}) {
   const sortable = (i) => items.some((q) => q.keys[i] !== undefined);
   const ths = head.map((x, i) => { const th = h("th", {}, x); if (sortable(i)) { th.style.cursor = "pointer"; th.title = "Sortieren"; th.onclick = () => { dir = sortCol === i ? -dir : 1; sortCol = i; ths.forEach((t, j) => sortable(j) && t.setAttribute("aria-sort", j === i ? (dir > 0 ? "ascending" : "descending") : "none")); render(); }; } return th; });
   render();
-  return h("div", { class: "tablewrap tableframe" + (opts.breit ? " breit" : "") }, h("table", { class: "plain freigaben kompakt" + (opts.badge ? " badge" : "") + (opts.kompakt ? " klein" : "") + (opts.breit ? " breit" : "") }, h("thead", {}, h("tr", {}, ths)), tbody));
+  return h("div", { class: "tablewrap tableframe" + (opts.breit ? " breit" : "") }, h("table", { class: "plain freigaben kompakt" + (opts.badge ? " badge" : "") + (opts.kompakt ? " klein" : "") + (opts.passend ? " passend" : "") + (opts.breit ? " breit" : "") }, h("thead", {}, h("tr", {}, ths)), tbody));
 }
 
 // Gesamtstand je Stufe. onDetail(stage) lädt die Silben der Stufe und liefert den Knoten für die Detailzeile.
@@ -88,7 +88,7 @@ export function silbenTabelle(rows, min, order = []) {
       h("span", { class: "stage st-" + (r.status === "mastered" ? "done" : r.status === "not_mastered" ? "active" : "locked") }, r.locked ? "noch nicht freigeschaltet" : r.status === "unrated" && r.stored ? `noch nicht bewertet (${r.stored} von ${min})` : SYL_STATUS[r.status]),
     ],
     keys: [sylText(r.parts), r.stage, newest(r, order), r.avg ?? Infinity, r.count, r.successful ?? -1, r.status],
-  })), { badge: true, breit: true });
+  })), { badge: true, passend: true });
 }
 export function filterRows(rows, f) {
   if (f === "schwierig") return rows.filter((r) => r.status === "not_mastered").sort((a, b) => (b.avg ?? 0) - (a.avg ?? 0));
