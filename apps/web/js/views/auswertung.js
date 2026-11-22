@@ -49,7 +49,7 @@ async function kind(root, api, kid, msg) {
 // Silbenstatistik eines Kindes
 function stufenBereich(ev) {
   const list = h("div"), filt = h("select", { "aria-label": "Silben filtern" }, [["alle", "Alle trainierten Silben"], ["mastered", "Sicher beherrscht"], ["not_mastered", "Noch nicht sicher beherrscht"], ["unrated", "Noch nicht bewertet"], ["schwierig", "Schwierigkeiten (langsamste zuerst)"]].map(([v, t]) => h("option", { value: v }, t)));
-  const draw = () => { clear(list).append(silbenTabelle(filterRows(ev.syllables, filt.value), ev.minMeasurements)); };
+  const draw = () => { clear(list).append(silbenTabelle(filterRows(ev.syllables, filt.value), ev.minMeasurements, ev.letters.map((l) => l.letter))); };
   filt.addEventListener("change", draw); draw();
   return [
     karte("Silben", h("p", { class: "muted" }, `Sicher beherrscht heißt: mindestens ${ev.minMeasurements} Messungen und Durchschnitt innerhalb der Zeitvorgabe (unverändert). Abfragen = alle bisherigen Messungen; „innerhalb der Zeitvorgabe“ zählt nur die noch gespeicherten letzten Messwerte.`),

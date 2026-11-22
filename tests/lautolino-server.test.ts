@@ -344,7 +344,7 @@ describe("Lautolino (Server und Oberfläche)", () => {
       { const ks = root.querySelector('select[aria-label="Schüler"]') as HTMLSelectElement; ks.value = Array.from(ks.options).find((o) => o.text === "Mia")!.value; ks.dispatchEvent(new Event("change")); await flush(); }
             expect(root.textContent).toContain("Buchstaben und Lernstufen"); expect(root.textContent).toContain("Fortschritt");
       const rowsOf = () => Array.from(root.querySelectorAll("tr")).filter((tr) => tr.textContent!.includes("sicher beherrscht") || tr.textContent!.includes("noch nicht"));
-      expect(root.textContent).toContain("MA"); expect(root.textContent).toContain("1.2 Konsonant-Vokal-Silben (KV)"); expect(root.textContent).toContain("noch nicht bewertet (3 von 10)");
+      expect(root.textContent).toContain("MA"); expect(root.textContent).toContain("noch nicht bewertet (3 von 10)");
       const sel = root.querySelector('select[aria-label="Silben filtern"]') as HTMLSelectElement; sel.value = "unrated"; sel.dispatchEvent(new Event("change")); await flush();
       expect(root.textContent).toContain("MAL"); expect(Array.from(root.querySelectorAll("tr")).some((tr) => tr.textContent!.startsWith("LA") && tr.textContent!.includes("sicher beherrscht"))).toBe(false);
       expect(root.textContent).not.toContain("Zeitverlauf"); expect(root.querySelectorAll(".stbar span, [title^=\"Stufe \"]").length).toBeGreaterThan(0);

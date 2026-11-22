@@ -76,16 +76,18 @@ export function buchstabenStufen(letters) {
   })), { badge: true, kompakt: true }));
 }
 
+// Buchstabe, mit dem die Silbe aktiv geschaltet wurde: der zuletzt freigegebene Buchstabe, der in der Silbe vorkommt (order = Buchstaben in Freigabereihenfolge).
+const newest = (r, order) => { const ls = (r.letters || []).map((x) => x.toLowerCase()), idx = (x) => order.indexOf(x); const best = ls.filter((x) => idx(x) >= 0).sort((a, b) => idx(b) - idx(a))[0] ?? ls[ls.length - 1]; return best ? best.toUpperCase() : "–"; };
 // Silbenstatistik: Silbe, Stufe/Unterkategorie, Ø Lesezeit, Abfragen, erfolgreiche Messungen, Status. filter: "alle" | "mastered" | "not_mastered" | "unrated" | "schwierig"
-export function silbenTabelle(rows, min) {
+export function silbenTabelle(rows, min, order = []) {
   if (!rows.length) return h("p", { class: "muted" }, "Keine Silben.");
-  return rahmenTabelle(["Silbe", "Stufe", "Ø Lesezeit", "Abfragen", "Innerhalb der Zeitvorgabe", "Status"], rows.map((r) => ({
+  return rahmenTabelle(["Silbe", "Stufe", "Buchstabe", "Ø Lesezeit", "Abfragen", "Innerhalb der Zeitvorgabe", "Status"], rows.map((r) => ({
     cells: [
-      h("strong", { class: "mono" }, sylText(r.parts)), `${r.sub} ${r.subName}${r.contrast ? " (auch Stufe 2)" : ""}`, sec(r.avg), r.count,
+      h("strong", { class: "mono" }, sylText(r.parts)), `${r.stage}.`, newest(r, order), sec(r.avg), r.count,
       r.limit === null || !r.stored ? "–" : `${r.successful} von ${r.stored} (Vorgabe ${String(r.limit).replace(".", ",")} s)`,
       h("span", { class: "stage st-" + (r.status === "mastered" ? "done" : r.status === "not_mastered" ? "active" : "locked") }, r.locked ? "noch nicht freigeschaltet" : r.status === "unrated" && r.stored ? `noch nicht bewertet (${r.stored} von ${min})` : SYL_STATUS[r.status]),
     ],
-    keys: [sylText(r.parts), r.sub, r.avg ?? Infinity, r.count, r.successful ?? -1, r.status],
+    keys: [sylText(r.parts), r.stage, newest(r, order), r.avg ?? Infinity, r.count, r.successful ?? -1, r.status],
   })), { badge: true, breit: true });
 }
 export function filterRows(rows, f) {
