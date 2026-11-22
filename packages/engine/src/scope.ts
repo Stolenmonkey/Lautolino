@@ -87,3 +87,23 @@ export function resumeScope(active: string[], later: string[], letter: string, e
   const cands = (p ? structureWords(act, nl, { weight: partWeight, capPerSub: Infinity }) : structureWords(act, nl)).filter((w) => !have.has(w) && [...w].some((ch) => lat.has(ch)));
   return p ? limitScope(cands, p, 1, nl + "+") : cands;
 }
+
+// Wie rebuildAfterDelete, aber nur die Kontrastblöcke (Stufe 2). Der Browser schickt den Umfang ohne Blöcke, der Server erzeugt sie selbst.
+export function rebuildBlocksAfterDelete(order: ReleaseRef[], deleted: string): Record<string, string[]> {
+  const d = deleted.toLowerCase(), idx = order.findIndex((x) => x.letter === d), out: Record<string, string[]> = {};
+  if (idx < 0) return out;
+  const rest = order.filter((x) => x.letter !== d);
+  let known: string[], from: number;
+  if (order[idx].start) {
+    const start = rest.filter((x) => x.start).map((x) => x.letter), blocks = groupBlocks(start);
+    start.forEach((l) => { out[l] = blocks; });
+    known = start; from = rest.findIndex((x) => !x.start);
+    if (from < 0) return out;
+  } else { from = idx; known = rest.slice(0, idx).filter((x) => !x.paused).map((x) => x.letter); }
+  for (const x of rest.slice(from)) {
+    if (x.start || x.paused) continue;
+    out[x.letter] = blockScope(known, x.letter);
+    known = [...known, x.letter];
+  }
+  return out;
+}

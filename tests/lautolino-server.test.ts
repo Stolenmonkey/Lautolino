@@ -9,7 +9,7 @@ import { CODE_WORDS, generateStudentCode, hashPassword, hmacHex, normalizeCode }
 import type { Mail } from "../apps/server/src/mail";
 import { resendMailer } from "../apps/server/src/mail";
 import { buildSyllables, classifySyllable, splitSyllables, structureWords } from "@silbenflug/core";
-import { sylStat, sylTimeParams, groupScope, scopeParams } from "@silbenflug/engine";
+import { sylStat, sylTimeParams, groupScope, syllableScope, scopeParams } from "@silbenflug/engine";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
 // @ts-ignore reine JS-Module
 import { createApi } from "../apps/web/js/api.js";
@@ -140,6 +140,15 @@ describe("Lautolino (Server und Oberfläche)", () => {
       expect((await call("GET", `/classes/${cid}/syllables?stage=2`, teacher)).json).toMatchObject({ total: 5, blocked: 1 });
       expect((await call("GET", "/student/plan", await kidTok(codeA))).json.blocks).not.toContainEqual(["ma", "na", "pa"]);   // gesperrter Block kommt nicht in die Übung
       expect((await call("GET", "/student/plan", await kidTok(codeA))).json.blocks).toContainEqual(["la", "ma", "pa"]);
+    });
+    it("Freigabe und Löschen mit vom Browser berechnetem Umfang (ohne Blöcke, auch mit Blöcken eines älteren Browsers): Server erzeugt die Blöcke", async () => {
+      const sp = { ...scopeParams(DEFAULT_CONFIG), blocks: false }, syl = syllableScope(LETTERS, "n", sp), blocksOf = (l: string) => (raw.prepare("SELECT syllable FROM letter_syllable_scope WHERE class_id=? AND letter=? AND syllable LIKE '%+%' ORDER BY syllable").all(cid, l) as any[]).map((x) => x.syllable);
+      expect(syl.some((w) => w.includes("+"))).toBe(false);
+      expect((await call("POST", `/classes/${cid}/releases`, lead, { letter: "n", scopes: [{ letter: "n", syllables: syl }] })).status).toBe(201);
+      expect(blocksOf("n")).toEqual(["ma+na+pa", "me+ne+pe", "mo+no+po"]);
+      expect((await call("DELETE", `/classes/${cid}/releases/n`, lead, { scopes: [] })).status).toBe(200); expect(blocksOf("n")).toEqual([]);
+      expect((await call("POST", `/classes/${cid}/releases`, lead, { letter: "n", scopes: [{ letter: "n", syllables: [...syl, "ma+na+pa"] }] })).status).toBe(201);   // älterer Browser schickt Blöcke mit
+      expect(blocksOf("n")).toEqual(["ma+na+pa", "me+ne+pe", "mo+no+po"]);
     });
     it("Schalter stages.enabled = 0: Silbenauswahl wie bisher ohne Lernstufen", async () => {
       expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0 } } })).status).toBe(201);

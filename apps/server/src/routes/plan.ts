@@ -1,6 +1,6 @@
 // Klassenlernplan: Buchstabenfreigabe (mit festem Silbenumfang), Ausnahmen einzelner Kinder.
 import { Hono } from "hono";
-import { syllableScope, groupScope, scopeParams, rebuildAfterDelete, resumeScope, blockScope, groupBlocks, isBlockKey } from "@silbenflug/engine";
+import { syllableScope, groupScope, scopeParams, rebuildAfterDelete, resumeScope, rebuildBlocksAfterDelete, blockScope, groupBlocks, isBlockKey } from "@silbenflug/engine";
 import type { ReleaseRef } from "@silbenflug/engine";
 import type { Env } from "../context";
 import { authenticate, requireStaff } from "../middleware";
@@ -71,7 +71,7 @@ export function planRoutes() {
       scopes = group.map((l) => {
         const e = given.find((x: any) => x && norm(x.letter) === l), arr = e && Array.isArray(e.syllables) ? e.syllables : null;
         if (!arr || arr.length > 3000) throw fail(400, "scopes: Silbenliste je Buchstabe erwartet");
-        const syl: string[] = [...new Set<string>(arr.map((x: unknown) => String(x)))];
+        const syl: string[] = [...new Set<string>(arr.map((x: unknown) => String(x)).filter((x: string) => !isBlockKey(x)))];   // Blöcke erzeugt der Server selbst
         const okLetters = prev.length ? allowed : new Set(group);
         if (syl.some((w) => !/^[a-z]{1,30}$/.test(w) || [...w].some((ch) => !okLetters.has(ch)) || (prev.length > 0 && !w.includes(l)))) throw fail(400, "scopes: ungültige Silbe");
         return { letter: l, syl };
@@ -108,7 +108,7 @@ export function planRoutes() {
   };
   const cleanSyl = (arr: unknown, what: string): string[] => {
     if (!Array.isArray(arr) || arr.length > 3000) throw fail(400, `${what}: Silbenliste erwartet`);
-    const syl = [...new Set<string>(arr.map((x: unknown) => String(x)))];
+    const syl = [...new Set<string>(arr.map((x: unknown) => String(x)).filter((x: string) => !isBlockKey(x)))];   // Kontrastblöcke erzeugt der Server selbst
     if (syl.some((w) => !/^[a-z]{1,30}$/.test(w))) throw fail(400, `${what}: ungültige Silbe`);
     return syl;
   };
@@ -132,11 +132,12 @@ export function planRoutes() {
       const given = Array.isArray(b.scopes) ? b.scopes : [];
       const affected = me.start_group ? rest.filter((x) => !x.paused_at) : rest.filter((x) => x.release_order > me.release_order && !x.start_group && !x.paused_at);
       scopes = {};
+      const blk = rebuildBlocksAfterDelete(order, letter);   // Kontrastblöcke immer vom Server
       for (const a of affected) {
         const e = given.find((x: any) => x && String(x.letter ?? "").toLowerCase() === a.letter), syl = cleanSyl(e && e.syllables, "scopes");
         const upTo = rest.filter((x) => !x.paused_at && (a.start_group ? !!x.start_group : x.release_order <= a.release_order)).map((x) => x.letter), ok = new Set(upTo);
         if (syl.some((w) => [...w].some((ch) => !ok.has(ch)) || (!a.start_group && !w.includes(a.letter)))) throw fail(400, "scopes: ungültige Silbe");
-        scopes[a.letter] = syl;
+        scopes[a.letter] = [...syl, ...(blk[a.letter] ?? [])];
       }
     } else scopes = rebuildAfterDelete(order, letter, scopeParams(config));
     const startLetters = rest.filter((x) => x.start_group).map((x) => x.letter);
