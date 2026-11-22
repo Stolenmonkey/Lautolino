@@ -306,7 +306,7 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
         const revs = Array.from({ length: N }, (_, i) => 1 + (3 * i) / (N - 1));
         for (let i = N - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const x = revs[i]; revs[i] = revs[j]; revs[j] = x; }
         let first = Infinity, last = 0, arrived = 0; open++;
-        const done = (): void => { if (++arrived === N) { t.el.animate([{ transform: "translateX(-50%) scale(1.5)" }, { transform: "translateX(-50%) scale(1.95)" }, { transform: "translateX(-50%) scale(1.5)" }], { duration: 350, easing: "ease-in-out" }); cleanup(); } };
+        const done = (): void => { if (++arrived === N) { if (t.el.animate) t.el.animate([{ transform: "translateX(-50%) scale(1.5)" }, { transform: "translateX(-50%) scale(1.95)" }, { transform: "translateX(-50%) scale(1.5)" }], { duration: 350, easing: "ease-in-out" }); cleanup(); } };
         for (let i = 0; i < N; i++) {
           const side = Math.floor(Math.random() * 4), u = Math.random();
           const sx = side === 1 ? vw + M : side === 3 ? -M : u * vw, sy = side === 0 ? -M : side === 2 ? vh + M : u * vh;
