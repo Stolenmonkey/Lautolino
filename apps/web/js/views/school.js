@@ -6,7 +6,7 @@ import { uebersicht, bandPanel } from "./uebersicht.js";
 import { silbenPanel } from "./silben.js";
 import { sperre } from "./sperre.js";
 
-export const schoolTabs = (role) => ({ lernplan: "Buchstaben", uebersicht: "Klasse", auswertung: "Schüler", schueler: "Einstellungen", ...(role === "schulleitung" ? { klassen: "Klassen und Schuljahre", zugaenge: "Lehrerzugänge" } : {}) });
+export const schoolTabs = (role) => ({ lernplan: "Buchstaben", uebersicht: "Klasse", auswertung: "Schüler", schueler: "Einstellungen" });   // Schulleitung: Klassen/Schuljahre und Lehrerzugänge stehen unter Einstellungen (Verwaltung)
 const state = { classId: null };
 
 export async function schoolView(tab, root, { api, user }) {
@@ -14,13 +14,21 @@ export async function schoolView(tab, root, { api, user }) {
   const classes = await api.get(`/schools/${sid}/classes`), reload = () => schoolView(tab, root, { api, user });
   if (tab === "klassen") return klassen(root, api, sid, classes, msg, reload);
   if (tab === "zugaenge") return zugaenge(root, api, sid, classes, msg, reload);
-  if (!classes.length) { root.append(notice(user.role === "lehrer" ? "Dir ist noch keine Klasse zugewiesen. Bitte die Schulleitung bitten." : "Bitte zuerst unter „Klassen und Schuljahre“ eine Klasse anlegen.")); return; }
+  if (!classes.length) { root.append(notice(user.role === "lehrer" ? "Dir ist noch keine Klasse zugewiesen. Bitte die Schulleitung bitten." : "Bitte zuerst unter Einstellungen (Verwaltung) eine Klasse anlegen.")); if (user.role === "schulleitung" && tab === "schueler") await verwaltung(root, api, sid, classes, msg, reload); return; }
   if (!classes.some((c) => c.id === state.classId)) state.classId = classes[0].id;
   const sel = h("select", { "aria-label": "Klasse", onchange: () => { state.classId = sel.value; schoolView(tab, root, { api, user }); } }, classes.map((c) => h("option", { value: c.id, selected: c.id === state.classId }, c.name)));
   const slot = h("span");   // Platz neben der Klassenauswahl (Auswertung: Schüler-Dropdown)
   root.append(h("div", { class: "toprow" }, classes.length > 1 ? h("label", { class: "klasse" }, "Klasse ", sel) : h("span"), slot));
   const body = h("div"); root.append(body);
   await (tab === "lernplan" ? lernplan : tab === "auswertung" ? auswertung : tab === "uebersicht" ? uebersicht : schueler)(body, api, state.classId, classes, msg, slot);
+  if (tab === "schueler" && user.role === "schulleitung") await verwaltung(root, api, sid, classes, msg, reload);
+}
+
+// Verwaltung (nur Schulleitung, unter Einstellungen): Schuljahre, Klassen, Lehrerzugänge.
+async function verwaltung(root, api, sid, classes, msg, reload) {
+  const box = h("div", { class: "verwaltung" }); root.append(box);
+  box.append(h("h2", {}, "Verwaltung"));
+  await klassen(box, api, sid, classes, msg, reload); await zugaenge(box, api, sid, classes, msg, reload);
 }
 
 async function schueler(root, api, cid, classes, msg) {
