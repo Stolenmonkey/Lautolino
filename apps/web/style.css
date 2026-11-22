@@ -384,3 +384,5 @@ table.freigaben.kompakt.klein .stage { min-width:0; padding:0 4px; font-size:inh
 .stbar .seg.done { background:#16a34a; border-color:#16a34a; color:#fff; }
 .stbar .seg.active { background:#2563eb; border-color:#2563eb; color:#fff; }
 table.freigaben.kompakt.klein td:last-child { width:60%; }
+
+table.freigaben.kompakt.klein td:last-child, table.freigaben.kompakt.klein th:last-child { width:75%; padding-left:12px; padding-right:12px; }
