@@ -38,7 +38,7 @@ const pair = (l: string): string => renderWord(l.toUpperCase()) + renderWord(l.t
 export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void> } {
   const api = createKidsApi({ base: deps.base, fetchFn: deps.fetchFn }), rng: Rng = deps.rng || Math.random, now = deps.now || (() => Date.now());
   let session: Session | null = null, data: Data | null = null, view: "login" | "home" | "practice" | "end" = "login";
-  let msg = "", setup: RoundSetup | null = null, idx = 0, roundStart = 0, sylStart = 0, shownAt = 0, times: Array<{ s: string; sec: number }> = [], lastSecs = 0, syncing: Promise<void> | null = null, popupOpen = false, pending: (() => void) | null = null, lastClick = 0, endBefore: Record<string, AwL> | null = null, celebrated = false;
+  let msg = "", setup: RoundSetup | null = null, idx = 0, roundStart = 0, sylStart = 0, shownAt = 0, times: Array<{ s: string; sec: number; k?: 1 }> = [], lastSecs = 0, syncing: Promise<void> | null = null, popupOpen = false, pending: (() => void) | null = null, lastClick = 0, endBefore: Record<string, AwL> | null = null, celebrated = false;
 
   const cur = (): string => view;   // aktueller Stand der Ansicht (verhindert, dass TypeScript nach go() eine alte Ansicht annimmt)
   const blank = (): Data => ({ st: emptyState(), queue: [], plan: null, config: null, awards: null });
@@ -194,7 +194,10 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     if (pending) { if (now() - lastClick < 400) return; pending(); }   // Doppeltippen ignorieren, späterer Klick schließt den Übergang sofort ab
     else if (now() - shownAt < 400) return;
     lastClick = now();
-    times.push({ s: setup.tasks[idx], sec: Math.round((now() - sylStart) / 100) / 10 });
+    // Kontrastblock: erste Silbe zählt normal und als Kontrastzeit, weitere nur als Kontrastzeit
+    const mk = (setup.kmark && setup.kmark[idx]) || 0, sec = Math.round((now() - sylStart) / 100) / 10;
+    if (mk !== 2) times.push({ s: setup.tasks[idx], sec });
+    if (mk) times.push({ s: setup.tasks[idx], sec, k: 1 });
     if (idx >= setup.tasks.length - 1) { finish(); return; }
     // Erst Sterne um die aktuelle Hauptsilbe, dann fährt die Silbe weiter
     burst(); const cur = setup;

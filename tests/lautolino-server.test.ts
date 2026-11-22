@@ -104,11 +104,28 @@ describe("Lautolino (Server und Oberfläche)", () => {
     it("nach sicher beherrschter Stufe 1 rückt der Schwerpunkt vor, Gelerntes wird wiederholt, Stufe 5 bis 7 bleiben gesperrt", async () => {
       const tok = await kidTok(codeA); await rounds(tok, KV, 10, 1, "kv");
       const ev = (await call("GET", `/students/${kA}/evaluation`, teacher)).json;
-      expect(ev.stages.map((s: any) => s.status)).toEqual(["done", "done", "active", "locked", "locked", "empty", "locked"]);   // Modus 2: Stufe 4 erst, wenn Stufe 3 zu 80 % sicher ist
-      expect(ev.letters.find((l: any) => l.letter === "m")).toMatchObject({ current: 3, window: [3] });
+      expect(ev.stages.map((s: any) => s.status)).toEqual(["done", "active", "active", "locked", "locked", "empty", "locked"]);   // Stufe 2 (Kontrast) braucht eigene Kontrastzeiten; Modus 2: Stufe 4 erst, wenn Stufe 3 zu 80 % sicher ist
+      expect(ev.letters.find((l: any) => l.letter === "m")).toMatchObject({ current: 2, window: [2, 3] });   // Stufe 2 (Kontrast) ist noch offen
       // die Übungsrunde (Silben-Zug) folgt der Freischaltung je Silbe: nur Stufe 3 (neu) und Stufe 1 (Wiederholung), nichts Gesperrtes
       const z = (await call("GET", `/students/${kA}/syllable-train?seed=3`, teacher)).json.syllables as string[];
       expect(z.every((s) => classifySyllable(s).stage <= 3)).toBe(true); expect(z.some((s) => classifySyllable(s).stage === 3)).toBe(true); expect(z.some((s) => KV.includes(s))).toBe(true);
+    });
+    it("Kontrastzeit (Stufe 2): getrennt gespeichert, 6 Messungen mit 1 gestrichen, Vorgabe 3 s; normale Zeit bleibt unberührt", async () => {
+      const tok = await kidTok(codeA), CON = KV.filter((x) => x.length === 2);
+      await rounds(tok, KV, 10, 1, "kv");
+      const post = async (id: string, sec: number) => expect((await call("POST", "/student/rounds", tok, { clientRoundId: id, seconds: 30, syllables: CON.map((s) => ({ s, sec, k: 1 })), letters: LETTERS })).status).toBe(201);
+      for (let i = 0; i < 5; i++) await post("kk" + i, 1);                                    // 5 Messungen: noch nicht bewertet
+      let ev = (await call("GET", `/students/${kA}/evaluation`, teacher)).json;
+      expect(ev.stages[1]).toMatchObject({ stage: 2, status: "active", mastered: 0 });
+      await post("kk5", 1);                                                                   // 6 Messungen, schnell: Stufe 2 abgeschlossen
+      ev = (await call("GET", `/students/${kA}/evaluation`, teacher)).json;
+      expect(ev.stages[1]).toMatchObject({ stage: 2, status: "done", mastered: ev.stages[1].total });
+      expect(ev.syllables.every((x: any) => !String(x.syllable).startsWith("k:"))).toBe(true);
+      expect(ev.syllables.find((x: any) => x.syllable === "ma")).toMatchObject({ count: 10, stored: 10, status: "mastered", kStored: 6, kStatus: "mastered", kLimit: 3 });
+      const k = (raw.prepare("SELECT COUNT(*) n FROM syllable_times WHERE student_id=? AND syllable='k:ma'").get(kA) as any).n; expect(k).toBe(6);
+      for (let i = 0; i < 6; i++) await post("ks" + i, 4);                                    // danach nur langsam: Kontrast nicht mehr sicher, normale Zeit bleibt sicher
+      ev = (await call("GET", `/students/${kA}/evaluation`, teacher)).json;
+      expect(ev.syllables.find((x: any) => x.syllable === "ma")).toMatchObject({ status: "mastered", kStatus: "not_mastered" });
     });
     it("Schalter stages.enabled = 0: Silbenauswahl wie bisher ohne Lernstufen", async () => {
       expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0 } } })).status).toBe(201);
@@ -141,7 +158,7 @@ describe("Lautolino (Server und Oberfläche)", () => {
       const tok = await kidTok(codeA); await rounds(tok, KV, 10, 1, "kv"); await rounds(tok, ["mal", "pal"], 3, 1, "k3");
       const ev = (await call("GET", `/students/${kA}/evaluation`, teacher)).json;
       expect(ev.stages[0]).toMatchObject({ stage: 1, status: "done", total: 12, processed: 12, mastered: 12, open: 0 }); expect(ev.stages[2]).toMatchObject({ stage: 3, status: "active", processed: 2, mastered: 0 });
-      const st = ev.letters.find((l: any) => l.letter === "p"); expect(st.stages.map((s: any) => s.status)).toEqual(["done", "done", "active", "locked", "locked", "empty", "locked"]);
+      const st = ev.letters.find((l: any) => l.letter === "p"); expect(st.stages.map((s: any) => s.status)).toEqual(["done", "active", "active", "locked", "locked", "empty", "locked"]);
       const d = (await call("GET", `/students/${kA}/stages/3`, teacher)).json; expect(d.total).toBe(36); expect(d.syllables.find((x: any) => x.syllable === "mal")).toMatchObject({ count: 3, status: "unrated" });
       expect(d.syllables.find((x: any) => x.syllable === "lop")).toMatchObject({ count: 0, avg: null, status: "unrated" });
       expect((await call("GET", `/students/${kA}/stages/8`, teacher)).status).toBe(400);

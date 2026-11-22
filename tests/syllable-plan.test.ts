@@ -33,11 +33,12 @@ describe("syllablePlan: Freischaltung je Silbe", () => {
     expect(p.locked).toContain("el");     // braucht e und l; „e" ist nicht sicher
   });
   it("unter 80 % bleibt gesperrt, ab 80 % offen; gate_percent einstellbar", () => {
-    const P = pool(["l", "a", "m"]);   // MAL braucht ma und la (Stufe 1 und 2)
-    expect(syllablePlan(P, fast(["la"]), cfg).locked).toContain("mal");
-    expect(syllablePlan(P, fast(["la", "ma"]), cfg).fresh).toContain("mal");
+    const P = pool(["l", "a", "m"]), fastK = (xs: string[]) => Object.fromEntries(xs.map((s) => ["k:" + s, Array(6).fill(1)]));   // MAL braucht ma und la (Stufe 1) und deren Kontrastzeit (Stufe 2)
+    expect(syllablePlan(P, { ...fast(["la"]), ...fastK(["la"]) }, cfg).locked).toContain("mal");
+    expect(syllablePlan(P, fast(["la", "ma"]), cfg).locked).toContain("mal");   // ohne Kontrastzeiten bleibt Stufe 2 offen
+    expect(syllablePlan(P, { ...fast(["la", "ma"]), ...fastK(["la", "ma"]) }, cfg).fresh).toContain("mal");
     const lax = { ...cfg, stages: { ...cfg.stages, gate_percent: 50 } };
-    expect(syllablePlan(P, fast(["la"]), lax).fresh).toContain("mal");
+    expect(syllablePlan(P, { ...fast(["la"]), ...fastK(["la"]) }, lax).fresh).toContain("mal");
   });
   it("Silben mit Messungen bleiben offen; Gruppen nach Status", () => {
     const t = { ...fast(["la"]), al: [2], ma: Array(10).fill(9) }, p = syllablePlan(pool([...L, "m"]), t, cfg);

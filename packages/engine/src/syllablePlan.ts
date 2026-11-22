@@ -5,6 +5,7 @@ import type { RoundParams } from "@silbenflug/core";
 import type { Rng } from "@silbenflug/shared";
 import type { SilbenflugConfig } from "@silbenflug/shared";
 import { isMastered, timeLimitFor } from "./mastery";
+import { contrastStat, kKey } from "./contrast";
 
 export type StageStatus = "done" | "active" | "locked" | "empty";
 export interface StageRow { stage: number; status: StageStatus; total: number; processed: number; mastered: number; open: number }
@@ -17,6 +18,8 @@ export interface SyllablePlan {
   locked: string[];     // noch nicht freigeschaltet
   count: Record<string, number>;   // Anzahl Messungen je Silbe
   ratio: Record<string, number>;   // Ø-Zeit / Zeitvorgabe (nur bewertete Silben)
+  // Stufe 2 (Kontrastblöcke): Gruppen nach der Kontrastzeit; alle Kontrast-Silben sind von Anfang an offen (keine Vorstufe nötig)
+  contrast: { fresh: string[]; building: string[]; weak: string[]; solid: string[]; count: Record<string, number>; ratio: Record<string, number> };
 }
 
 const key = (letters: Iterable<string>): string => [...new Set(letters)].sort().join("");
@@ -35,7 +38,8 @@ export function syllablePlan(pool: string[], times: Record<string, number[]>, cf
   const done = new Map(syls.map((s) => [s, isMastered(times[s], cfg, s)] as const));
   const bucket = new Map<string, number[][]>();   // Buchstabenmenge -> je Stufe [gesamt, sicher]
   const add = (k: string, st: number, m: boolean) => { const b = bucket.get(k) ?? bucket.set(k, []).get(k)!; (b[st] ||= [0, 0]); b[st][0]++; if (m) b[st][1]++; };
-  syls.forEach((s) => { const k = key(s), m = done.get(s)!.status === "mastered"; add(k, cls.get(s)!, m); if (con.has(s)) add(k, 2, m); });
+  const cdone = new Map([...con].map((s) => [s, contrastStat(times[kKey(s)], cfg)] as const));
+  syls.forEach((s) => { const k = key(s), m = done.get(s)!.status === "mastered"; add(k, cls.get(s)!, m); if (con.has(s)) add(k, 2, cdone.get(s)!.status === "mastered"); });
   const memo = new Map<string, boolean>();
   const open = (s: string): boolean => {
     const k = key(s), st = cls.get(s)!, id = k + "|" + st, hit = memo.get(id);
@@ -49,7 +53,13 @@ export function syllablePlan(pool: string[], times: Record<string, number[]>, cf
     }
     memo.set(id, ok); return ok;
   };
-  const plan: SyllablePlan = { fresh: [], building: [], weak: [], solid: [], locked: [], count: {}, ratio: {} };
+  const plan: SyllablePlan = { fresh: [], building: [], weak: [], solid: [], locked: [], count: {}, ratio: {}, contrast: { fresh: [], building: [], weak: [], solid: [], count: {}, ratio: {} } };
+  con.forEach((s) => {
+    const k = plan.contrast, n = (times[kKey(s)] || []).length, r = cdone.get(s)!;
+    k.count[s] = n;
+    if (r.avg !== null) k.ratio[s] = r.avg / cfg.contrast.time_limit_seconds;
+    if (r.status === "mastered") k.solid.push(s); else if (r.status === "not_mastered") k.weak.push(s); else if (n > 0) k.building.push(s); else k.fresh.push(s);
+  });
   syls.forEach((s) => {
     const n = (times[s] || []).length, r = done.get(s)!;
     plan.count[s] = n;

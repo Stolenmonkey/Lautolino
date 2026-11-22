@@ -2,7 +2,7 @@
 // Alles wird aus vorhandenen Daten berechnet (Silbenzeiten, fester Silbenumfang, Auszeichnungen). Die Bewertung selbst (isMastered, Schwellen) bleibt unverändert.
 import { Hono } from "hono";
 import { classifySyllable, contrastSet, stagePlan, subName, STAGES, STAGE_COUNT } from "@silbenflug/core";
-import { isMastered, sylStat, sylTimeParams, timeLimitFor } from "@silbenflug/engine";
+import { contrastStat, isKKey, isMastered, kKey, sylStat, sylTimeParams, timeLimitFor } from "@silbenflug/engine";
 import type { StageRow } from "@silbenflug/engine";
 import type { SilbenflugConfig } from "@silbenflug/shared";
 import type { Deps, Env } from "../context";
@@ -28,6 +28,8 @@ function sylRow(s: string, times: Record<string, number[]>, maxSeq: Record<strin
     avg: st.avg,                           // durchschnittliche Lesezeit wie in der Bewertung (letzte 12, die 2 längsten gestrichen)
     successful: limit === null ? null : t.filter((x) => x <= limit).length,   // gespeicherte Messungen innerhalb der Zeitvorgabe
     limit, status: m.status,               // mastered = sicher beherrscht, not_mastered, unrated (noch zu wenige Messungen)
+    ...(con.has(s) ? (() => { const kt = times[kKey(s)] || [], ks = contrastStat(kt, cfg), kst = sylStat(kt, { window: cfg.contrast.window, dropLongest: cfg.contrast.drop_longest, minKeep: Math.max(1, cfg.contrast.window - cfg.contrast.drop_longest) });
+      return { kStored: kt.length, kAvg: kst.avg, kLimit: cfg.contrast.time_limit_seconds, kStatus: ks.status }; })() : {}),   // Kontrastzeit (Stufe 2)
   };
 }
 
@@ -73,25 +75,28 @@ export function evaluationRoutes() {
     const all = [...new Set(Object.values(tr.scopes).flat())], con = contrastSet(all);
     // Gesamtstand je Stufe (alle Silben aller Buchstaben des Kindes)
     const plan = stagePlan(all), master = (s: string) => isMastered(tr.times[s], cfg, s).status === "mastered";
+    // Stufe 2 (Kontrast) wird nach der Kontrastzeit bewertet, alle anderen Stufen nach der normalen Silbenzeit
+    const masterIn = (st: number) => (s: string): boolean => st === 2 ? contrastStat(tr.times[kKey(s)], cfg).status === "mastered" : master(s);
+    const doneIn = (st: number) => (s: string): boolean => (tr.times[st === 2 ? kKey(s) : s] || []).length > 0;
     const sp = studentSylPlan(tr, cfg), openNow = new Set(sp ? [...sp.fresh, ...sp.building, ...sp.weak] : []);   // freigeschaltete, noch nicht sichere Silben
     const stages = plan.map((g) => {
-      const total = g.syllables.length, mastered = g.syllables.filter(master).length, processed = g.syllables.filter((s) => (tr.times[s] || []).length > 0).length;
+      const total = g.syllables.length, mastered = g.syllables.filter(masterIn(g.stage)).length, processed = g.syllables.filter(doneIn(g.stage)).length;
       const unlocked = g.syllables.filter((x) => openNow.has(x)).length;
-      const status = !total ? "empty" : mastered === total ? "done" : unlocked > 0 ? "active" : "locked";
+      const status = !total ? "empty" : mastered === total ? "done" : g.stage === 2 || unlocked > 0 ? "active" : "locked";
       return { stage: g.stage, name: g.name, structure: g.structure, status, unlocked, total, processed, mastered, open: total - mastered,
-        subs: g.subs.map((u) => ({ id: u.id, name: u.name, total: u.syllables.length, mastered: u.syllables.filter(master).length })) };
+        subs: g.subs.map((u) => ({ id: u.id, name: u.name, total: u.syllables.length, mastered: u.syllables.filter(masterIn(g.stage)).length })) };
     });
     const stageRowsOf = (scope: string[]): StageRow[] => {
       const mem = new Map<number, string[]>(); for (let k = 1; k <= STAGE_COUNT; k++) mem.set(k, []);
       scope.forEach((x) => { const c = classifySyllable(x); mem.get(c.stage)!.push(x); if (con.has(x)) mem.get(2)!.push(x); });
       return [...mem.keys()].map((k) => {
-        const list = mem.get(k)!, mas = list.filter(master).length, proc = list.filter((x) => (tr.times[x] || []).length > 0).length, act = list.some((x) => openNow.has(x));
+        const list = mem.get(k)!, mas = list.filter(masterIn(k)).length, proc = list.filter(doneIn(k)).length, act = k === 2 ? mas < list.length : list.some((x) => openNow.has(x));
         return { stage: k, status: !list.length ? "empty" : mas === list.length ? "done" : act ? "active" : "locked", total: list.length, processed: proc, mastered: mas, open: list.length - mas } as StageRow;
       });
     };
     const letters = Object.keys(tr.scopes).map((l, i) => { const rows = stageRowsOf(tr.scopes[l]), cur = rows.find((x) => x.status === "active" || x.status === "locked"); return { letter: l, order: i + 1, current: cur ? cur.stage : null, window: rows.filter((x) => x.status === "active").map((x) => x.stage), stages: rows }; });
     // Trainierte Silben (mindestens eine Messung), nach Stufe sortiert
-    const trained = Object.keys(tr.times).map((s) => sylRow(s, tr.times, tr.maxSeq, cfg, con))
+    const trained = Object.keys(tr.times).filter((k) => !isKKey(k)).map((s) => sylRow(s, tr.times, tr.maxSeq, cfg, con))
       .sort((x, y) => x.stage - y.stage || x.length - y.length || (x.syllable < y.syllable ? -1 : 1));
     // Aktive Silben: freigeschaltet und noch nicht sicher (werden gerade geübt)
     const active = [...openNow].map((s) => sylRow(s, tr.times, tr.maxSeq, cfg, con))

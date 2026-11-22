@@ -17,6 +17,7 @@ export interface SilbenflugConfig {
     invite_hours: number; reset_minutes: number; reset_max_per_email_hour: number; reset_max_per_ip_hour: number; parent_session_days: number;
   };
   scope: { cap_stage_1_4: number; cap_stage_5_7: number; freq_percent: number };   // Silbenumfang je neuem Buchstaben (gilt nur für künftige Freigaben): höchstens cap_stage_1_4 Wörter je Lernstufe 1 bis 4, cap_stage_5_7 je Lernstufe 5 bis 7; 0 = keine Begrenzung; freq_percent = Anteil der Plätze nach Häufigkeit im Deutschen (Rest fest ausgelost)
+  contrast: { window: number; drop_longest: number; min_measurements: number; time_limit_seconds: number };   // Kontrastzeit (Stufe 2, Blöcke mit gleichem Vokal): letzte window Zeiten, die drop_longest längsten gestrichen; Zeitvorgabe in Sekunden
   stages: { enabled: number; gate_percent: number; mix_new_percent: number; mix_weak_percent: number; mix_review_percent: number };      // Lernstufen (Auswahl je Silbe): enabled 1 = ein, 0 = alte Aufgabenverteilung ohne Stufen; gate_percent = Anteil sicherer Vorstufen-Silben, ab dem eine Silbe freigeschaltet wird; mix_*_percent = Anteil neuer/angefangener, schwacher und sicher beherrschter Silben (Wiederholung) pro Runde, Summe 100
 }
 
@@ -37,6 +38,7 @@ export const DEFAULT_CONFIG: SilbenflugConfig = {
     invite_hours: 72, reset_minutes: 60, reset_max_per_email_hour: 3, reset_max_per_ip_hour: 10, parent_session_days: 90,
   },
   scope: { cap_stage_1_4: 10, cap_stage_5_7: 8, freq_percent: 100 },
+  contrast: { window: 6, drop_longest: 1, min_measurements: 6, time_limit_seconds: 3 },
   stages: { enabled: 1, gate_percent: 80, mix_new_percent: 40, mix_weak_percent: 55, mix_review_percent: 5 },
 };
 
@@ -74,6 +76,9 @@ export function validateConfig(c: SilbenflugConfig): string[] {
   int(c.security.reset_max_per_email_hour, 1, 100, "security.reset_max_per_email_hour"); int(c.security.reset_max_per_ip_hour, 1, 1000, "security.reset_max_per_ip_hour");
   int(c.security.parent_session_days, 1, 730, "security.parent_session_days");
   int(c.scope.cap_stage_1_4, 0, 200, "scope.cap_stage_1_4"); int(c.scope.cap_stage_5_7, 0, 200, "scope.cap_stage_5_7"); num(c.scope.freq_percent, 0, 100, "scope.freq_percent");
+  int(c.contrast.window, 1, 100, "contrast.window"); int(c.contrast.drop_longest, 0, 50, "contrast.drop_longest"); int(c.contrast.min_measurements, 1, 100, "contrast.min_measurements"); num(c.contrast.time_limit_seconds, 0.1, 3600, "contrast.time_limit_seconds");
+  if (c.contrast.min_measurements > c.contrast.window) e.push("contrast.min_measurements darf nicht größer als contrast.window sein");
+  if (c.contrast.drop_longest >= c.contrast.min_measurements) e.push("contrast.drop_longest muss kleiner als contrast.min_measurements sein");
   int(c.stages.enabled, 0, 1, "stages.enabled");
   num(c.stages.gate_percent, 0, 100, "stages.gate_percent");
   num(c.stages.mix_new_percent, 0, 100, "stages.mix_new_percent"); num(c.stages.mix_weak_percent, 0, 100, "stages.mix_weak_percent"); num(c.stages.mix_review_percent, 0, 100, "stages.mix_review_percent");

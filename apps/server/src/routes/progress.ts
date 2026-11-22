@@ -2,7 +2,7 @@
 // Einziger Messwert ist die Zeit bis „Weiter“. Die Bewertung ist zeitbasiert und kein Nachweis der Lesekorrektheit.
 import { Hono } from "hono";
 import { groupedTasks, wortCase, sylProbs } from "@silbenflug/core";
-import { secureTasks, syllablePlan } from "@silbenflug/engine";
+import { kKey, secureTasks, syllablePlan } from "@silbenflug/engine";
 import type { SyllablePlan } from "@silbenflug/engine";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
 import { isMastered, letterProgress, levelProgress, newAwards, highestLevel, roundParams } from "@silbenflug/engine";
@@ -92,7 +92,7 @@ export function progressRoutes() {
     const items = syl.map((x: any) => {
       const s = String(x?.s ?? "").toLowerCase();
       if (!/^[a-z]{1,16}$/.test(s)) throw fail(400, "syllables: ungültige Silbe");
-      return { s, sec: Math.min(cfg.syl_time.max_seconds, num(x?.sec, 0, 3600, "syllables.sec")) };
+      return { s, k: x?.k ? 1 : 0, sec: Math.min(cfg.syl_time.max_seconds, num(x?.sec, 0, 3600, "syllables.sec")) };   // k: Kontrastzeit (Stufe 2), gespeichert unter "k:<silbe>"
     });
     const letters = Array.isArray(b.letters) ? [...new Set(b.letters.map((x: unknown) => String(x).toLowerCase()))].filter((l) => /^[a-z]$/.test(l as string)) as string[] : [];
     const playedAt = b.playedAt && !isNaN(Date.parse(String(b.playedAt))) && Date.parse(String(b.playedAt)) <= nowDate(d).getTime() + 86400000 ? new Date(String(b.playedAt)).toISOString() : nowIso(d), at = nowIso(d);
@@ -102,8 +102,8 @@ export function progressRoutes() {
     // Zeiten je Silbe anhängen, nur die letzten `retention` bleiben
     const { times, maxSeq } = await loadTimes(d, p.id), after: Record<string, number[]> = {};
     Object.keys(times).forEach((k) => { after[k] = times[k].slice(); });
-    items.forEach(({ s, sec }) => {
-      const seq = (maxSeq[s] || 0) + 1; maxSeq[s] = seq;
+    items.forEach(({ s: syl0, k, sec }) => {
+      const s = k ? kKey(syl0) : syl0, seq = (maxSeq[s] || 0) + 1; maxSeq[s] = seq;
       stmts.push({ sql: "INSERT INTO syllable_times(id,student_id,syllable,seq,seconds,config_version) VALUES(?,?,?,?,?,?)", params: [newId(), p.id, s, seq, sec, version] });
       stmts.push({ sql: "DELETE FROM syllable_times WHERE student_id=? AND syllable=? AND seq<=?", params: [p.id, s, seq - cfg.syl_time.retention] });
       after[s] = (after[s] || []).concat([sec]).slice(-cfg.syl_time.retention);

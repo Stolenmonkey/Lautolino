@@ -1,6 +1,6 @@
 // Lernlogik der Kinder-App: reine Funktionen auf core und engine (unverändert). Kein Zugriff auf Oberfläche oder Netz.
 import { groupedTasks, wortCase } from "@silbenflug/core";
-import { secureTasks, recordSyl, roundParams, syllablePlan, levelProgress, levelsReached, highestLevel } from "@silbenflug/engine";
+import { assembleRound, kKey, planBlocks, secureTasks, recordSyl, roundParams, syllablePlan, levelProgress, levelsReached, highestLevel } from "@silbenflug/engine";
 import type { AwardLevel, Rng, SilbenflugConfig } from "@silbenflug/shared";
 
 export interface Plan { classId: string | null; letters: string[]; syllables: string[]; scopes?: Record<string, string[]> }   // syllables: fester Silbenumfang der freigegebenen Buchstaben (vom Server)
@@ -10,8 +10,8 @@ export interface LocalState {
 }
 export const emptyState = (): LocalState => ({ sylTimes: {} });
 
-export interface RoundSetup { letters: string[]; tasks: string[]; shown: string[] }
-export interface RoundResult { seconds: number; syllables: Array<{ s: string; sec: number }> }
+export interface RoundSetup { letters: string[]; tasks: string[]; shown: string[]; kmark: number[] }   // kmark je Aufgabe: 0 normal, 1 erste Silbe eines Kontrastblocks, 2 weitere Silbe eines Blocks
+export interface RoundResult { seconds: number; syllables: Array<{ s: string; sec: number; k?: 1 }> }
 
 // Ob der Silbenumfang genug Übungswörter für eine Runde hat (wie in Silbenzauber mindestens 3).
 export function canPractice(plan: Plan, cfg: SilbenflugConfig): boolean {
@@ -21,19 +21,23 @@ export function canPractice(plan: Plan, cfg: SilbenflugConfig): boolean {
 export function prepareRound(plan: Plan, cfg: SilbenflugConfig, st: LocalState, rng: Rng): RoundSetup {
   const st2 = cfg.stages;
   // Auswahl je Silbe: Freischaltung und Gruppen aus den lokalen Silbenzeiten, Mix aus der Konfiguration (ohne Lernstufen oder zu wenige offene Silben: sichere Silben der höchsten Stufe)
-  let tasks: string[] | null = null;
+  let tasks: string[] | null = null, kmark: number[] = [];
   if (st2 && st2.enabled !== 0) {
     const sp = syllablePlan(plan.syllables, st.sylTimes, cfg);
-    if (sp.fresh.length + sp.building.length + sp.weak.length + sp.solid.length >= cfg.round.min_pool)
-      tasks = groupedTasks(cfg.round.task_count, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, roundParams(cfg));
+    if (sp.fresh.length + sp.building.length + sp.weak.length + sp.solid.length >= cfg.round.min_pool) {
+      // Kontrastblöcke (Stufe 2) belegen einen Teil der Plätze, der Rest kommt wie bisher aus der Auswahl je Silbe
+      const kb = planBlocks(sp, cfg.round.task_count, rng), rest = cfg.round.task_count - kb.used;
+      const normal = rest > 0 ? groupedTasks(rest, sp, { fresh: st2.mix_new_percent, weak: st2.mix_weak_percent, review: st2.mix_review_percent }, { count: sp.count, ratio: sp.ratio, minMeasure: cfg.mastery.min_measurements }, rng, roundParams(cfg)) : [];
+      const asm = assembleRound(normal, kb.blocks, rng); tasks = asm.tasks; kmark = asm.kmark;
+    }
   }
-  if (!tasks) tasks = secureTasks(plan.syllables, st.sylTimes, cfg, cfg.round.task_count, rng, roundParams(cfg));
-  return { letters: plan.letters.slice(), tasks, shown: tasks.map((s) => wortCase(s, rng)) };
+  if (!tasks) { tasks = secureTasks(plan.syllables, st.sylTimes, cfg, cfg.round.task_count, rng, roundParams(cfg)); kmark = tasks.map(() => 0); }
+  return { letters: plan.letters.slice(), tasks, shown: tasks.map((s) => wortCase(s, rng)), kmark };
 }
 // Rundenende: Silbenzeiten merken.
 export function finishRound(st: LocalState, res: RoundResult, cfg: SilbenflugConfig): LocalState {
   const next: LocalState = JSON.parse(JSON.stringify(st));
-  res.syllables.forEach((x) => recordSyl(next.sylTimes, x.s, x.sec, cfg.syl_time.max_seconds, cfg.syl_time.retention));
+  res.syllables.forEach((x) => recordSyl(next.sylTimes, x.k ? kKey(x.s) : x.s, x.sec, cfg.syl_time.max_seconds, cfg.syl_time.retention));
   return next;
 }
 // Nach erfolgreichem Senden aller gemerkten Runden ist der Server maßgeblich: die Silbenzeiten kommen von dort, damit jedes Gerät eines Kindes denselben Stand hat.
