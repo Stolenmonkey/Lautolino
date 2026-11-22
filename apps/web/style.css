@@ -390,5 +390,8 @@ table.freigaben.kompakt.klein td:last-child, table.freigaben.kompakt.klein th:la
 /* Silbenstatistik (Schüler): auf Bildschirmbreite, ohne Querscrollen; Texte brechen um */
 table.freigaben.kompakt.passend { table-layout:auto; width:100%; min-width:0; }
 table.freigaben.kompakt.passend th, table.freigaben.kompakt.passend td { padding:8px 4px; font-size:clamp(.7rem, .55rem + .8vw, .95rem); white-space:normal; overflow-wrap:anywhere; hyphens:auto; }
-table.freigaben.kompakt.passend td:first-child strong { font-size:clamp(.85rem, .7rem + .7vw, 1.15rem); }
+table.freigaben.kompakt.passend td:first-child strong { font-size:clamp(.7rem, .6rem + .5vw, .9rem); }
+table.freigaben.kompakt.passend th:first-child, table.freigaben.kompakt.passend td:first-child { width:1%; white-space:nowrap; }
+table.freigaben.kompakt.passend th:nth-child(5), table.freigaben.kompakt.passend td:nth-child(5) { width:5.5em; white-space:nowrap; }
+table.freigaben.kompakt.passend th:nth-child(5) { white-space:normal; }
 table.freigaben.kompakt.passend .stage { min-width:0; padding:2px 6px; font-size:inherit; white-space:normal; }

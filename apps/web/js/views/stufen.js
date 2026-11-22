@@ -81,9 +81,9 @@ const newest = (r, order) => { const ls = (r.letters || []).map((x) => x.toLower
 // Silbenstatistik: Silbe, Stufe/Unterkategorie, Ø Lesezeit, Abfragen, erfolgreiche Messungen, Status. filter: "alle" | "mastered" | "not_mastered" | "unrated" | "schwierig"
 export function silbenTabelle(rows, min, order = []) {
   if (!rows.length) return h("p", { class: "muted" }, "Keine Silben.");
-  return rahmenTabelle(["Silbe", "Stufe", "Buchstabe", "Ø Lesezeit", "Abfragen", "Status"], rows.map((r) => ({
+  return rahmenTabelle(["Silbe", "Stufe", "Buchstabe", "Ø Zeit", "Abfra\u00ADgen", "Status"], rows.map((r) => ({
     cells: [
-      h("strong", { class: "mono" }, sylText(r.parts)), `${r.stage}.`, newest(r, order), sec(r.avg), r.count,
+      h("strong", { class: "mono" }, sylText(r.parts)), `${r.stage}.`, newest(r, order), sec(r.avg), `${r.count}\u00A0x`,
       h("span", { class: "stage st-" + (r.status === "mastered" ? "done" : r.status === "not_mastered" ? "active" : "locked") }, r.locked ? "noch nicht freigeschaltet" : r.status === "unrated" && r.stored ? `unbewertet (${r.stored} von ${min})` : SYL_STATUS[r.status]),
     ],
     keys: [sylText(r.parts), r.stage, newest(r, order), r.avg ?? Infinity, r.count, r.status],
