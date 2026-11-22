@@ -394,4 +394,5 @@ table.freigaben.kompakt.passend td:first-child strong { font-size:clamp(.7rem, .
 table.freigaben.kompakt.passend th:first-child, table.freigaben.kompakt.passend td:first-child { width:1%; white-space:nowrap; }
 table.freigaben.kompakt.passend th:nth-child(5), table.freigaben.kompakt.passend td:nth-child(5) { width:5.5em; white-space:nowrap; }
 table.freigaben.kompakt.passend th:nth-child(5) { white-space:normal; }
+table.freigaben.kompakt.passend td:nth-child(4) { white-space:nowrap; }
 table.freigaben.kompakt.passend .stage { min-width:0; padding:2px 6px; font-size:inherit; white-space:normal; }

@@ -7,7 +7,7 @@ export const stageChip = (status, text) => h("span", { class: "stage st-" + (sta
 const up = (a) => a.map((x) => x.toUpperCase()).join(", ");
 const gesamtStatus = (s) => s.status === "active" && s.unlocked ? stageChip("active", `aktiv (${s.unlocked} Silben freigeschaltet)`) : s.status === "active" && s.activeLetters?.length ? stageChip("active", "aktiv für: " + up(s.activeLetters)) : s.status === "locked" && s.mastered > 0 ? stageChip("skipped", `übersprungen (${s.mastered}/${s.total} sicher)`) : stageChip(s.status);
 export const sylText = (parts) => parts.join("-").toUpperCase();
-const sec = (v) => (v === null || v === undefined ? "–" : v.toFixed(1).replace(".", ",") + " s");
+const sec = (v) => (v === null || v === undefined ? "–" : v.toFixed(1).replace(".", ",") + "\u00A0s");
 
 // Tabelle im Stil der Buchstaben-Tabelle: Rahmen, sortierbare Überschriften, Chevron-Button öffnet eine Detailzeile direkt unter der Zeile.
 // rows: [{ cells: [Knoten|Text|{ chev: { text, open: async (zelle) => Knoten } }], keys: [Sortierwert je Spalte] }]; opts.badge: erste Spalte als Plakette, opts.breit: Querscrollen.
@@ -81,7 +81,7 @@ const newest = (r, order) => { const ls = (r.letters || []).map((x) => x.toLower
 // Silbenstatistik: Silbe, Stufe/Unterkategorie, Ø Lesezeit, Abfragen, erfolgreiche Messungen, Status. filter: "alle" | "mastered" | "not_mastered" | "unrated" | "schwierig"
 export function silbenTabelle(rows, min, order = []) {
   if (!rows.length) return h("p", { class: "muted" }, "Keine Silben.");
-  return rahmenTabelle(["Silbe", "Stufe", "Buchstabe", "Ø Zeit", "Abfra\u00ADgen", "Status"], rows.map((r) => ({
+  return rahmenTabelle(["Silbe", "Stufe", "Buchstabe", "Ø-Zeit", "Abfra\u00ADgen", "Status"], rows.map((r) => ({
     cells: [
       h("strong", { class: "mono" }, sylText(r.parts)), `${r.stage}.`, newest(r, order), sec(r.avg), `${r.count}\u00A0x`,
       h("span", { class: "stage st-" + (r.status === "mastered" ? "done" : r.status === "not_mastered" ? "active" : "locked") }, r.locked ? "noch nicht freigeschaltet" : r.status === "unrated" && r.stored ? `unbewertet (${r.stored} von ${min})` : SYL_STATUS[r.status]),
