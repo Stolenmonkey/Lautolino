@@ -103,3 +103,7 @@ html:has(.stage),body:has(.stage){overflow:hidden;height:100%}
 #app:has(.lgrid) .lt{aspect-ratio:auto;min-height:0}
 #app:has(.lgrid) .rw{top:50%;left:50%;width:70cqw;transform:translate(-50%,-50%)}
 #app:has(.lgrid) .lt .tstar{top:4.5cqw}
+/* Kacheln in Popups (Neue Buchstaben, Rundenende) bleiben quadratisch, auch wenn dahinter das Gitter steht */
+#app:has(.lgrid) .dlg .lt{aspect-ratio:1}
+#app:has(.lgrid) .dlg .card{flex:none;display:block;padding:22px}
+#app:has(.lgrid) .dlg .endbtns .btn{flex:1;width:auto;min-height:68px;font-size:1.4rem;margin-top:0}#app:has(.lgrid) .dlg .endbtns #again{flex:2}

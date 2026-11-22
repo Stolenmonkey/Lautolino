@@ -295,6 +295,7 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     if (!targets.length) { endFly(); return; }
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) { endFly(); return; }   // Stern ist bereits gefüllt sichtbar
     targets.forEach((t) => { t.el.style.opacity = "0"; });
+    setTimeout(endFly, 7000);   // Sicherung: Popups nie dauerhaft blockieren
     setTimeout(() => {   // erst nach der Einblendung (.enter, 0,3 s) messen, sonst landen die Sterne zu tief
       const ov = document.createElement("div"); ov.setAttribute("aria-hidden", "true");
       ov.style.cssText = "position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:9999";
