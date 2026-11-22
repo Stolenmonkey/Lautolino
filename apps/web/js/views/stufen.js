@@ -57,8 +57,8 @@ export function buchstabenStufen(letters) {
   if (!letters.length) return h("p", { class: "muted" }, "Noch keine Buchstaben freigegeben.");
   // Ein Balken je Buchstabe: ein Abschnitt je Stufe mit Silben (Stufen ohne Silben fehlen, der Balken ist dann entsprechend kürzer).
   // Grün = sicher beherrscht (abgeschlossen), Blau = wird gerade geübt, weiß mit Rand = kommt noch.
-  const balken = (l) => h("div", { class: "stbar" }, l.stages.map((s, i) => s.status === "empty" ? null
-    : h("span", { class: "seg " + (s.status === "done" ? "done" : s.status === "active" ? "active" : "todo"), title: `Stufe ${i + 1}: ${s.mastered}/${s.total} sicher · ${STATUS_TXT[s.status]}` }, String(i + 1))));
+  const balken = (l) => h("div", { class: "stbar", style: "display:flex;gap:3px;width:100%;min-width:120px" }, l.stages.map((s, i) => s.status === "empty" ? null
+    : h("span", { class: "seg " + (s.status === "done" ? "done" : s.status === "active" ? "active" : "todo"), style: "flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;height:28px;border-radius:8px;font-weight:600;border:2px solid " + (s.status === "done" ? "#16a34a;background:#16a34a;color:#fff" : s.status === "active" ? "#2563eb;background:#2563eb;color:#fff" : "#B9C9E2;background:#fff;color:#7A8AA8"), title: `Stufe ${i + 1}: ${s.mastered}/${s.total} sicher · ${STATUS_TXT[s.status]}` }, String(i + 1))));
   return h("div", {}, rahmenTabelle(["Buchstabe", "Aktuell", "Fortschritt"], letters.map((l) => ({
     cells: [h("strong", {}, l.letter.toUpperCase()), l.current === null ? "fertig" : `Stufe ${l.current}`, balken(l)],
     keys: [l.letter, l.current === null ? 99 : l.current],
