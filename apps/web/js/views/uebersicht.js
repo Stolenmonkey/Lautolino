@@ -38,16 +38,16 @@ export async function uebersicht(root, api, cid, classes, msg, slot) {
   const rated = r.children.filter((k) => k.group !== "nodata"), minDist = rated.length ? Math.min(...rated.map((k) => Math.abs(k.rank - 50))) : 0;
   const total = Math.max(0, ...r.children.map((k) => k.total || 0));
   const thr = Math.max(share / 2, minDist), grp = (k) => k.group === "nodata" ? "nodata" : Math.abs(k.rank - 50) <= thr + 1e-9 ? "average" : k.rank > 50 ? "over" : "under";
-  if (slot) slot.append(h("span", { class: "pill blue dot" }, `Aktive Kinder: ${r.students}`));
-  root.append(h("div", { class: "sechead" }, h("h2", {}, "Klassenübersicht"), total ? h("span", { class: "muted" }, `${total} Aufgaben gesamt`) : null),
-    ...GROUPS.map(([key, title]) => {
+  const cls = classes.find((c) => c.id === cid);
+  root.append(h("div", { class: "sechead" }, h("h2", {}, "Klassenübersicht", cls ? " " + cls.name : ""), h("span", { class: "pill blue dot" }, `Aktive Kinder: ${r.students}`)),
+    h("section", { class: "card kidgroups" }, ...GROUPS.map(([key, title]) => {
       const kids = r.children.filter((k) => grp(k) === key);
-      return h("section", { class: "card kidgroup " + key }, h("div", { class: "sechead" }, h("h2", { class: "small" }, title, " ", h("span", { class: "count" }, kids.length))), kids.length ? h("ul", { class: "kidlist" }, kids.map(childCard)) : h("p", { class: "muted" }, "–"));
-    }));
+      return h("div", { class: "kidgroup " + key }, h("h3", {}, title, " ", h("span", { class: "count" }, kids.length)), kids.length ? h("ul", { class: "kidlist" }, kids.map(childCard)) : h("p", { class: "muted" }, "–"));
+    })));
   const medal = (v, c) => h("span", { class: "medal " + (v > 0 ? c : "zero") }, pct(v));
-  root.append(h("section", { class: "card klasse-card" }, h("div", { class: "sechead" }, h("h2", { class: "small" }, "Übersicht je Buchstabe"), h("span", { class: "muted" }, `${r.letters.length} Buchstaben`)),
+  root.append(h("section", { class: "card klasse-card" }, h("div", { class: "sechead" }, h("h2", { class: "small" }, "Übersicht je Buchstabe")),
     r.letters.length ? h("div", { class: "tablewrap tableframe letterframe" }, table(["Buchstabe", "Bronze", "Silber", "Gold"], r.letters.map((l) => [
       h("strong", {}, l.letter.toUpperCase()), medal(l.bronzePercent, "bronze"), medal(l.silberPercent, "silber"), medal(l.goldPercent, "gold"),
-    ]), { plain: true })) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."),
-    h("div", { class: "infobox" }, h("span", { class: "i", "aria-hidden": "true" }, "i"), h("span", {}, "Anteil der aktiven Kinder, die mindestens diese Stufe erreicht haben (Gold zählt auch bei Silber und Bronze)."))));
+    ]), { plain: true })) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben.")
+  ));
 }

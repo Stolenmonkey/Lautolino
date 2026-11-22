@@ -310,3 +310,15 @@ table.freigaben tr.scopedetail > td { background:var(--bg); }
 .bandcard .pill.blue { font-size:clamp(.9rem, .6rem + 1vw, 1.3rem); padding:6px 16px; }
 .bandcard input[type=range] { width:100%; min-height:0; padding:0; border:0; accent-color:var(--accent-deep); }
 .bandcard .scale { display:flex; justify-content:space-between; font-size:.9rem; margin:2px 0 12px; }
+
+/* Klasse: eine Karte für alle Gruppen, nur Blautöne */
+.kidgroups { margin:18px 0; }
+.kidgroup { margin:0 0 22px; } .kidgroup:last-child { margin-bottom:0; }
+.kidgroup h3 { font-size:clamp(1.1rem, .8rem + .9vw, 1.6rem); font-weight:600; margin:0 0 12px; }
+.kidgroup h3::before { content:""; flex:0 0 auto; width:.6em; height:.6em; border-radius:50%; background:#B9C9E2; }
+.kidgroup.over h3::before { background:#3C68AA; } .kidgroup.average h3::before { background:#7F9DC8; } .kidgroup.under h3::before { background:#B9C9E2; } .kidgroup.nodata h3::before { background:#DCE4F1; }
+.kidgroup .count, .kidgroup.over .count, .kidgroup.average .count, .kidgroup.under .count { background:#E2ECFB; color:#14295B; min-width:1.9em; height:1.9em; font-size:.6em; font-weight:700; }
+.kidgroup .kidcard, .kidgroup.over .kidcard, .kidgroup.average .kidcard, .kidgroup.under .kidcard, .kidgroup.nodata .kidcard { background:#F5F8FD; border-color:#E3E9F4; }
+.kidgroup.over .kidcard { border-left-color:#3C68AA; } .kidgroup.average .kidcard { border-left-color:#7F9DC8; } .kidgroup.under .kidcard { border-left-color:#B9C9E2; } .kidgroup.nodata .kidcard { border-left-color:#DCE4F1; }
+.kidgroup .meter span, .kidgroup.average .meter span, .kidgroup.under .meter span { background:#4C72B0; }
+.segbar .seg.under { background:#B9C9E2; } .segbar .seg.average { background:#4C72B0; } .segbar .seg.over { background:#7F9DC8; }
