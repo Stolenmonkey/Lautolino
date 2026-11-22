@@ -350,3 +350,6 @@ table.freigaben tr.scopedetail > td { background:var(--bg); }
 .kidtable table.plain th:nth-child(3), .kidtable table.plain td:nth-child(3) { width:3.4em; padding:4px 12px 4px 2px; text-align:right; }
 .kidtable table.plain th { padding-top:6px; padding-bottom:6px; }
 @media (max-width:640px) { .kidtable table.plain th:nth-child(2), .kidtable table.plain td:nth-child(2) { width:8em; } }
+.kidtable table.plain th:nth-child(2), .kidtable table.plain td:nth-child(2) { width:9.6em; padding-right:10px; }
+.kidtable table.plain th:nth-child(3), .kidtable table.plain td:nth-child(3) { width:4.4em; padding-right:14px; }
+@media (max-width:640px) { .kidtable table.plain th:nth-child(2), .kidtable table.plain td:nth-child(2) { width:8.8em; } }
