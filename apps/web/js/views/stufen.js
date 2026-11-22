@@ -55,15 +55,15 @@ export function stufenTabelle(stages, onDetail) {
 // Je Buchstabe: aktuelle Stufe und Stand in allen sieben Stufen
 export function buchstabenStufen(letters) {
   if (!letters.length) return h("p", { class: "muted" }, "Noch keine Buchstaben freigegeben.");
-  // Kompakt: Spaltenkopf nur die Stufenzahl, Zellen nur „sicher/gesamt“ (Farbe = Status, Tooltip = Klartext)
-  const cell = (s) => s.status === "empty" ? h("span", { class: "muted", title: STATUS_TXT.empty }, "–")
-    : s.status === "locked" && !s.mastered ? h("span", { class: "muted", title: STATUS_TXT.locked }, "○")
-    : stageChip(s.status, `${s.mastered}/${s.total}`);
-  return h("div", {}, rahmenTabelle(["Buchstabe", "Aktuell", ...[1, 2, 3, 4, 5, 6, 7].map((n) => "St. " + n)], letters.map((l) => ({
-    cells: [h("strong", {}, l.letter.toUpperCase()), l.current === null ? "fertig" : `St. ${l.current}`, ...l.stages.map(cell)],
+  // Ein Balken je Buchstabe: ein Abschnitt je Stufe mit Silben (Stufen ohne Silben fehlen, der Balken ist dann entsprechend kürzer).
+  // Grün = sicher beherrscht (abgeschlossen), Blau = wird gerade geübt, weiß mit Rand = kommt noch.
+  const balken = (l) => h("div", { class: "stbar" }, l.stages.map((s, i) => s.status === "empty" ? null
+    : h("span", { class: "seg " + (s.status === "done" ? "done" : s.status === "active" ? "active" : "todo"), title: `Stufe ${i + 1}: ${s.mastered}/${s.total} sicher · ${STATUS_TXT[s.status]}` }, String(i + 1))));
+  return h("div", {}, rahmenTabelle(["Buchstabe", "Aktuell", "Fortschritt"], letters.map((l) => ({
+    cells: [h("strong", {}, l.letter.toUpperCase()), l.current === null ? "fertig" : `Stufe ${l.current}`, balken(l)],
     keys: [l.letter, l.current === null ? 99 : l.current],
   })), { badge: true, kompakt: true }),
-  h("p", { class: "muted" }, "Zahlen = sicher beherrschte von allen Silben der Stufe. Blau: wird geübt, grün: abgeschlossen, grau: übersprungen, ○ noch nicht dran, – keine Silben."));
+  h("p", { class: "muted" }, "Jeder Abschnitt ist eine Lernstufe (Zahl). Grün: sicher beherrscht, blau: wird gerade geübt, weiß mit Rand: kommt noch. Stufen ohne Silben werden nicht angezeigt."));
 }
 
 // Silbenstatistik: Silbe, Stufe/Unterkategorie, Ø Lesezeit, Abfragen, erfolgreiche Messungen, Status. filter: "alle" | "mastered" | "not_mastered" | "unrated" | "schwierig"
