@@ -56,11 +56,16 @@ export function stufenTabelle(stages, onDetail) {
 export function buchstabenStufen(letters) {
   if (!letters.length) return h("p", { class: "muted" }, "Noch keine Buchstaben freigegeben.");
   // Ein zusammenhängender Balken je Buchstabe, jede Stufe gleich breit (1/7). Der Balken endet bei der letzten Stufe mit Silben, dahinter bleibt der Hintergrund sichtbar.
-  // Grün = sicher beherrscht, Blau = wird gerade geübt, weiß = kommt noch. Die Stufenzahlen stehen einmalig in der Spaltenüberschrift.
-  const N = 7, COL = { done: "#7FB59A", active: "#6F93C9", todo: "#fff" };
+  // Grün = Stufe abgeschlossen; in der Stufe in Arbeit: dunkelblau = sicher, hellblau = bearbeitet, weiß = noch offen. Die Stufenzahlen stehen einmalig in der Spaltenüberschrift.
+  const N = 7;
   const balken = (l) => {
     let last = -1; l.stages.forEach((s, i) => { if (s.status !== "empty") last = i; });
-    const segs = l.stages.slice(0, last + 1).map((s, i) => h("span", { title: `Stufe ${i + 1}: ${s.status === "empty" ? STATUS_TXT.empty : `${s.mastered}/${s.total} sicher · ${STATUS_TXT[s.status]}`}`, style: `flex:1 1 0;min-width:0;height:100%;background:${COL[s.status] || COL.todo};box-shadow:inset -1px 0 0 rgba(75,97,138,.18)` }));
+    const fill = (s) => {   // grün = abgeschlossen; sonst von links: sicher beherrscht (dunkelblau), bearbeitet aber noch nicht sicher (hellblau), Rest weiß
+      if (s.status === "done") return "#7FB59A";
+      const t = s.total || 1, m = Math.round((s.mastered / t) * 100), p = Math.max(m, Math.round(((s.processed ?? s.mastered) / t) * 100));
+      return `linear-gradient(90deg,#4C72B0 0 ${m}%,#BFD1EC ${m}% ${p}%,#fff ${p}% 100%)`;
+    };
+    const segs = l.stages.slice(0, last + 1).map((s, i) => h("span", { title: `Stufe ${i + 1}: ${s.status === "empty" ? STATUS_TXT.empty : `${s.mastered}/${s.total} sicher, ${s.processed ?? s.mastered} bearbeitet`}`, style: `flex:1 1 0;min-width:0;height:100%;background:${s.status === "empty" ? "#fff" : fill(s)};box-shadow:inset -1px 0 0 rgba(75,97,138,.18)` }));
     return h("div", { style: "width:100%;height:22px;border-radius:999px;background:#EEF2F9" },
       segs.length ? h("div", { style: `display:flex;width:${(segs.length / N) * 100}%;height:100%;overflow:hidden;border-radius:999px;border:1.5px solid #B9C9E2;box-sizing:border-box;background:#fff` }, segs) : null);
   };
@@ -68,8 +73,7 @@ export function buchstabenStufen(letters) {
   return h("div", {}, rahmenTabelle(["Buchstabe", kopf], letters.map((l) => ({
     cells: [h("strong", {}, l.letter.toUpperCase()), balken(l)],
     keys: [l.letter, l.current === null ? 99 : l.current],
-  })), { badge: true, kompakt: true }),
-  h("p", { class: "muted" }, "Grün: sicher beherrscht, blau: wird gerade geübt, weiß: kommt noch. Jede Stufe ist gleich breit; der Balken endet bei der letzten Stufe mit Silben."));
+  })), { badge: true, kompakt: true }));
 }
 
 // Silbenstatistik: Silbe, Stufe/Unterkategorie, Ø Lesezeit, Abfragen, erfolgreiche Messungen, Status. filter: "alle" | "mastered" | "not_mastered" | "unrated" | "schwierig"
