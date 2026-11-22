@@ -128,13 +128,12 @@ describe("Server und Oberfläche", () => {
     api.token = lead;   // Schulleitung (hat dieselben Rechte für Auswertung und Druck)
     const user = { id: "x", role: "schulleitung", schoolId: sid }, root = document.createElement("div"); document.body.appendChild(root);
     await schoolView("auswertung", root, { api, user }); await flush();
-    expect(root.textContent).toContain("Silben-Züge für alle Kinder (PDF)"); expect(root.querySelector("svg")).toBeNull();
+    expect(root.querySelector("svg")).toBeNull();
     { const sel = root.querySelector('select[aria-label="Schüler"]') as HTMLSelectElement; sel.value = Array.from(sel.options).find((o) => o.text === "Mia")!.value; sel.dispatchEvent(new Event("change")); await flush(); }
     expect(root.querySelector("svg.zeitverlauf")).not.toBeNull(); expect(root.querySelectorAll("svg.zeitverlauf .pt").length).toBe(3); expect(root.querySelectorAll("svg.zeitverlauf .neu").length).toBe(1);
     expect(root.textContent).toContain("neu: "); expect(root.textContent).toContain("Sicher beherrscht"); expect(root.textContent).toContain("kein Nachweis der Lesekorrektheit");
     const saved: Array<{ b: Uint8Array; n: string }> = []; hooks.save = (b: Uint8Array, n: string) => saved.push({ b, n });
     click(root, "Silben-Zug drucken (PDF)"); await flush(); expect(saved.length).toBe(1); expect(txt(saved[0].b).startsWith("%PDF")).toBe(true); expect(saved[0].n).toBe("silben-zug-mia.pdf"); expect(txt(saved[0].b)).toContain("/Count 1");
-    click(root, "Silben-Züge für alle Kinder (PDF)"); await flush(); expect(saved.length).toBe(2); expect(txt(saved[1].b)).toContain("/Count 2"); expect(root.textContent).toContain("2 Blätter erzeugt");
     hooks.save = null;
   });
 });

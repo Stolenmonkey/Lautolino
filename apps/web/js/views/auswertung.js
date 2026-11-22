@@ -25,18 +25,12 @@ const druckKarte = (titel, text, hinweis, button) => h("section", { class: "card
 
 export async function auswertung(root, api, cid, classes, msg, slot) {
   const kids = (await api.get(`/classes/${cid}/students`)).filter((k) => k.active), detail = h("div");
-  const printAll = h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
-    const r = await pdfFor(api, kids);
-    if (!r.bytes) { clear(msg).append(notice("Für diese Klasse gibt es noch nichts zu drucken (Buchstaben freigeben).", "error")); return; }
-    await savePdf(r.bytes, "silben-zug-klasse.pdf");
-    clear(msg).append(notice(`${r.sheets.length} Blätter erzeugt.` + (r.skipped.length ? ` Ohne Blatt (zu wenige Silben): ${r.skipped.join(", ")}.` : ""), "ok"));
-  }) }, "Silben-Züge für alle Kinder (PDF)");
   if (!kids.some((k) => k.id === state.studentId)) state.studentId = null;
   const sel = h("select", { "aria-label": "Schüler", onchange: () => { state.studentId = sel.value || null; clear(detail); const k = kids.find((x) => x.id === state.studentId); if (k) kind(detail, api, k, msg); } },
     [h("option", { value: "" }, "– Kind wählen –"), ...kids.map((k) => h("option", { value: k.id, selected: k.id === state.studentId }, k.display_name))]);
   const picker = h("label", {}, "Schüler ", sel);
   if (slot) clear(slot).append(picker); else root.append(picker);
-  root.append(kids.length ? druckKarte("Silben-Züge", "Für die ganze Klasse drucken", "Ein Blatt je Kind als PDF.", printAll) : karte("Statistik", h("p", { class: "muted" }, "Noch keine aktiven Kinder in dieser Klasse.")), detail);
+  root.append(...(kids.length ? [] : [karte("Statistik", h("p", { class: "muted" }, "Noch keine aktiven Kinder in dieser Klasse."))]), detail);
   const kid = kids.find((k) => k.id === state.studentId);
   if (kid) await kind(detail, api, kid, msg);
 }
@@ -49,6 +43,7 @@ async function kind(root, api, kid, msg) {
     await savePdf(r.bytes, "silben-zug-" + (kid.display_name || "kind").toLowerCase().replace(/[^a-z0-9]+/g, "-") + ".pdf");
   }) }, "Silben-Zug drucken (PDF)");
   root.append(
+    karte("Buchstaben und Lernstufen", buchstabenStufen(ev.letters)),
     druckKarte(kid.display_name, "Silben-Zug dieses Kindes", "Persönliches Übungsblatt als PDF.", print),
     karte(`Aktive Silben (${ev.active.length})`, h("p", { class: "muted" }, "Freigeschaltete, noch nicht sicher beherrschte Silben – diese übt das Kind gerade."),
       ev.enabled ? silbenTabelle(ev.active, ev.minMeasurements) : h("p", { class: "muted" }, "Die Silbenauswahl nach Lernstufen ist derzeit nicht aktiv.")),
@@ -82,7 +77,6 @@ function stufenBereich(api, kid, ev) {
   return [
     karte("Lernstufen", stufenTabelle(ev.stages, open),
       ev.enabled ? h("p", { class: "muted" }, `Jede Silbe wird einzeln freigeschaltet: sobald mindestens ${ev.gatePercent} % der leichteren Silben aus ihren Buchstaben sicher sind. Pro Runde: ${ev.mix.fresh} % neue und angefangene, ${ev.mix.weak} % noch nicht sichere und ${ev.mix.review} % sicher beherrschte Silben (Wiederholung).`) : h("p", { class: "muted" }, "Die Silbenauswahl nach Lernstufen ist derzeit nicht aktiv (Konfiguration).")),
-    karte("Buchstaben und Lernstufen", buchstabenStufen(ev.letters)),
     karte("Silben", h("p", { class: "muted" }, `Sicher beherrscht heißt: mindestens ${ev.minMeasurements} Messungen und Durchschnitt innerhalb der Zeitvorgabe (unverändert). Abfragen = alle bisherigen Messungen; „innerhalb der Zeitvorgabe“ zählt nur die noch gespeicherten letzten Messwerte.`),
       h("div", { class: "row" }, filt), list),
   ];
