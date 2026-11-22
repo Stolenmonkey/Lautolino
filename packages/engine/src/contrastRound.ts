@@ -3,26 +3,31 @@
 import { classifySyllable } from "@silbenflug/core";
 import type { Rng } from "@silbenflug/shared";
 import type { SyllablePlan } from "./syllablePlan";
+import { BLOCK_MAX } from "./blocks";
 
-export const BLOCK_MAX = 3;
+
 const vowelOf = (s: string): string => classifySyllable(s).parts[0].replace(/^[^aeiouäöüy]+/, "");
 function shuffle<T>(a: T[], rng: Rng): T[] { const o = a.slice(); for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; } return o; }
 
-// Blöcke für eine Runde. Plätze für Blöcke = Aufgabenzahl x Anteil offener Kontrast-Silben an allen offenen Silben (Kontrast + normale).
+// Ohne gespeicherte Blöcke (älterer Stand): Blöcke aus den Kontrast-Silben ableiten (je Vokal Dreiergruppen).
+export function deriveBlocks(con: Set<string>): string[][] {
+  const byV = new Map<string, string[]>(); [...con].sort().forEach((s) => { const v = vowelOf(s); (byV.get(v) ?? byV.set(v, []).get(v)!).push(s); });
+  const out: string[][] = [];
+  byV.forEach((l) => { for (let i = 0; i < l.length; i += BLOCK_MAX) { const g = l.slice(i, i + BLOCK_MAX); out.push(g.length < 2 ? l.slice(-BLOCK_MAX) : g); } });
+  return out.filter((b) => b.length >= 2);
+}
+
+// Blöcke für eine Runde: genau die Silbenzahl der Runde wird nie überschritten (ein Block zählt mit allen Silben). Plätze für Blöcke =
+// Aufgabenzahl x Anteil offener Kontrast-Silben an allen offenen Silben (Kontrast + normale). Pro Runde kommt jeder Block höchstens einmal vor,
+// die Reihenfolge der Silben im Block wird zufällig gezogen.
 export function planBlocks(sp: SyllablePlan, n: number, rng: Rng): { blocks: string[][]; used: number } {
-  const k = sp.contrast, active = [...k.fresh, ...k.building, ...k.weak];
-  if (!active.length) return { blocks: [], used: 0 };
-  const normalActive = sp.fresh.length + sp.building.length + sp.weak.length, share = active.length / (active.length + normalActive), slots = Math.min(n, Math.round(n * share));
-  const byVowel = new Map<string, { act: string[]; solid: string[] }>();
-  const slot = (v: string) => byVowel.get(v) ?? byVowel.set(v, { act: [], solid: [] }).get(v)!;
-  active.forEach((s) => slot(vowelOf(s)).act.push(s)); k.solid.forEach((s) => slot(vowelOf(s)).solid.push(s));
-  const units = shuffle([...byVowel.values()].filter((u) => u.act.length > 0 && u.act.length + u.solid.length >= 2), rng);
+  const k = sp.contrast, active = new Set([...k.fresh, ...k.building, ...k.weak]);
+  if (!active.size) return { blocks: [], used: 0 };
+  const normalActive = sp.fresh.length + sp.building.length + sp.weak.length, share = active.size / (active.size + normalActive), slots = Math.min(n, Math.round(n * share));
   const blocks: string[][] = []; let used = 0;
-  for (const u of units) {
+  for (const b of shuffle(k.blocks.filter((x) => x.some((s) => active.has(s))), rng)) {
     if (used >= slots) break;
-    const b = shuffle(u.act, rng).slice(0, BLOCK_MAX);
-    if (b.length < 2) b.push(...shuffle(u.solid, rng).slice(0, 2 - b.length));
-    if (b.length < 2) continue;
+    if (used + b.length > n) continue;
     blocks.push(shuffle(b, rng)); used += b.length;
   }
   return { blocks, used };

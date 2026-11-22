@@ -6,6 +6,7 @@ import type { Rng } from "@silbenflug/shared";
 import type { SilbenflugConfig } from "@silbenflug/shared";
 import { isMastered, timeLimitFor } from "./mastery";
 import { contrastStat, kKey } from "./contrast";
+import { deriveBlocks } from "./contrastRound";
 
 export type StageStatus = "done" | "active" | "locked" | "empty";
 export interface StageRow { stage: number; status: StageStatus; total: number; processed: number; mastered: number; open: number }
@@ -19,7 +20,7 @@ export interface SyllablePlan {
   count: Record<string, number>;   // Anzahl Messungen je Silbe
   ratio: Record<string, number>;   // Ø-Zeit / Zeitvorgabe (nur bewertete Silben)
   // Stufe 2 (Kontrastblöcke): Gruppen nach der Kontrastzeit; alle Kontrast-Silben sind von Anfang an offen (keine Vorstufe nötig)
-  contrast: { fresh: string[]; building: string[]; weak: string[]; solid: string[]; count: Record<string, number>; ratio: Record<string, number> };
+  contrast: { fresh: string[]; building: string[]; weak: string[]; solid: string[]; count: Record<string, number>; ratio: Record<string, number>; blocks: string[][] };   // blocks: freigegebene Kontrastblöcke (nur Silben aus dem Pool)
 }
 
 const key = (letters: Iterable<string>): string => [...new Set(letters)].sort().join("");
@@ -29,11 +30,13 @@ function subsets(k: string): string[] {
   return out;
 }
 
-// pool: alle Silben der freigegebenen Buchstaben und Längen. Freischaltung einer Silbe der Stufe k: In jeder Vorstufe j < k müssen mindestens gate_percent der Silben,
-// die nur aus Buchstaben dieser Silbe bestehen, sicher beherrscht sein (Stufe 2 = Anlautwechsel, siehe contrastSet; leere Vorstufen zählen als erfüllt).
+// pool: alle Silben der freigegebenen Buchstaben und Längen. Freischaltung einer Silbe der Stufe k (ab 3): In Stufe k-2 müssen mindestens gate_percent der Silben,
+// die nur aus Buchstaben dieser Silbe bestehen, sicher beherrscht sein (Stufe 2 = Kontrastblöcke, gemessen an der Kontrastzeit; leere Stufen zählen als erfüllt).
 // Silben mit Messungen bleiben immer offen. Bleiben weniger als minPool nicht sichere offene Silben, werden die niedrigsten gesperrten nachgeholt.
-export function syllablePlan(pool: string[], times: Record<string, number[]>, cfg: SilbenflugConfig, minPool: number = cfg.round.min_pool): SyllablePlan {
-  const syls = [...new Set(pool.map((x) => x.toLowerCase()))], con = contrastSet(syls), gate = (cfg.stages?.gate_percent ?? 80) / 100;
+export function syllablePlan(pool: string[], times: Record<string, number[]>, cfg: SilbenflugConfig, minPool: number = cfg.round.min_pool, storedBlocks?: string[][]): SyllablePlan {
+  const syls = [...new Set(pool.map((x) => x.toLowerCase()))], gate = (cfg.stages?.gate_percent ?? 80) / 100;
+  // Stufe 2: die gespeicherten Blöcke (nur freigegebene Silben); ohne gespeicherte Blöcke (älterer Stand) aus den Silben abgeleitet
+  const inPool = new Set(syls), blocks = storedBlocks ? storedBlocks.map((b) => b.filter((x) => inPool.has(x))).filter((b) => b.length >= 2) : deriveBlocks(contrastSet(syls)), con = new Set(blocks.flat());
   const cls = new Map(syls.map((s) => [s, classifySyllable(s).stage] as const));
   const done = new Map(syls.map((s) => [s, isMastered(times[s], cfg, s)] as const));
   const bucket = new Map<string, number[][]>();   // Buchstabenmenge -> je Stufe [gesamt, sicher]
@@ -46,14 +49,15 @@ export function syllablePlan(pool: string[], times: Record<string, number[]>, cf
     if (hit !== undefined) return hit;
     const subs = subsets(k);
     let ok = true;
-    for (let j = 1; j < st && ok; j++) {
+    // immer zwei aktive Stufen: Stufe k kommt dazu, sobald Stufe k-2 zu gate_percent sicher ist; ist Stufe k-2 für diese Buchstaben leer, entscheidet die nächste darunter
+    for (let j = st - 2; j >= 1; j--) {
       let tot = 0, mas = 0;
       subs.forEach((t) => { const c = bucket.get(t)?.[j]; if (c) { tot += c[0]; mas += c[1]; } });
-      if (tot > 0 && mas / tot < gate - 1e-9) ok = false;
+      if (tot > 0) { if (mas / tot < gate - 1e-9) ok = false; break; }
     }
     memo.set(id, ok); return ok;
   };
-  const plan: SyllablePlan = { fresh: [], building: [], weak: [], solid: [], locked: [], count: {}, ratio: {}, contrast: { fresh: [], building: [], weak: [], solid: [], count: {}, ratio: {} } };
+  const plan: SyllablePlan = { fresh: [], building: [], weak: [], solid: [], locked: [], count: {}, ratio: {}, contrast: { fresh: [], building: [], weak: [], solid: [], count: {}, ratio: {}, blocks } };
   con.forEach((s) => {
     const k = plan.contrast, n = (times[kKey(s)] || []).length, r = cdone.get(s)!;
     k.count[s] = n;

@@ -64,8 +64,8 @@ export interface StageGroup { stage: number; name: string; structure: string; su
 const byLenAlpha = (a: string, b: string): number => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0);
 
 // Verteilt eine Silbenmenge auf alle sieben Stufen. contrastFrom: Menge, in der Kontrastpartner gesucht werden (Standard: dieselbe Menge).
-export function stagePlan(syllables: string[], contrastFrom?: string[]): StageGroup[] {
-  const uniq = [...new Set(syllables.map((s) => s.toLowerCase()))].sort(byLenAlpha), con = contrastSet(contrastFrom ?? uniq);
+export function stagePlan(syllables: string[], contrastFrom?: string[], conSet?: Set<string>): StageGroup[] {   // conSet: Silben der gespeicherten Kontrastblöcke (ersetzt die Ableitung)
+  const uniq = [...new Set(syllables.map((s) => s.toLowerCase()))].sort(byLenAlpha), con = conSet ?? contrastSet(contrastFrom ?? uniq);
   return STAGES.map((def) => {
     const subs: StageSub[] = def.subs.map((u) => ({ id: u.id, name: u.name, syllables: [] as string[] }));
     for (const s of uniq) {

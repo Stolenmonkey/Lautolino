@@ -300,7 +300,7 @@ describe("Klassenlernplan", () => {
     await call("POST", `/classes/${k.id}/releases`, T, { letters: ["o", "l"] }); for (const l of "emanrtis") await call("POST", `/classes/${k.id}/releases`, T, { letter: l });
     const plan2 = (await call("GET", `/classes/${k.id}/plan`, T)).json, total = plan2.releases.reduce((a: number, x: any) => a + x.syllable_count, 0);
     expect(total).toBeGreaterThan(200);
-    expect(raw.prepare("SELECT COUNT(*) AS n FROM letter_syllable_scope").get().n).toBe(total);
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM letter_syllable_scope WHERE syllable NOT LIKE '%+%'").get().n).toBe(total);   // Kontrastblöcke (Schlüssel mit +) stehen zusätzlich im selben Speicher
   });
 });
 

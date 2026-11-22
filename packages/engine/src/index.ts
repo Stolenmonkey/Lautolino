@@ -6,3 +6,4 @@ export * from "./params";
 export * from "./syllablePlan";
 export * from "./contrast";
 export * from "./contrastRound";
+export * from "./blocks";

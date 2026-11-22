@@ -3,7 +3,7 @@ import { groupedTasks, wortCase } from "@silbenflug/core";
 import { assembleRound, kKey, planBlocks, secureTasks, recordSyl, roundParams, syllablePlan, levelProgress, levelsReached, highestLevel } from "@silbenflug/engine";
 import type { AwardLevel, Rng, SilbenflugConfig } from "@silbenflug/shared";
 
-export interface Plan { classId: string | null; letters: string[]; syllables: string[]; scopes?: Record<string, string[]> }   // syllables: fester Silbenumfang der freigegebenen Buchstaben (vom Server)
+export interface Plan { classId: string | null; letters: string[]; syllables: string[]; scopes?: Record<string, string[]>; blocks?: string[][] }   // syllables: fester Silbenumfang der freigegebenen Buchstaben (vom Server)
 // Alles, was das Gerät für ein Kind merkt (Silbenzeiten; der Server hat die maßgebliche Kopie der Auszeichnungen).
 export interface LocalState {
   sylTimes: Record<string, number[]>;     // je Silbe die letzten Zeiten (Sekunden bis „Weiter“)
@@ -23,7 +23,7 @@ export function prepareRound(plan: Plan, cfg: SilbenflugConfig, st: LocalState, 
   // Auswahl je Silbe: Freischaltung und Gruppen aus den lokalen Silbenzeiten, Mix aus der Konfiguration (ohne Lernstufen oder zu wenige offene Silben: sichere Silben der höchsten Stufe)
   let tasks: string[] | null = null, kmark: number[] = [];
   if (st2 && st2.enabled !== 0) {
-    const sp = syllablePlan(plan.syllables, st.sylTimes, cfg);
+    const sp = syllablePlan(plan.syllables, st.sylTimes, cfg, undefined, plan.blocks);
     if (sp.fresh.length + sp.building.length + sp.weak.length + sp.solid.length >= cfg.round.min_pool) {
       // Kontrastblöcke (Stufe 2) belegen einen Teil der Plätze, der Rest kommt wie bisher aus der Auswahl je Silbe
       const kb = planBlocks(sp, cfg.round.task_count, rng), rest = cfg.round.task_count - kb.used;

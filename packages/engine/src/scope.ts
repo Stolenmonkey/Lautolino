@@ -1,9 +1,10 @@
 // Fester Silbenumfang je Buchstabe. Wird bei der Freigabe EINMAL berechnet und dauerhaft gespeichert.
 import { structureWords, classifySyllable, partWeight, wordScore, isRealWord } from "@silbenflug/core";
+import { blockScope, groupBlocks } from "./blocks";
 
 // Begrenzung des Umfangs (Konfiguration, Block scope): höchstens capStage14 Wörter je Lernstufe 1 bis 4 und capStage57 je Lernstufe 5 bis 7 für einen neuen Buchstaben.
 // freqPercent: Anteil der Plätze, der nach Häufigkeit im Deutschen vergeben wird (100 = nur die häufigsten, der Rest wird fest ausgelost).
-export interface ScopeParams { capStage14: number; capStage57: number; freqPercent: number }
+export interface ScopeParams { capStage14: number; capStage57: number; freqPercent: number; blocks?: boolean }   // blocks: Kontrastblöcke (Stufe 2) mit in den festen Umfang schreiben
 
 const fnv = (s: string): number => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 
@@ -38,14 +39,16 @@ export function limitScope(cands: string[], p: ScopeParams, mult: number, seed: 
 export function syllableScope(releasedBefore: string[], newLetter: string, p?: ScopeParams): string[] {
   const nl = newLetter.toLowerCase(), letters = releasedBefore.map((x) => x.toLowerCase()).filter((x) => x !== nl).concat([nl]);
   if (!p) return structureWords(letters, nl);
-  return limitScope(structureWords(letters, nl, { weight: partWeight, capPerSub: Infinity }), p, 1, nl);
+  const syl = limitScope(structureWords(letters, nl, { weight: partWeight, capPerSub: Infinity }), p, 1, nl);
+  return p.blocks ? [...syl, ...blockScope(letters.slice(0, -1), nl)] : syl;
 }
 
 // Umfang der Startgruppe (alle Startbuchstaben teilen sich die Menge): Obergrenze mal Anzahl der Startbuchstaben.
 export function groupScope(group: string[], p?: ScopeParams): string[] {
   const ls = group.map((x) => x.toLowerCase());
   if (!p) return structureWords(ls);
-  return limitScope(structureWords(ls, undefined, { weight: partWeight, capPerSub: Infinity }), p, ls.length, ls.join(""));
+  const syl = limitScope(structureWords(ls, undefined, { weight: partWeight, capPerSub: Infinity }), p, ls.length, ls.join(""));
+  return p.blocks ? [...syl, ...groupBlocks(ls)] : syl;
 }
 
 // Eine Freigabe einer Klasse für die Neuberechnung (Reihenfolge wie freigegeben).

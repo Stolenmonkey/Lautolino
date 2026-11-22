@@ -2,7 +2,7 @@
 // Einziger Messwert ist die Zeit bis „Weiter“. Die Bewertung ist zeitbasiert und kein Nachweis der Lesekorrektheit.
 import { Hono } from "hono";
 import { groupedTasks, wortCase, sylProbs } from "@silbenflug/core";
-import { kKey, secureTasks, syllablePlan } from "@silbenflug/engine";
+import { blockScope, groupBlocks, isBlockKey, kKey, secureTasks, syllablePlan } from "@silbenflug/engine";
 import type { SyllablePlan } from "@silbenflug/engine";
 import { DEFAULT_CONFIG } from "@silbenflug/shared";
 import { isMastered, letterProgress, levelProgress, newAwards, highestLevel, roundParams } from "@silbenflug/engine";
@@ -24,15 +24,34 @@ const num = (v: unknown, lo: number, hi: number, name: string): number => {
 export async function loadBlocked(d: Deps, classId: string): Promise<Set<string>> {
   return new Set((await d.db.all<{ syllable: string }>("SELECT syllable FROM class_blocked_syllables WHERE class_id=?", [classId])).map((x) => x.syllable));
 }
+// Ältere Klassen ohne gespeicherte Kontrastblöcke: einmal aus der Freigabe-Reihenfolge berechnen und fest speichern (nur Einfügen, nichts wird geändert)
+async function ensureBlocks(d: Deps, classId: string): Promise<void> {
+  const rel = await d.db.all<{ letter: string; start_group: number }>("SELECT letter, start_group FROM class_letter_releases WHERE class_id=? ORDER BY release_order", [classId]);
+  if (rel.length < 3) return;
+  const start = rel.filter((x) => x.start_group).map((x) => x.letter), per: Record<string, string[]> = {}; let known = start.slice();
+  start.forEach((l) => { per[l] = groupBlocks(start); });
+  rel.filter((x) => !x.start_group).forEach((x) => { per[x.letter] = blockScope(known, x.letter); known = [...known, x.letter]; });
+  const at = nowIso(d), version = (await activeConfig(d)).version, stmts: Array<{ sql: string; params: Array<string | number> }> = [];
+  Object.entries(per).forEach(([l, bl]) => bl.forEach((b) => stmts.push({ sql: "INSERT INTO letter_syllable_scope(class_id,letter,syllable,syl_length,fixed_at,config_version) VALUES(?,?,?,?,?,?) ON CONFLICT(class_id,letter,syllable) DO NOTHING", params: [classId, l, b, b.length, at, version] })));
+  if (stmts.length) await d.db.batch(stmts);
+}
 // scopes: Umfang ohne gesperrte Silben (Übung, Wortschatz, Bewertung, Auszeichnungen); full: vollständiger Umfang inkl. gesperrter (nur Lernplan der Lehrkraft)
-export async function loadScopesEx(d: Deps, classId: string, letters: string[]): Promise<{ scopes: Record<string, string[]>; full: Record<string, string[]> }> {
-  const rows = await d.db.all<{ letter: string; syllable: string }>("SELECT letter, syllable FROM letter_syllable_scope WHERE class_id=?", [classId]), blocked = await loadBlocked(d, classId);
+// blocks: freigegebene Kontrastblöcke (Stufe 2, nicht gesperrt), fullBlocks: alle gespeicherten Blöcke. Blöcke stehen im selben Speicher wie die Silben (Schlüssel mit "+").
+export async function loadScopesEx(d: Deps, classId: string, letters: string[]): Promise<{ scopes: Record<string, string[]>; full: Record<string, string[]>; blocks: string[][]; fullBlocks: string[][] }> {
+  let rows = await d.db.all<{ letter: string; syllable: string }>("SELECT letter, syllable FROM letter_syllable_scope WHERE class_id=?", [classId]);
+  if (letters.length >= 3 && !rows.some((r) => isBlockKey(r.syllable))) { await ensureBlocks(d, classId); rows = await d.db.all<{ letter: string; syllable: string }>("SELECT letter, syllable FROM letter_syllable_scope WHERE class_id=?", [classId]); }
+  const blocked = await loadBlocked(d, classId);
   // Pausierte Buchstaben: Silben, in denen sie vorkommen, zählen nicht (weder in Runden noch in Stufen, Quote und Auszeichnungen)
   const paused = (await d.db.all<{ letter: string }>("SELECT letter FROM class_letter_releases WHERE class_id=? AND paused_at IS NOT NULL", [classId])).map((x) => x.letter);
-  const scopes: Record<string, string[]> = {}, full: Record<string, string[]> = {};
+  const scopes: Record<string, string[]> = {}, full: Record<string, string[]> = {}, fb = new Set<string>(), ob = new Set<string>();
   letters.forEach((l) => { scopes[l] = []; full[l] = []; });
-  rows.forEach((r) => { if (full[r.letter] && !paused.some((q) => r.syllable.includes(q))) { full[r.letter].push(r.syllable); if (!blocked.has(r.syllable)) scopes[r.letter].push(r.syllable); } });
-  return { scopes, full };
+  rows.forEach((r) => {
+    if (!full[r.letter]) return;
+    if (isBlockKey(r.syllable)) { fb.add(r.syllable); if (!blocked.has(r.syllable)) ob.add(r.syllable); return; }
+    if (!paused.some((q) => r.syllable.includes(q))) { full[r.letter].push(r.syllable); if (!blocked.has(r.syllable)) scopes[r.letter].push(r.syllable); }
+  });
+  const split = (set: Set<string>) => [...set].sort().map((k) => k.split("+"));
+  return { scopes, full, blocks: split(ob), fullBlocks: split(fb) };
 }
 export async function loadScopes(d: Deps, classId: string, letters: string[], withBlocked = false): Promise<Record<string, string[]>> {
   const r = await loadScopesEx(d, classId, letters);
@@ -54,15 +73,15 @@ async function heldAwards(d: Deps, studentId: string): Promise<Record<string, Aw
 // Daten eines Kindes für die Lernstufen: fester Silbenumfang der Buchstaben und Silbenzeiten. Alles wird daraus berechnet, es wird nichts zusätzlich gespeichert.
 export async function studentTraining(d: Deps, studentId: string, cfg: SilbenflugConfig) {
   const st = await studentLetters(d.db, studentId);
-  if (!st.classId || !st.letters.length) return { st, scopes: {} as Record<string, string[]>, times: {} as Record<string, number[]>, maxSeq: {} as Record<string, number> };
-  const scopes = await loadScopes(d, st.classId, st.letters), { times, maxSeq } = await loadTimes(d, studentId);
-  return { st, scopes, times, maxSeq };
+  if (!st.classId || !st.letters.length) return { st, scopes: {} as Record<string, string[]>, blocks: [] as string[][], times: {} as Record<string, number[]>, maxSeq: {} as Record<string, number> };
+  const { scopes, blocks } = await loadScopesEx(d, st.classId, st.letters), { times, maxSeq } = await loadTimes(d, studentId);
+  return { st, scopes, blocks, times, maxSeq };
 }
 
 // Silbenbasierte Auswahl: Gruppen und Freischaltung je Silbe aus dem Silbenumfang aller Buchstaben und den Zeiten; null = altes Fenster (mode 1 oder Stufen aus)
-export function studentSylPlan(tr: { scopes: Record<string, string[]>; times: Record<string, number[]> }, cfg: SilbenflugConfig): SyllablePlan | null {
+export function studentSylPlan(tr: { scopes: Record<string, string[]>; blocks?: string[][]; times: Record<string, number[]> }, cfg: SilbenflugConfig): SyllablePlan | null {
   const all = [...new Set(Object.values(tr.scopes).flat())];
-  return all.length ? syllablePlan(all, tr.times, cfg) : null;
+  return all.length ? syllablePlan(all, tr.times, cfg, undefined, tr.blocks) : null;
 }
 
 // Stand je Buchstabe (für Lehrkräfte; Kinder sehen nur die Stufe)

@@ -3,7 +3,7 @@ import type { Env } from "../context";
 import { hmacHex, randomToken, sha256Hex, studentCodeCandidates, verifyPassword } from "../crypto";
 import { authenticate } from "../middleware";
 import { studentLetters } from "./plan";
-import { loadScopes } from "./progress";
+import { loadScopesEx } from "./progress";
 import { activeConfig, body, fail, newId, nowDate, nowIso, str } from "../util";
 
 export function studentRoutes() {
@@ -41,8 +41,8 @@ export function studentRoutes() {
   r.get("/plan", authenticate, async (c) => {
     const p = c.get("p");
     if (p.kind !== "student") throw fail(403, "Keine Berechtigung");
-    const d = c.get("deps"), st = await studentLetters(d.db, p.id), scopes = st.classId ? await loadScopes(d, st.classId, st.letters) : {};
-    return c.json({ ...st, syllables: [...new Set(Object.values(scopes).flat())].sort((a, b) => a.length - b.length || (a < b ? -1 : 1)), scopes });   // scopes: fester Silbenumfang je Buchstabe (die App rechnet damit die Verbesserung am Rundenende)
+    const d = c.get("deps"), st = await studentLetters(d.db, p.id), ex = st.classId ? await loadScopesEx(d, st.classId, st.letters) : { scopes: {} as Record<string, string[]>, blocks: [] as string[][] }, scopes = ex.scopes;
+    return c.json({ ...st, syllables: [...new Set(Object.values(scopes).flat())].sort((a, b) => a.length - b.length || (a < b ? -1 : 1)), scopes, blocks: ex.blocks });   // blocks: freigegebene Kontrastblöcke (Stufe 2)   // scopes: fester Silbenumfang je Buchstabe (die App rechnet damit die Verbesserung am Rundenende)
   });
   return r;
 }

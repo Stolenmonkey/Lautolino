@@ -70,9 +70,11 @@ describe("Lautolino (Server und Oberfläche)", () => {
   describe("Silbenübersicht der Klasse", () => {
     it("zeigt alle möglichen Silben mit Stufe und Unterkategorie, ohne ungültige oder doppelte", async () => {
       const r = await call("GET", `/classes/${cid}/syllables`, teacher); expect(r.status).toBe(200);
-      const all = groupScope(LETTERS, scopeParams(DEFAULT_CONFIG)); expect(r.json.total).toBe(all.length); expect(r.json.letters).toEqual(LETTERS); expect(r.json.allowedLengths).toBeUndefined();
+      const all = groupScope(LETTERS, scopeParams(DEFAULT_CONFIG)).filter((w) => !w.includes("+")); expect(r.json.total).toBe(all.length); expect(r.json.letters).toEqual(LETTERS); expect(r.json.allowedLengths).toBeUndefined();
       expect(r.json.stages.map((x: any) => x.stage)).toEqual([1, 2, 3, 4, 5, 6, 7]); expect(r.json.stages[0].subs.map((x: any) => x.id)).toEqual(["1.1", "1.2"]);
       expect(r.json.stages.filter((x: any) => x.stage !== 2).reduce((a: number, x: any) => a + x.total, 0)).toBe(all.length);
+      const b2 = (await call("GET", `/classes/${cid}/syllables?stage=2`, teacher)).json; expect(b2.blocks).toBe(true); expect(b2.total).toBe(3);   // Stufe 2: je Vokal ein Kontrastblock aus den drei Konsonanten
+      expect(b2.subs[0].syllables.map((x: any) => x.syllable).sort()).toEqual(["la+ma+pa", "le+me+pe", "lo+mo+po"]); expect(b2.subs[0].syllables[0]).toMatchObject({ block: true, blocked: false });
       const d = (await call("GET", `/classes/${cid}/syllables?stage=3`, teacher)).json, flat = d.subs.flatMap((u: any) => u.syllables);
       expect(new Set(flat.map((x: any) => x.syllable)).size).toBe(flat.length); expect(flat.every((x: any) => x.syllable.length >= 1 && x.letters.every((l: string) => LETTERS.includes(l)))).toBe(true);
       const mal = flat.find((x: any) => x.syllable === "mal"); expect(mal).toMatchObject({ letters: ["m", "a", "l"], newestLetter: "m", length: 3, parts: ["mal"] });
@@ -126,6 +128,18 @@ describe("Lautolino (Server und Oberfläche)", () => {
       for (let i = 0; i < 6; i++) await post("ks" + i, 4);                                    // danach nur langsam: Kontrast nicht mehr sicher, normale Zeit bleibt sicher
       ev = (await call("GET", `/students/${kA}/evaluation`, teacher)).json;
       expect(ev.syllables.find((x: any) => x.syllable === "ma")).toMatchObject({ status: "mastered", kStatus: "not_mastered" });
+    });
+    it("Kontrastblöcke werden beim Freigeben erzeugt und fest gespeichert; ein neuer Buchstabe ändert die alten nicht; Blöcke sind sperrbar", async () => {
+      const blocksOf = () => (raw.prepare("SELECT letter, syllable FROM letter_syllable_scope WHERE class_id=? AND syllable LIKE '%+%' ORDER BY letter, syllable").all(cid) as any[]).map((x) => x.letter + ":" + x.syllable);
+      const before = blocksOf(); expect(new Set(before.map((x) => x.split(":")[1]))).toEqual(new Set(["la+ma+pa", "le+me+pe", "lo+mo+po"]));
+      expect((await call("POST", `/classes/${cid}/releases`, lead, { letter: "n" })).status).toBe(201);
+      const after = blocksOf(); expect(after.filter((x) => !x.startsWith("n:"))).toEqual(before);                 // alte Blöcke unverändert
+      expect(after.filter((x) => x.startsWith("n:")).map((x) => x.split(":")[1]).sort()).toEqual(["ma+na+pa", "me+ne+pe", "mo+no+po"]);   // neuer Konsonant mit den zwei zuletzt freigegebenen
+      const b2 = (await call("GET", `/classes/${cid}/syllables?stage=2`, teacher)).json; expect(b2.total).toBe(6);
+      expect((await call("PUT", `/classes/${cid}/blocked-syllables`, teacher, { syllable: "ma+na+pa", blocked: true })).status).toBe(200);
+      expect((await call("GET", `/classes/${cid}/syllables?stage=2`, teacher)).json).toMatchObject({ total: 5, blocked: 1 });
+      expect((await call("GET", "/student/plan", await kidTok(codeA))).json.blocks).not.toContainEqual(["ma", "na", "pa"]);   // gesperrter Block kommt nicht in die Übung
+      expect((await call("GET", "/student/plan", await kidTok(codeA))).json.blocks).toContainEqual(["la", "ma", "pa"]);
     });
     it("Schalter stages.enabled = 0: Silbenauswahl wie bisher ohne Lernstufen", async () => {
       expect((await call("POST", "/admin/config", adm, { config: { ...DEFAULT_CONFIG, stages: { enabled: 0 } } })).status).toBe(201);

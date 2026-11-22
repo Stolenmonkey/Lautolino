@@ -1,6 +1,6 @@
 // Klassenlernplan: Buchstabenfreigabe (mit festem Silbenumfang), Ausnahmen einzelner Kinder.
 import { Hono } from "hono";
-import { syllableScope, groupScope, scopeParams, rebuildAfterDelete, resumeScope } from "@silbenflug/engine";
+import { syllableScope, groupScope, scopeParams, rebuildAfterDelete, resumeScope, blockScope, groupBlocks, isBlockKey } from "@silbenflug/engine";
 import type { ReleaseRef } from "@silbenflug/engine";
 import type { Env } from "../context";
 import { authenticate, requireStaff } from "../middleware";
@@ -35,7 +35,7 @@ export function planRoutes() {
 
   r.get("/classes/:cid/plan", staff, async (c) => {
     const d = c.get("deps"), cid = c.req.param("cid"); await cls(c);
-    const releases = await d.db.all<any>("SELECT l.letter, l.release_order, l.released_at, l.paused_at, l.start_group, EXISTS(SELECT 1 FROM rounds r JOIN student_class_history h ON h.student_id=r.student_id AND h.to_date IS NULL WHERE h.class_id=l.class_id AND r.played_at>=l.released_at) AS played, (SELECT COUNT(*) FROM letter_syllable_scope s WHERE s.class_id=l.class_id AND s.letter=l.letter AND s.syllable NOT IN (SELECT syllable FROM class_blocked_syllables WHERE class_id=l.class_id)) AS syllable_count FROM class_letter_releases l WHERE l.class_id=? ORDER BY l.release_order", [cid]);
+    const releases = await d.db.all<any>("SELECT l.letter, l.release_order, l.released_at, l.paused_at, l.start_group, EXISTS(SELECT 1 FROM rounds r JOIN student_class_history h ON h.student_id=r.student_id AND h.to_date IS NULL WHERE h.class_id=l.class_id AND r.played_at>=l.released_at) AS played, (SELECT COUNT(*) FROM letter_syllable_scope s WHERE s.class_id=l.class_id AND s.letter=l.letter AND s.syllable NOT LIKE '%+%' AND s.syllable NOT IN (SELECT syllable FROM class_blocked_syllables WHERE class_id=l.class_id)) AS syllable_count FROM class_letter_releases l WHERE l.class_id=? ORDER BY l.release_order", [cid]);
     const ex = await d.db.all<{ student_id: string; letter: string }>("SELECT e.student_id, e.letter FROM student_letter_exclusions e JOIN student_class_history h ON h.student_id=e.student_id AND h.to_date IS NULL WHERE h.class_id=?", [cid]);
     const byStudent: Record<string, string[]> = {};
     ex.forEach((x) => { (byStudent[x.student_id] ||= []).push(x.letter); });
@@ -76,11 +76,13 @@ export function planRoutes() {
         if (syl.some((w) => !/^[a-z]{1,30}$/.test(w) || [...w].some((ch) => !okLetters.has(ch)) || (prev.length > 0 && !w.includes(l)))) throw fail(400, "scopes: ungültige Silbe");
         return { letter: l, syl };
       });
+      // Kontrastblöcke (Stufe 2) werden immer vom Server erzeugt und mit dem Umfang fest gespeichert
+      scopes = scopes.map((sc, i) => ({ letter: sc.letter, syl: [...sc.syl, ...(prev.length ? blockScope(known, sc.letter) : groupBlocks(group))] }));
     } else {
       const groupSyl = prev.length ? [] : groupScope(group, sp);
       scopes = group.map((l) => ({ letter: l, syl: prev.length ? syllableScope(known, l, sp) : groupSyl }));
     }
-    if (!prev.length && !scopes.some((x) => x.syl.length)) throw fail(400, "Mit diesen Buchstaben lassen sich keine Silben bilden. Bitte auch einen Vokal wählen.");
+    if (!prev.length && !scopes.some((x) => x.syl.some((w) => !isBlockKey(w)))) throw fail(400, "Mit diesen Buchstaben lassen sich keine Silben bilden. Bitte auch einen Vokal wählen.");
     const stmts: Array<{ sql: string; params: Array<string | number> }> = [];
     scopes.forEach((sc, i) => {
       stmts.push({ sql: "INSERT INTO class_letter_releases(class_id,letter,release_order,released_at,released_by,start_group) VALUES(?,?,?,?,?,?)", params: [cid, sc.letter, prev.length + i + 1, at, p.id, prev.length ? 0 : 1] });
@@ -90,8 +92,8 @@ export function planRoutes() {
       }
     });
     await d.db.batch(stmts);
-    await audit(d, p.id, "letters_released", cid, { letters: group, syllables: scopes.map((x) => x.syl.length) });
-    return c.json({ released: scopes.map((x) => ({ letter: x.letter, syllableCount: x.syl.length })) }, 201);
+    await audit(d, p.id, "letters_released", cid, { letters: group, syllables: scopes.map((x) => x.syl.filter((w) => !isBlockKey(w)).length), blocks: scopes.map((x) => x.syl.filter(isBlockKey).length) });
+    return c.json({ released: scopes.map((x) => ({ letter: x.letter, syllableCount: x.syl.filter((w) => !isBlockKey(w)).length, blockCount: x.syl.filter(isBlockKey).length })) }, 201);
   });
 
   type Rel = { letter: string; release_order: number; released_at: string; start_group: number; paused_at: string | null };
@@ -184,7 +186,7 @@ export function planRoutes() {
 
   r.get("/classes/:cid/releases/:letter/scope", staff, async (c) => {
     const d = c.get("deps"); await cls(c);
-    const rows = await d.db.all<{ syllable: string }>("SELECT syllable FROM letter_syllable_scope WHERE class_id=? AND letter=? ORDER BY syl_length, syllable", [c.req.param("cid"), c.req.param("letter").toLowerCase()]);
+    const rows = await d.db.all<{ syllable: string }>("SELECT syllable FROM letter_syllable_scope WHERE class_id=? AND letter=? AND syllable NOT LIKE '%+%' ORDER BY syl_length, syllable", [c.req.param("cid"), c.req.param("letter").toLowerCase()]);
     return c.json(rows.map((x) => x.syllable));
   });
 
@@ -198,7 +200,7 @@ export function planRoutes() {
     const d = c.get("deps"), p = c.get("p"), cid = c.req.param("cid"), sid = await cls(c), b = await body(c);
     await assertSchoolWritable(d, sid);
     const syl = String(b.syllable ?? "").trim().toLowerCase();
-    if (!/^[a-z]{1,30}$/.test(syl) || typeof b.blocked !== "boolean") throw fail(400, "syllable (Text) und blocked (true/false) erwartet");
+    if (!/^[a-z]{1,30}(\+[a-z]{1,30}){0,3}$/.test(syl) || typeof b.blocked !== "boolean") throw fail(400, "syllable (Text, bei Kontrastblöcken z. B. la+ma+pa) und blocked (true/false) erwartet");
     if (!(await d.db.first("SELECT 1 AS x FROM letter_syllable_scope WHERE class_id=? AND syllable=? LIMIT 1", [cid, syl]))) throw fail(404, "Diese Silbe gehört nicht zum Silbenumfang der Klasse");
     if (b.blocked) await d.db.run("INSERT INTO class_blocked_syllables(class_id,syllable,blocked_at,blocked_by) VALUES(?,?,?,?) ON CONFLICT(class_id,syllable) DO NOTHING", [cid, syl, nowIso(d), p.id]);
     else await d.db.run("DELETE FROM class_blocked_syllables WHERE class_id=? AND syllable=?", [cid, syl]);

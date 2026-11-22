@@ -9,7 +9,7 @@ const byStage = (w: string[]) => { const m = new Map<number, string[]>(); w.forE
 
 describe("Silbenumfang mit Obergrenze und Häufigkeit", () => {
   it("Standardwerte: 10 je Stufe 1 bis 4, 8 je Stufe 5 bis 7, Häufigkeit 100 Prozent", () => {
-    expect(DEFAULT_CONFIG.scope).toEqual({ cap_stage_1_4: 10, cap_stage_5_7: 8, freq_percent: 100 }); expect(sp).toEqual({ capStage14: 10, capStage57: 8, freqPercent: 100 });
+    expect(DEFAULT_CONFIG.scope).toEqual({ cap_stage_1_4: 10, cap_stage_5_7: 8, freq_percent: 100 }); expect(sp).toEqual({ capStage14: 10, capStage57: 8, freqPercent: 100, blocks: true });
   });
   it("neuer Buchstabe: höchstens 10 Wörter in Stufe 1 bis 4, höchstens 8 in Stufe 5 bis 7, alle enthalten den Buchstaben", () => {
     const w = syllableScope(known, "p", sp); expect(w.length).toBeGreaterThan(20);
@@ -50,7 +50,7 @@ describe("Silbenumfang mit Obergrenze und Häufigkeit", () => {
     expect(w.filter((x) => classifySyllable(x).stage === 1).length).toBe(4); expect(w.filter((x) => classifySyllable(x).stage === 3).length).toBe(2);
   });
   it("ab Stufe 4 nur echte Wörter, sonst bleibt die Stufe kleiner", () => {
-    const w = syllableScope(known, "p", sp); w.filter((x) => classifySyllable(x).stage >= 4).forEach((x) => expect(isRealWord(x)).toBe(true));
+    const w = syllableScope(known, "p", sp).filter((x) => !x.includes("+")); w.filter((x) => classifySyllable(x).stage >= 4).forEach((x) => expect(isRealWord(x)).toBe(true));
     expect(limitScope(["almlale", "lala"], { capStage14: 10, capStage57: 8, freqPercent: 100 }, 1, "x")).not.toContain("almlale");
   });
   it("Konfiguration: Prüfung der Werte und Ergänzung älterer Versionen", () => {

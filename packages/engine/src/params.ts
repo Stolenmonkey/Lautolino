@@ -11,4 +11,4 @@ export const autoParams = (c: SilbenflugConfig): AutoParams => ({
 });
 export const roundParams = (c: SilbenflugConfig): RoundParams => ({ repeatDamping: c.round.repeat_damping, curveExponent: c.round.difficulty_curve_exponent, minPool: c.round.min_pool });
 // cap 0 = keine Begrenzung (sehr großer Wert), sonst Obergrenze je Lernstufe.
-export const scopeParams = (c: SilbenflugConfig): ScopeParams => ({ capStage14: c.scope.cap_stage_1_4 || 1e9, capStage57: c.scope.cap_stage_5_7 || 1e9, freqPercent: c.scope.freq_percent });
+export const scopeParams = (c: SilbenflugConfig): ScopeParams => ({ capStage14: c.scope.cap_stage_1_4 || 1e9, capStage57: c.scope.cap_stage_5_7 || 1e9, freqPercent: c.scope.freq_percent, blocks: true });

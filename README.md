@@ -12,7 +12,7 @@ package.json tsconfig.json vitest.config.ts   (Alias @silbenflug/{shared,core,en
 packages/
   shared/src/{index,config}.ts
   core/src/{index,rules,syllables,syllabify,round,stagedRound,stages,arcs,glyphs}.ts
-  engine/src/{index,sylTime,automatik,mastery,scope,stages,params,contrast,contrastRound}.ts
+  engine/src/{index,sylTime,automatik,mastery,scope,stages,params,contrast,contrastRound,blocks}.ts
 apps/
   server/   wrangler.toml package.json README.md
     scripts/{dev-local,make-admin-sql,testkinder}.ts
@@ -51,6 +51,7 @@ tests/          *.test.ts + helpers.ts + fixtures/silbenzauber-logic.js (alte Ap
 - `automatik.ts`: `autoAdjust`, `avgLast`, `sdFromLen`, `comboKey`, `startVal`; Typen `AutoParams`, `AutoState`.
 - `mastery.ts`: `isMastered`, `letterProgress`, `levelsReached`, `newAwards`, `highestLevel`; Typ `SylStatus`.
 - `scope.ts`: `syllableScope(releasedBefore,newLetter)` – Silbenumfang je Buchstabe (strukturbasiert, `structureWords`); `rebuildAfterDelete` (Umfang nach Löschen eines Buchstabens), `resumeScope` (Ergänzung beim Fortsetzen).
+- `blocks.ts`: Kontrastblöcke (Stufe 2) wie `la+ma+pa`: `blockScope` (neuer Konsonant mit den zwei zuletzt freigegebenen, neuer Vokal in Dreierblöcken), `groupBlocks` (Startgruppe). Werden bei der Freigabe einmal im festen Silbenumfang gespeichert (Schlüssel mit `+`), ändern sich nie; die Reihenfolge der Silben wird beim Üben zufällig gezogen. Es sind immer zwei Stufen aktiv: Stufe k kommt dazu, sobald Stufe k-2 zu 80 % sicher ist (Stufe 2 nach Kontrastzeit).
 - `contrast.ts`: Kontrastzeit (Stufe 2): Schlüssel `k:<silbe>` im Zeitspeicher, `contrastStat` (6 Messungen, 1 gestrichen, Vorgabe `contrast.time_limit_seconds` = 3 s). `contrastRound.ts`: `planBlocks` (Blöcke aus 2–3 Silben mit gleichem Vokal, Anteil aus offenen Kontrast- gegen normale Silben), `assembleRound` (Blöcke direkt hintereinander einmischen, `kmark` 0/1/2).
 - `syllablePlan.ts`: `syllablePlan` – Freischaltung je Silbe (Gate) und Gruppen aus Silbenzeiten.
 - `params.ts`: Config → `sylTimeParams`/`autoParams`/`roundParams`.

@@ -17,7 +17,7 @@ export async function silbenPanel(root, api, cid, sp) {
         d.truncated ? h("div", { class: "stufe" }, h("p", { class: "muted" }, "Es werden die ersten 1500 Silben gezeigt.")) : null,
         ...d.subs.map((u) => { const c = h("span", { class: "muted" }), setCnt = () => { c.textContent = `${u.id} ${u.name} (${u.syllables.filter((x) => !sp.has(x.syllable)).length})`; }; setCnt(); sp.onChange(setCnt);
           return h("div", { class: "stufe" }, h("div", { class: "stufenkopf" }, c),
-            u.syllables.length ? h("div", { class: "chips" }, u.syllables.map((x) => sp.chip(x.syllable, x.parts.join("-").toUpperCase(), `Buchstaben: ${x.letters.join(" ").toUpperCase()} · neuester: ${x.newestLetter.toUpperCase()}`))) : h("span", { class: "muted" }, "Keine Silben.")); })));
+            u.syllables.length ? h("div", { class: "chips" }, u.syllables.map((x) => sp.chip(x.syllable, x.parts.join(x.block ? " · " : "-").toUpperCase(), `${x.block ? "Kontrastblock (Reihenfolge wechselt) · " : ""}Buchstaben: ${x.letters.join(" ").toUpperCase()} · neuester: ${x.newestLetter.toUpperCase()}`))) : h("span", { class: "muted" }, "Keine Silben.")); })));
       detail.hidden = false; chev.textContent = "▴";
     });
     const tr = h("tr", {}, [h("strong", {}, `${g.stage}.`), g.structure, g.total || g.blocked ? btn : cnt].map((c) => h("td", {}, c)));
