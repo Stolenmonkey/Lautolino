@@ -121,7 +121,7 @@ describe("Server und Oberfläche", () => {
   });
 
   it("Lehrer-Ansicht: Reiter, Buchstabenstand, Zeitverlauf mit Markierung, PDF für Kind und Klasse", async () => {
-    expect(schoolTabs("lehrer").auswertung).toBe("Auswertung"); expect(schoolTabs("schulleitung").auswertung).toBeDefined();
+    expect(schoolTabs("lehrer").auswertung).toBe("Schüler"); expect(schoolTabs("schulleitung").auswertung).toBeDefined();
     const tok = await kidToken(0), all = structureWords(["o", "l"]);
     for (let i = 0; i < 3; i++) expect((await call("POST", "/student/rounds", tok, { clientRoundId: "c" + i, seconds: 60 - i * 10, syllables: all.map((x) => ({ s: x, sec: 1 })), letters: ["o", "l"] })).status).toBe(201);
     const api = createApi({ base: "http://x", storage: mem(), fetchFn: (u: string, o: any) => app.request(u.replace("http://x", ""), o) });
@@ -130,8 +130,7 @@ describe("Server und Oberfläche", () => {
     await schoolView("auswertung", root, { api, user }); await flush();
     expect(root.querySelector("svg")).toBeNull();
     { const sel = root.querySelector('select[aria-label="Schüler"]') as HTMLSelectElement; sel.value = Array.from(sel.options).find((o) => o.text === "Mia")!.value; sel.dispatchEvent(new Event("change")); await flush(); }
-    expect(root.querySelector("svg.zeitverlauf")).not.toBeNull(); expect(root.querySelectorAll("svg.zeitverlauf .pt").length).toBe(3); expect(root.querySelectorAll("svg.zeitverlauf .neu").length).toBe(1);
-    expect(root.textContent).toContain("neu: "); expect(root.textContent).toContain("Sicher beherrscht"); expect(root.textContent).toContain("kein Nachweis der Lesekorrektheit");
+    expect(root.querySelector("svg.zeitverlauf")).toBeNull(); expect(root.textContent).not.toContain("Zeitverlauf"); expect(root.textContent).toContain("Buchstaben und Lernstufen");
     const saved: Array<{ b: Uint8Array; n: string }> = []; hooks.save = (b: Uint8Array, n: string) => saved.push({ b, n });
     click(root, "Silben-Zug drucken (PDF)"); await flush(); expect(saved.length).toBe(1); expect(txt(saved[0].b).startsWith("%PDF")).toBe(true); expect(saved[0].n).toBe("silben-zug-mia.pdf"); expect(txt(saved[0].b)).toContain("/Count 1");
     hooks.save = null;

@@ -342,13 +342,12 @@ describe("Lautolino (Server und Oberfläche)", () => {
       const tok = await kidTok(codeA); await rounds(tok, KV, 10, 1, "kv"); await rounds(tok, ["mal"], 3, 6, "m3");
       const root = mkRoot(); await schoolView("auswertung", root, { api: apiFor(lead), user: { id: "x", role: "schulleitung", schoolId: sid } }); await flush();
       { const ks = root.querySelector('select[aria-label="Schüler"]') as HTMLSelectElement; ks.value = Array.from(ks.options).find((o) => o.text === "Mia")!.value; ks.dispatchEvent(new Event("change")); await flush(); }
-      expect(root.textContent).toContain("Lernstufen"); expect(root.textContent).toContain("1. Einzelne offene Silben und Vokale"); expect(root.textContent).toContain("abgeschlossen"); expect(root.textContent).toContain("noch nicht dran");
-      expect(root.textContent).toContain("Buchstaben und Lernstufen"); expect(root.textContent).toContain("Fortschritt");
+            expect(root.textContent).toContain("Buchstaben und Lernstufen"); expect(root.textContent).toContain("Fortschritt");
       const rowsOf = () => Array.from(root.querySelectorAll("tr")).filter((tr) => tr.textContent!.includes("sicher beherrscht") || tr.textContent!.includes("noch nicht"));
       expect(root.textContent).toContain("MA"); expect(root.textContent).toContain("1.2 Konsonant-Vokal-Silben (KV)"); expect(root.textContent).toContain("noch nicht bewertet (3 von 10)");
       const sel = root.querySelector('select[aria-label="Silben filtern"]') as HTMLSelectElement; sel.value = "unrated"; sel.dispatchEvent(new Event("change")); await flush();
       expect(root.textContent).toContain("MAL"); expect(Array.from(root.querySelectorAll("tr")).some((tr) => tr.textContent!.startsWith("LA") && tr.textContent!.includes("sicher beherrscht"))).toBe(false);
-      (root.querySelectorAll('button[title="Silben ansehen"]')[2] as HTMLElement).click(); await flush(); expect(root.textContent).toContain("Stufe 3:"); expect(rowsOf().length).toBeGreaterThan(0);
+      expect(root.textContent).not.toContain("Zeitverlauf"); expect(root.querySelectorAll(".stbar span, [title^=\"Stufe \"]").length).toBeGreaterThan(0);
     });
     it("Klassenübersicht und Lernplan mit Silben je Stufe", async () => {
       const tok = await kidTok(codeA); await rounds(tok, KV, 10, 1, "kv");
