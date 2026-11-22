@@ -38,7 +38,7 @@ const pair = (l: string): string => renderWord(l.toUpperCase()) + renderWord(l.t
 export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void> } {
   const api = createKidsApi({ base: deps.base, fetchFn: deps.fetchFn }), rng: Rng = deps.rng || Math.random, now = deps.now || (() => Date.now());
   let session: Session | null = null, data: Data | null = null, view: "login" | "home" | "practice" | "end" = "login";
-  let msg = "", setup: RoundSetup | null = null, idx = 0, roundStart = 0, sylStart = 0, shownAt = 0, times: Array<{ s: string; sec: number; k?: 1 }> = [], lastSecs = 0, syncing: Promise<void> | null = null, popupOpen = false, pending: (() => void) | null = null, lastClick = 0, endBefore: Record<string, AwL> | null = null, celebrated = false;
+  let msg = "", setup: RoundSetup | null = null, idx = 0, roundStart = 0, sylStart = 0, shownAt = 0, times: Array<{ s: string; sec: number; k?: 1 }> = [], lastSecs = 0, syncing: Promise<void> | null = null, popupOpen = false, pending: (() => void) | null = null, lastClick = 0, endBefore: Record<string, AwL> | null = null, celebrated = false, flying = false;
 
   const cur = (): string => view;   // aktueller Stand der Ansicht (verhindert, dass TypeScript nach go() eine alte Ansicht annimmt)
   const blank = (): Data => ({ st: emptyState(), queue: [], plan: null, config: null, awards: null });
@@ -233,7 +233,7 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
     const ups = starUps(b), bt = root.querySelector(".endbtns") as HTMLElement | null; if (!bt) return;
     if (ups.length) { bt.innerHTML = '<button class="btn" id="stop" type="button">OK</button>'; }
     const again = root.querySelector("#again") as HTMLElement | null; if (again) again.onclick = startPractice;
-    (root.querySelector("#stop") as HTMLElement).onclick = () => { go("home"); flyStars(ups); };
+    (root.querySelector("#stop") as HTMLElement).onclick = () => { flying = ups.length > 0; go("home"); flyStars(ups); };
   }
   // Stand der Fortschrittskreise und Sterne vor der Runde, um danach Verbesserungen zu zeigen
   const RANK: Record<string, number> = { bronze: 1, silber: 2, gold: 3 };
@@ -264,7 +264,7 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
 
   // ---------- Glückwunsch-Popup: nur die höchste neu erreichte Stufe je Buchstabe ----------
   function showPopup(): void {
-    const d = data; if (popupOpen || !d) return;
+    const d = data; if (popupOpen || flying || !d) return;   // während des Sternenflugs kein Popup davor
     const fresh = d.plan && d.config ? d.plan.letters.filter((l) => !(d.seen || []).includes(l)) : [];
     if (fresh.length && view === "home") {
       popupOpen = true;
@@ -289,17 +289,18 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
   }
 
   // ---------- Sternenflug: 20 Sterne fliegen spiralförmig auf den frisch gewonnenen Stern ----------
+  function endFly(): void { flying = false; if (cur() === "home") showPopup(); }
   function flyStars(won: Array<{ letter: string; level: AwardLevel }>): void {
     const targets = won.map((w) => ({ w, el: root.querySelector('.lt[data-letter="' + w.letter + '"] .tstar') as SVGElement | null })).filter((t) => !!t.el) as Array<{ w: { letter: string; level: AwardLevel }; el: SVGElement }>;
-    if (!targets.length) return;
-    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;   // Stern ist bereits gefüllt sichtbar
+    if (!targets.length) { endFly(); return; }
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) { endFly(); return; }   // Stern ist bereits gefüllt sichtbar
     targets.forEach((t) => { t.el.style.opacity = "0"; });
-    requestAnimationFrame(() => requestAnimationFrame(() => {
+    setTimeout(() => {   // erst nach der Einblendung (.enter, 0,3 s) messen, sonst landen die Sterne zu tief
       const ov = document.createElement("div"); ov.setAttribute("aria-hidden", "true");
       ov.style.cssText = "position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:9999";
       document.body.appendChild(ov);
       const vw = window.innerWidth, vh = window.innerHeight, N = 20, STEPS = 80, M = 40;
-      let open = 0; const cleanup = (): void => { if (!--open) ov.remove(); };
+      let open = 0; const cleanup = (): void => { if (!--open) { ov.remove(); endFly(); } };
       targets.forEach((t) => {
         const r = t.el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, size = r.width, color = LEVEL_COLOR[t.w.level];
         const revs = Array.from({ length: N }, (_, i) => 1 + (3 * i) / (N - 1));
@@ -319,12 +320,13 @@ export function mountKids(root: HTMLElement, deps: Deps): { ready: Promise<void>
             frames.push({ offset: tt, transform: "translate(" + (cx + rad * Math.cos(a) - size / 2).toFixed(2) + "px," + (cy + rad * Math.sin(a) - size / 2).toFixed(2) + "px) scale(" + (2 - p).toFixed(4) + ") rotate(" + (dir * 360 * p).toFixed(2) + "deg)" });
           }
           ov.appendChild(star); first = Math.min(first, dur); last = Math.max(last, dur);
+          if (!star.animate) { star.remove(); done(); continue; }   // Umgebung ohne Web-Animationen
           const an = star.animate(frames, { duration: dur, easing: "linear", fill: "forwards" });
           an.onfinish = () => { star.remove(); done(); };
         }
         setTimeout(() => { t.el.style.opacity = ""; }, first);   // erster Stern kommt an: Ziel-Stern füllen
       });
-    }));
+    }, 340);
   }
 
   // ---------- Start ----------
