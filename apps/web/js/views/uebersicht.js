@@ -9,12 +9,10 @@ const GROUPS = [
   ["over", "Überdurchschnittlich"], ["average", "Durchschnittlich"], ["under", "Unterdurchschnittlich"], ["nodata", "Keine Daten"],
 ];
 
-function childCard(k) {
+function childRow(k) {
   const go = (e) => { e.preventDefault(); selectStudent(k.id); document.dispatchEvent(new CustomEvent("silbenflug:tab", { detail: "auswertung" })); };
   const none = k.percent === null;
-  return h("li", { class: "kidcard" },
-    h("div", { class: "kidtop" }, h("strong", {}, h("a", { href: "#", class: "kidlink", title: "Statistik öffnen", onclick: go }, k.name)), none ? h("span", { class: "muted" }, "noch nichts geübt") : h("span", { class: "pill" }, `${k.rounds} ${k.rounds === 1 ? "Runde" : "Runden"}`)),
-    none ? null : h("div", { class: "kidbot" }, h("span", { class: "kidstats" }, h("strong", {}, pct(k.percent)), ` · ${k.mastered} von ${k.total}`), h("span", { class: "meter" }, h("span", { style: `width:${Math.min(100, k.percent)}%` }))));
+  return [h("a", { href: "#", class: "kidlink", title: "Statistik öffnen", onclick: go }, k.name), none ? "–" : `${pct(k.percent)} · ${k.mastered} von ${k.total}`, String(none ? 0 : k.rounds)];
 }
 
 // Mittelfeld-Slider (Einstellungen): speichert den Bereich der Klasse; Vorschau der Gruppenbreiten.
@@ -42,7 +40,7 @@ export async function uebersicht(root, api, cid, classes, msg, slot) {
   root.append(h("div", { class: "sechead" }, h("h2", {}, "Klassenübersicht", cls ? " " + cls.name : ""), h("span", { class: "pill blue dot" }, `Aktive Kinder: ${r.students}`)),
     h("section", { class: "card kidgroups" }, ...GROUPS.map(([key, title]) => {
       const kids = r.children.filter((k) => grp(k) === key);
-      return h("div", { class: "kidgroup " + key }, h("h3", {}, title, " ", h("span", { class: "count" }, kids.length)), kids.length ? h("ul", { class: "kidlist" }, kids.map(childCard)) : h("p", { class: "muted" }, "–"));
+      return h("div", { class: "kidgroup " + key }, h("h3", {}, title, " ", h("span", { class: "count" }, kids.length)), kids.length ? h("div", { class: "tablewrap tableframe letterframe kidtable" }, table(["Name", "Fortschritt", "Runden"], kids.map(childRow), { plain: true })) : h("p", { class: "muted" }, "–"));
     })));
   const medal = (v, c) => h("span", { class: "medal " + (v > 0 ? c : "zero") }, pct(v));
   root.append(h("section", { class: "card klasse-card" }, h("div", { class: "sechead" }, h("h2", { class: "small" }, "Übersicht je Buchstabe")),

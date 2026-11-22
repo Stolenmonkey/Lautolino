@@ -322,3 +322,7 @@ table.freigaben tr.scopedetail > td { background:var(--bg); }
 .kidgroup.over .kidcard { border-left-color:#3C68AA; } .kidgroup.average .kidcard { border-left-color:#7F9DC8; } .kidgroup.under .kidcard { border-left-color:#B9C9E2; } .kidgroup.nodata .kidcard { border-left-color:#DCE4F1; }
 .kidgroup .meter span, .kidgroup.average .meter span, .kidgroup.under .meter span { background:#4C72B0; }
 .segbar .seg.under { background:#B9C9E2; } .segbar .seg.average { background:#4C72B0; } .segbar .seg.over { background:#7F9DC8; }
+.kidtable td { white-space:nowrap; } .kidtable td:first-child { font-weight:600; font-size:clamp(1rem, .8rem + .6vw, 1.25rem); }
+.kidtable td:first-child a { font-weight:600; } .kidtable td:first-child, .kidtable th:first-child { text-align:left; padding-left:clamp(12px, 2vw, 20px); }
+.kidtable td:nth-child(2), .kidtable td:nth-child(3) { font-size:clamp(.9rem, .7rem + .7vw, 1.2rem); }
+.kidtable th:nth-child(3), .kidtable td:nth-child(3) { width:1%; }
