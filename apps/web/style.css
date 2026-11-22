@@ -343,3 +343,10 @@ table.freigaben tr.scopedetail > td { background:var(--bg); }
 .kidtable th:nth-child(3), .kidtable td:nth-child(3) { text-align:right; padding-right:clamp(10px, 1.6vw, 16px); }
 .kidtable td:first-child, .kidtable td:first-child a { font-size:clamp(.88rem, .75rem + .4vw, 1.05rem); }
 @media (max-width:640px) { .kidtable th:nth-child(2), .kidtable td:nth-child(2) { width:9.5em; font-size:.82rem; } }
+
+/* Klasse: kompakte Spalten (höhere Spezifität gegen table.plain-Polster) */
+.kidtable table.plain th:first-child, .kidtable table.plain td:first-child { width:auto; padding-left:12px; padding-right:4px; text-align:left; }
+.kidtable table.plain th:nth-child(2), .kidtable table.plain td:nth-child(2) { width:8.6em; padding:4px 6px 4px 2px; text-align:right; white-space:nowrap; }
+.kidtable table.plain th:nth-child(3), .kidtable table.plain td:nth-child(3) { width:3.4em; padding:4px 12px 4px 2px; text-align:right; }
+.kidtable table.plain th { padding-top:6px; padding-bottom:6px; }
+@media (max-width:640px) { .kidtable table.plain th:nth-child(2), .kidtable table.plain td:nth-child(2) { width:8em; } }
