@@ -355,3 +355,20 @@ table.freigaben tr.scopedetail > td { background:var(--bg); }
 @media (max-width:640px) { .kidtable table.plain th:nth-child(2), .kidtable table.plain td:nth-child(2) { width:8.8em; } }
 nav button .tabicon { flex:0 0 auto; height:1.7em; width:auto; }
 @media (max-width:640px) { nav button .tabicon { height:1.9em; } }
+
+/* Schüler-Tab: gleiche Grafiksprache wie Buchstaben (Karten, Rahmentabellen, Chevron-Zeilen); kompaktere Größen für Datentabellen */
+.druckcard button.primary::before { display:none; }
+.druckcard button.primary { height:clamp(44px, 6vw, 60px); border-radius:clamp(16px, 2.4vw, 24px); }
+.freigaben-card .row { margin:0 0 12px; } .freigaben-card > .muted { margin:12px 0 0; }
+.freigaben-card .tableframe + .muted { margin-top:12px; }
+.freigaben-card h3.unter { margin:18px 0 10px; font-size:clamp(1rem, .8rem + .6vw, 1.3rem); font-weight:600; }
+.tableframe.breit { overflow-x:auto; }
+table.freigaben.kompakt.breit { min-width:680px; table-layout:auto; }
+table.freigaben.kompakt thead th { font-size:clamp(.8rem, .65rem + .4vw, 1rem); padding:12px 8px; }
+table.freigaben.kompakt td, table.freigaben.kompakt td:nth-child(2) { font-size:clamp(.88rem, .75rem + .4vw, 1.05rem); color:var(--fg); padding:10px 8px; }
+table.freigaben.kompakt:not(.badge) td:first-child, table.freigaben.kompakt:not(.badge) th:first-child { text-align:left; padding-left:clamp(12px, 2vw, 20px); }
+table.freigaben.kompakt:not(.badge) td:first-child strong { display:inline; min-width:0; height:auto; padding:0; background:none; border-radius:0; font-size:inherit; font-weight:600; color:var(--fg); }
+table.freigaben.kompakt.badge td:first-child strong { font-size:clamp(1rem, .8rem + .6vw, 1.3rem); }
+table.freigaben.kompakt button.chevbtn { min-width:64px; height:34px; padding:0 12px; font-size:1rem; }
+table.freigaben.kompakt tr.scopedetail > td { padding:0; text-align:left; font-size:inherit; }
+table.freigaben.kompakt .stufenliste .tableframe { margin:8px 0 12px; }

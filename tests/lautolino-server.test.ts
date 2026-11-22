@@ -348,7 +348,7 @@ describe("Lautolino (Server und Oberfläche)", () => {
       expect(root.textContent).toContain("MA"); expect(root.textContent).toContain("1.2 Konsonant-Vokal-Silben (KV)"); expect(root.textContent).toContain("noch nicht bewertet (3 von 10)");
       const sel = root.querySelector('select[aria-label="Silben filtern"]') as HTMLSelectElement; sel.value = "unrated"; sel.dispatchEvent(new Event("change")); await flush();
       expect(root.textContent).toContain("MAL"); expect(Array.from(root.querySelectorAll("tr")).some((tr) => tr.textContent!.startsWith("LA") && tr.textContent!.includes("sicher beherrscht"))).toBe(false);
-      click(root, "Silben ansehen", 2); await flush(); expect(root.textContent).toContain("Stufe 3:"); expect(rowsOf().length).toBeGreaterThan(0);
+      (root.querySelectorAll('button[title="Silben ansehen"]')[2] as HTMLElement).click(); await flush(); expect(root.textContent).toContain("Stufe 3:"); expect(rowsOf().length).toBeGreaterThan(0);
     });
     it("Klassenübersicht und Lernplan mit Silben je Stufe", async () => {
       const tok = await kidTok(codeA); await rounds(tok, KV, 10, 1, "kv");

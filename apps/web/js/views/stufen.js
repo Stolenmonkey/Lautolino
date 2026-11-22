@@ -1,5 +1,5 @@
 // Darstellung der Lernstufen und der Silbenstatistik (Lehrkräfte). Schlicht und sachlich; Zahlen kommen vom Server.
-import { h, table } from "../dom.js";
+import { h, clear, notice } from "../dom.js";
 
 export const STATUS_TXT = { done: "abgeschlossen", active: "wird geübt", locked: "noch nicht dran", skipped: "übersprungen (Silben bereits sicher)", empty: "keine Silben" };
 export const SYL_STATUS = { mastered: "sicher beherrscht", not_mastered: "noch nicht sicher", unrated: "noch nicht bewertet" };
@@ -9,33 +9,72 @@ const gesamtStatus = (s) => s.status === "active" && s.unlocked ? stageChip("act
 export const sylText = (parts) => parts.join("-").toUpperCase();
 const sec = (v) => (v === null || v === undefined ? "–" : v.toFixed(1).replace(".", ",") + " s");
 
-// Gesamtstand je Stufe. onDetail(stage) lädt die Silben der Stufe.
+// Tabelle im Stil der Buchstaben-Tabelle: Rahmen, sortierbare Überschriften, Chevron-Button öffnet eine Detailzeile direkt unter der Zeile.
+// rows: [{ cells: [Knoten|Text|{ chev: { text, open: async (zelle) => Knoten } }], keys: [Sortierwert je Spalte] }]; opts.badge: erste Spalte als Plakette, opts.breit: Querscrollen.
+export function rahmenTabelle(head, rows, opts = {}) {
+  const items = rows.map((r, i) => {
+    let detail = null;
+    const cells = r.cells.map((c) => {
+      if (!c || !c.chev) return h("td", {}, c);
+      const chev = h("span", { class: "chev" }, "▾"), cell = h("td", { colspan: String(head.length) });
+      detail = h("tr", { class: "scopedetail", hidden: "" }, cell);
+      return h("td", {}, h("button", { type: "button", class: "chevbtn", title: "Silben ansehen", "aria-label": "Silben ansehen", onclick: async () => {
+        if (!detail.hidden) { detail.hidden = true; chev.textContent = "▾"; return; }
+        try { clear(cell).append(await c.chev.open()); } catch (e) { clear(cell).append(notice(e.message || String(e), "error")); }
+        detail.hidden = false; chev.textContent = "▴";
+      } }, h("span", {}, String(c.chev.text)), chev));
+    });
+    return { tr: h("tr", {}, cells), detail, keys: r.keys || [], i };
+  });
+  const tbody = h("tbody", {});
+  let sortCol = -1, dir = 1;
+  const render = () => {
+    const list = items.slice();
+    if (sortCol >= 0) list.sort((a, b) => { const x = a.keys[sortCol], y = b.keys[sortCol]; return (x < y ? -1 : x > y ? 1 : a.i - b.i) * dir; });
+    tbody.replaceChildren(...list.flatMap((q) => (q.detail ? [q.tr, q.detail] : [q.tr])));
+  };
+  const sortable = (i) => items.some((q) => q.keys[i] !== undefined);
+  const ths = head.map((x, i) => { const th = h("th", {}, x); if (sortable(i)) { th.style.cursor = "pointer"; th.title = "Sortieren"; th.onclick = () => { dir = sortCol === i ? -dir : 1; sortCol = i; ths.forEach((t, j) => sortable(j) && t.setAttribute("aria-sort", j === i ? (dir > 0 ? "ascending" : "descending") : "none")); render(); }; } return th; });
+  render();
+  return h("div", { class: "tablewrap tableframe" + (opts.breit ? " breit" : "") }, h("table", { class: "plain freigaben kompakt" + (opts.badge ? " badge" : "") + (opts.breit ? " breit" : "") }, h("thead", {}, h("tr", {}, ths)), tbody));
+}
+
+// Gesamtstand je Stufe. onDetail(stage) lädt die Silben der Stufe und liefert den Knoten für die Detailzeile.
 export function stufenTabelle(stages, onDetail) {
-  return h("div", { class: "tablewrap" }, table(["Stufe", "Aufbau", "Status", "Bearbeitet", "Sicher beherrscht", ""], stages.map((s) => [
-    h("strong", {}, `${s.stage}. ${s.name}`), s.structure, gesamtStatus(s),
-    s.total ? `${s.processed} von ${s.total}` : "–",
-    s.total ? [h("span", { class: "barbox" }, h("span", { class: "bar", style: `width:${Math.round((s.mastered / s.total) * 100)}%` })), `${s.mastered} von ${s.total}`] : "–",
-    s.total ? h("button", { type: "button", onclick: () => onDetail(s.stage) }, "Silben ansehen") : "",
-  ])));
+  return rahmenTabelle(["Stufe", "Aufbau", "Status", "Bearbeitet", "Sicher beherrscht", "Silben"], stages.map((s) => ({
+    cells: [
+      h("strong", {}, `${s.stage}. ${s.name}`), s.structure, gesamtStatus(s),
+      s.total ? `${s.processed} von ${s.total}` : "–",
+      s.total ? [h("span", { class: "barbox" }, h("span", { class: "bar", style: `width:${Math.round((s.mastered / s.total) * 100)}%` })), `${s.mastered} von ${s.total}`] : "–",
+      s.total ? { chev: { text: s.total, open: () => onDetail(s.stage) } } : "–",
+    ],
+    keys: [s.stage, s.structure, s.status, s.processed, s.mastered, s.total],
+  })), { breit: true });
 }
 
 // Je Buchstabe: aktuelle Stufe und Stand in allen sieben Stufen
 export function buchstabenStufen(letters) {
   if (!letters.length) return h("p", { class: "muted" }, "Noch keine Buchstaben freigegeben.");
-  return h("div", { class: "tablewrap" }, table(["Buchstabe", "Aktuelle Stufe", ...[1, 2, 3, 4, 5, 6, 7].map((n) => "Stufe " + n)], letters.map((l) => [
-    h("strong", {}, l.letter.toUpperCase()), l.current === null ? "alle abgeschlossen" : `Stufe ${l.current}`,
-    ...l.stages.map((s) => s.status === "empty" ? h("span", { class: "muted" }, "–") : s.status === "locked" ? (s.mastered > 0 ? stageChip("skipped", `übersprungen (${s.mastered}/${s.total})`) : stageChip("locked", "noch nicht dran")) : stageChip(s.status, s.status === "active" ? `aktiv ${s.mastered}/${s.total}` : `${s.mastered}/${s.total}`)),
-  ]), { wide: true }));
+  return rahmenTabelle(["Buchstabe", "Aktuelle Stufe", ...[1, 2, 3, 4, 5, 6, 7].map((n) => "Stufe " + n)], letters.map((l) => ({
+    cells: [
+      h("strong", {}, l.letter.toUpperCase()), l.current === null ? "alle abgeschlossen" : `Stufe ${l.current}`,
+      ...l.stages.map((s) => s.status === "empty" ? h("span", { class: "muted" }, "–") : s.status === "locked" ? (s.mastered > 0 ? stageChip("skipped", `übersprungen (${s.mastered}/${s.total})`) : stageChip("locked", "noch nicht dran")) : stageChip(s.status, s.status === "active" ? `aktiv ${s.mastered}/${s.total}` : `${s.mastered}/${s.total}`)),
+    ],
+    keys: [l.letter, l.current === null ? 99 : l.current],
+  })), { badge: true, breit: true });
 }
 
 // Silbenstatistik: Silbe, Stufe/Unterkategorie, Ø Lesezeit, Abfragen, erfolgreiche Messungen, Status. filter: "alle" | "mastered" | "not_mastered" | "unrated" | "schwierig"
 export function silbenTabelle(rows, min) {
   if (!rows.length) return h("p", { class: "muted" }, "Keine Silben.");
-  return h("div", { class: "tablewrap" }, table(["Silbe", "Stufe", "Ø Lesezeit", "Abfragen", "Innerhalb der Zeitvorgabe", "Status"], rows.map((r) => [
-    h("strong", { class: "mono" }, sylText(r.parts)), `${r.sub} ${r.subName}${r.contrast ? " (auch Stufe 2)" : ""}`, sec(r.avg), r.count,
-    r.limit === null || !r.stored ? "–" : `${r.successful} von ${r.stored} (Vorgabe ${String(r.limit).replace(".", ",")} s)`,
-    h("span", { class: "stage st-" + (r.status === "mastered" ? "done" : r.status === "not_mastered" ? "active" : "locked") }, r.locked ? "noch nicht freigeschaltet" : r.status === "unrated" && r.stored ? `noch nicht bewertet (${r.stored} von ${min})` : SYL_STATUS[r.status]),
-  ]), { wide: true }));
+  return rahmenTabelle(["Silbe", "Stufe", "Ø Lesezeit", "Abfragen", "Innerhalb der Zeitvorgabe", "Status"], rows.map((r) => ({
+    cells: [
+      h("strong", { class: "mono" }, sylText(r.parts)), `${r.sub} ${r.subName}${r.contrast ? " (auch Stufe 2)" : ""}`, sec(r.avg), r.count,
+      r.limit === null || !r.stored ? "–" : `${r.successful} von ${r.stored} (Vorgabe ${String(r.limit).replace(".", ",")} s)`,
+      h("span", { class: "stage st-" + (r.status === "mastered" ? "done" : r.status === "not_mastered" ? "active" : "locked") }, r.locked ? "noch nicht freigeschaltet" : r.status === "unrated" && r.stored ? `noch nicht bewertet (${r.stored} von ${min})` : SYL_STATUS[r.status]),
+    ],
+    keys: [sylText(r.parts), r.sub, r.avg ?? Infinity, r.count, r.successful ?? -1, r.status],
+  })), { badge: true, breit: true });
 }
 export function filterRows(rows, f) {
   if (f === "schwierig") return rows.filter((r) => r.status === "not_mastered").sort((a, b) => (b.avg ?? 0) - (a.avg ?? 0));
