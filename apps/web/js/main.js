@@ -13,7 +13,7 @@ document.addEventListener("silbenflug:tab", (e) => { if (user) { tab = e.detail;
 function show() {
   const defs = user.role === "admin" ? adminTabs : schoolTabs(user.role);
   if (!defs[tab]) tab = Object.keys(defs)[0];
-  clear(tabs).append(...Object.entries(defs).map(([k, v]) => h("button", { type: "button", "aria-current": k === tab ? "true" : false, onclick: () => { tab = k; show(); } }, v)));
+  clear(tabs).append(...Object.entries(defs).map(([k, v]) => h("button", { type: "button", "data-tab": k, "aria-current": k === tab ? "true" : false, onclick: () => { tab = k; show(); } }, v)));
   tabs.classList.remove("hidden");
   const ctx = { api, user };
   (user.role === "admin" ? adminView : schoolView)(tab, clear(main), ctx).catch((e) => { if (e.status === 401) return signOut(); main.append(h("div", { class: "notice error" }, e.message)); });

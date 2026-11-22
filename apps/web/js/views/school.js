@@ -106,7 +106,7 @@ function freigabeTabelle(api, cid, releases, msg, sp, reload) {
   };
   const ths = head.map((x, i) => { const th = h("th", {}, x); if (i < 3) { th.style.cursor = "pointer"; th.title = "Sortieren"; th.onclick = () => { dir = sortCol === i ? -dir : 1; sortCol = i; ths.forEach((t, j) => j < 3 && t.setAttribute("aria-sort", j === i ? (dir > 0 ? "ascending" : "descending") : "none")); render(); }; } return th; });
   render();
-  return h("div", { class: "panel flush tablewrap" }, h("table", { class: "plain freigaben" }, h("thead", {}, h("tr", {}, ths)), tbody));
+  return h("div", { class: "tablewrap tableframe" }, h("table", { class: "plain freigaben" }, h("thead", {}, h("tr", {}, ths)), tbody));
 }
 
 // Ausnahmen je Kind: Funktion bleibt erhalten, Abschnitt ist vorerst ausgeblendet (auf true setzen zum Anzeigen).
@@ -117,13 +117,13 @@ async function lernplan(root, api, cid, classes, msg) {
   const start = h("input", { type: "text", size: "8", style: "text-transform:uppercase", "aria-label": "Startbuchstaben" }), letter = h("input", { type: "text", maxlength: "1", size: "2", class: "freigabe-input", style: "text-transform:uppercase", "aria-label": "Neuer Buchstabe" });
   root.append(
     plan.releases.length
-      ? h("div", { class: "row freigabe-row" }, h("label", {}, "Nächster Buchstabe:"), letter, h("button", { type: "button", class: "primary muted-blue", onclick: () => act(msg, async () => {
+      ? h("section", { class: "card nextcard" }, h("h2", {}, "Nächster Buchstabe"), h("div", { class: "nextbody" }, letter, h("div", { class: "nexttext" }, h("strong", {}, "Neuen Buchstaben freigeben"), h("span", {}, "Der Buchstabe wird für die Klasse aktiviert.")), h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
           const r = await api.post(`/classes/${cid}/releases`, await mitUmfang(api, plan, [letter.value.trim().toLowerCase()])), x = r.released[0]; clear(msg).append(notice(`${x.letter.toUpperCase()} freigegeben. Fester Silbenumfang: ${x.syllableCount} Silben.` + (x.syllableCount ? "" : " (Mit den bisherigen Buchstaben ergeben sich keine neuen Silben.)"), "ok"));
-        }, reload) }, "Freigeben"))
+        }, reload) }, "Buchstaben freigeben")))
       : h("div", { class: "card" }, h("p", {}, "Die Klasse startet mit mindestens 2 Buchstaben, darunter ein Vokal (z. B. O L)."), h("div", { class: "row" }, h("label", {}, "Startbuchstaben ", start), h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
           const r = await api.post(`/classes/${cid}/releases`, await mitUmfang(api, plan, [...new Set(start.value.toLowerCase().match(/[a-z]/g) || [])])); clear(msg).append(notice(`Freigegeben: ${r.released.map((x) => x.letter.toUpperCase() + " (" + x.syllableCount + " Silben)").join(", ")}.`, "ok"));
         }, reload) }, "Startbuchstaben freigeben"))),
-    h("div", { class: "sechead" }, h("h2", { class: "small" }, "Freigegebene Buchstaben")), plan.releases.length ? freigabeTabelle(api, cid, plan.releases, msg, sp, reload) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben."));
+    h("section", { class: "card freigaben-card" }, h("div", { class: "sechead" }, h("h2", { class: "small" }, "Freigegebene Buchstaben")), plan.releases.length ? freigabeTabelle(api, cid, plan.releases, msg, sp, reload) : h("p", { class: "muted" }, "Noch kein Buchstabe freigegeben.")));
   if (plan.releases.length) { const box = h("div"); root.append(box); await klassenSilben(box, api, cid, sp); }
   if (SHOW_AUSNAHMEN && plan.releases.length && students.length) {
     root.append(h("h3", {}, "Ausnahmen einzelner Kinder"), h("p", { class: "muted" }, "Haken = dieses Kind übt den Buchstaben (noch) nicht. Gilt nur für die Freigabe, nicht für Zeitpläne."),

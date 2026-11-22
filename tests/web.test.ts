@@ -80,7 +80,7 @@ describe("Oberfläche gegen echten Server", () => {
     const codes = Array.from(root.querySelectorAll(".code")).map((x) => x.textContent!);
     root = document.createElement("div"); await schoolView("lernplan", root, { api: tApi, user: T }); await flush();
     (root.querySelector('input[aria-label="Startbuchstaben"]') as HTMLInputElement).value = "O L"; click(root, "Startbuchstaben freigeben"); await flush();
-    (root.querySelector('input[aria-label="Neuer Buchstabe"]') as HTMLInputElement).value = "e"; click(root, "Freigeben"); await flush();
+    (root.querySelector('input[aria-label="Neuer Buchstabe"]') as HTMLInputElement).value = "e"; click(root, "Buchstaben freigeben"); await flush();
     expect(root.textContent).toContain("E freigegeben"); expect(root.querySelectorAll("tbody tr").length).toBeGreaterThanOrEqual(3);
     const kids = await tApi.get(`/classes/${classes[0].id}/students`), mia = kids.find((k: any) => k.display_name === "Mia");
     await tApi.put(`/students/${mia.id}/exclusions`, { letters: ["e"] });   // Ausnahmen-Abschnitt ist ausgeblendet, API bleibt
