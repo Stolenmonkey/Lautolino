@@ -52,7 +52,7 @@ function stufenBereich(ev) {
   const draw = () => { clear(list).append(silbenTabelle(filterRows(ev.syllables, filt.value), ev.minMeasurements, ev.letters.map((l) => l.letter))); };
   filt.addEventListener("change", draw); draw();
   return [
-    karte("Silben", h("p", { class: "muted" }, `Sicher beherrscht heißt: mindestens ${ev.minMeasurements} Messungen und Durchschnitt innerhalb der Zeitvorgabe (unverändert). Abfragen = alle bisherigen Messungen; „innerhalb der Zeitvorgabe“ zählt nur die noch gespeicherten letzten Messwerte.`),
+    karte("Silben", h("p", { class: "muted" }, `Sicher beherrscht heißt: mindestens ${ev.minMeasurements} Messungen und Durchschnitt innerhalb der Zeitvorgabe (unverändert). Abfragen = alle bisherigen Messungen.`),
       h("div", { class: "row" }, filt), list),
   ];
 }
