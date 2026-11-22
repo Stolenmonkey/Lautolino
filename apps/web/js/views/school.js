@@ -2,7 +2,7 @@
 import { h, clear, table, notice, act } from "../dom.js";
 import { auswertung } from "./auswertung.js";
 import { elternPanel } from "./eltern.js";
-import { uebersicht } from "./uebersicht.js";
+import { uebersicht, bandPanel } from "./uebersicht.js";
 import { silbenPanel } from "./silben.js";
 import { sperre } from "./sperre.js";
 
@@ -41,13 +41,13 @@ async function schueler(root, api, cid, classes, msg) {
   };
   const showCodes = (rows, text) => { const withParent = rows.some((r) => r.parentCode); clear(codes).append(h("div", { class: "card" }, h("p", {}, text + ""),
     table(["Name", ...(rows.some((r) => r.code) ? ["Schülercode (Merkschlüssel)"] : []), ...(withParent ? ["Elterncode"] : [])], rows.map((r) => [r.displayName, ...(rows.some((x) => x.code) ? [h("span", { class: "code" }, r.code || "")] : []), ...(withParent ? [h("span", { class: "code" }, r.parentCode || "")] : [])])), h("button", { type: "button", class: "noprint", onclick: () => window.print() }, "Drucken"))); };
-  const names = h("textarea", { placeholder: "Ein Name pro Zeile" });
+  const names = h("textarea", { placeholder: "Ein Name pro Zeile" }), band = h("div");
   root.append(h("h2", {}, "Einstellungen"), list, codes, parents,
-    h("div", { class: "row" }, h("button", { type: "button", id: "missingParent", onclick: () => act(msg, async () => { const r = await api.post(`/classes/${cid}/parent-codes/missing`); if (!r.length) clear(msg).append(notice("Alle aktiven Kinder haben schon einen Elterncode.", "ok")); else showCodes(r.map((x) => ({ displayName: x.displayName, parentCode: x.code })), `${r.length} Elterncodes erzeugt.`); }) }, "Elterncodes für Kinder ohne Code erzeugen")), h("h3", {}, "Kinder hinzufügen"), names, h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
+    h("div", { class: "row" }, h("button", { type: "button", id: "missingParent", onclick: () => act(msg, async () => { const r = await api.post(`/classes/${cid}/parent-codes/missing`); if (!r.length) clear(msg).append(notice("Alle aktiven Kinder haben schon einen Elterncode.", "ok")); else showCodes(r.map((x) => ({ displayName: x.displayName, parentCode: x.code })), `${r.length} Elterncodes erzeugt.`); }) }, "Elterncodes für Kinder ohne Code erzeugen")), band, h("h3", {}, "Kinder hinzufügen"), names, h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => act(msg, async () => {
     const list2 = names.value.split("\n").map((x) => x.trim()).filter(Boolean); if (!list2.length) return;
     const r = await api.post(`/classes/${cid}/students`, { names: list2 }); names.value = ""; showCodes(r, `${r.length} Kinder angelegt.`);
   }, load) }, "Anlegen")));
-  await act(msg, load);
+  await act(msg, load); await act(msg, () => bandPanel(band, api, cid, msg));
 }
 
 // Einfarbige SVG-Icons (Emoji-Zeichen wie ⏸ werden auf manchen Geräten gelb gezeichnet und ignorieren die Textfarbe).

@@ -285,3 +285,28 @@ table.freigaben button.iconbtn { display:inline-flex; align-items:center; justif
 table.freigaben button.iconbtn svg { width:clamp(16px, 2.2vw, 24px); height:clamp(16px, 2.2vw, 24px); }
 table.freigaben tr.scopedetail > td { background:var(--bg); }
 .stufenliste { border-radius:12px; }
+
+/* Klasse + Einstellungen (Mittelfeld): gleiche Grafiksprache wie Buchstaben (Karten, Tabellenrahmen, blaue Chips) */
+.kidgroup, .klasse-card, .bandcard { margin:18px 0; }
+.kidgroup .sechead h2, .klasse-card .sechead h2 { display:flex; align-items:center; gap:.5em; margin:0 0 14px; }
+.kidgroup .sechead h2::before { content:""; flex:0 0 auto; width:.7em; height:.7em; border-radius:50%; background:#B9C9E2; }
+.kidgroup.over .sechead h2::before { background:#10b981; } .kidgroup.average .sechead h2::before { background:#3B6AAE; } .kidgroup.under .sechead h2::before { background:#f59e0b; }
+.kidgroup .count { min-width:1.9em; height:1.9em; font-size:.55em; font-weight:700; }
+.kidlist { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px; }
+.kidgroup .kidcard { margin:0; padding:14px 18px; border:1px solid var(--line); border-left-width:5px; border-radius:18px; box-shadow:none; }
+.kidgroup .kidtop strong { font-size:clamp(1rem, .8rem + .6vw, 1.3rem); font-weight:600; }
+.kidgroup .kidcard .pill { background:#E2ECFB; border:0; color:#14295B; font-weight:600; }
+.kidgroup .meter { height:10px; background:#E1E9F6; }
+.klasse-card .sechead h2::before { content:""; flex:0 0 auto; width:clamp(30px, 4.4vw, 45px); aspect-ratio:46 / 42; border-radius:20%; background:linear-gradient(180deg, #4268A6, #7F9DC8); }
+.klasse-card .sechead { align-items:center; }
+.letterframe table.plain { margin:0; }
+.letterframe table.plain thead th { background:#E4EAF6; color:#4B618A; font-weight:500; font-size:clamp(.82rem, .6rem + .8vw, 1.4rem); padding:clamp(10px, 1.8vw, 18px) 8px; }
+.letterframe table.plain td { padding:clamp(8px, 1.4vw, 14px) 6px; border-bottom:1px solid var(--line); vertical-align:middle; }
+.letterframe table.plain tbody tr:last-child td { border-bottom:0; }
+.letterframe table.plain td:first-child strong { display:inline-flex; align-items:center; justify-content:center; min-width:1.7em; height:1.45em; padding:0 .3em; border-radius:.4em; background:#E4ECFA; color:#14295B; font-size:clamp(1.1rem, .6rem + 1.8vw, 2.2rem); font-weight:700; }
+.letterframe .medal { min-width:clamp(64px, 10vw, 110px); font-size:clamp(.9rem, .6rem + 1vw, 1.4rem); padding:4px 12px; }
+.klasse-card .infobox { margin:16px 0 0; border-radius:18px; }
+.bandcard .panelhead { margin-bottom:12px; } .bandcard .panelhead h2 { margin:4px 0 0; }
+.bandcard .pill.blue { font-size:clamp(.9rem, .6rem + 1vw, 1.3rem); padding:6px 16px; }
+.bandcard input[type=range] { width:100%; min-height:0; padding:0; border:0; accent-color:var(--accent-deep); }
+.bandcard .scale { display:flex; justify-content:space-between; font-size:.9rem; margin:2px 0 12px; }
