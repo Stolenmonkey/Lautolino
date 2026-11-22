@@ -36,7 +36,7 @@ export function rahmenTabelle(head, rows, opts = {}) {
   const sortable = (i) => items.some((q) => q.keys[i] !== undefined);
   const ths = head.map((x, i) => { const th = h("th", {}, x); if (sortable(i)) { th.style.cursor = "pointer"; th.title = "Sortieren"; th.onclick = () => { dir = sortCol === i ? -dir : 1; sortCol = i; ths.forEach((t, j) => sortable(j) && t.setAttribute("aria-sort", j === i ? (dir > 0 ? "ascending" : "descending") : "none")); render(); }; } return th; });
   render();
-  return h("div", { class: "tablewrap tableframe" + (opts.breit ? " breit" : "") }, h("table", { class: "plain freigaben kompakt" + (opts.badge ? " badge" : "") + (opts.breit ? " breit" : "") }, h("thead", {}, h("tr", {}, ths)), tbody));
+  return h("div", { class: "tablewrap tableframe" + (opts.breit ? " breit" : "") }, h("table", { class: "plain freigaben kompakt" + (opts.badge ? " badge" : "") + (opts.kompakt ? " klein" : "") + (opts.breit ? " breit" : "") }, h("thead", {}, h("tr", {}, ths)), tbody));
 }
 
 // Gesamtstand je Stufe. onDetail(stage) lädt die Silben der Stufe und liefert den Knoten für die Detailzeile.
@@ -55,13 +55,15 @@ export function stufenTabelle(stages, onDetail) {
 // Je Buchstabe: aktuelle Stufe und Stand in allen sieben Stufen
 export function buchstabenStufen(letters) {
   if (!letters.length) return h("p", { class: "muted" }, "Noch keine Buchstaben freigegeben.");
-  return rahmenTabelle(["Buchstabe", "Aktuelle Stufe", ...[1, 2, 3, 4, 5, 6, 7].map((n) => "Stufe " + n)], letters.map((l) => ({
-    cells: [
-      h("strong", {}, l.letter.toUpperCase()), l.current === null ? "alle abgeschlossen" : `Stufe ${l.current}`,
-      ...l.stages.map((s) => s.status === "empty" ? h("span", { class: "muted" }, "–") : s.status === "locked" ? (s.mastered > 0 ? stageChip("skipped", `übersprungen (${s.mastered}/${s.total})`) : stageChip("locked", "noch nicht dran")) : stageChip(s.status, s.status === "active" ? `aktiv ${s.mastered}/${s.total}` : `${s.mastered}/${s.total}`)),
-    ],
+  // Kompakt: Spaltenkopf nur die Stufenzahl, Zellen nur „sicher/gesamt“ (Farbe = Status, Tooltip = Klartext)
+  const cell = (s) => s.status === "empty" ? h("span", { class: "muted", title: STATUS_TXT.empty }, "–")
+    : s.status === "locked" && !s.mastered ? h("span", { class: "muted", title: STATUS_TXT.locked }, "○")
+    : stageChip(s.status, `${s.mastered}/${s.total}`);
+  return h("div", {}, rahmenTabelle(["Buchstabe", "Aktuell", ...[1, 2, 3, 4, 5, 6, 7].map((n) => "St. " + n)], letters.map((l) => ({
+    cells: [h("strong", {}, l.letter.toUpperCase()), l.current === null ? "fertig" : `St. ${l.current}`, ...l.stages.map(cell)],
     keys: [l.letter, l.current === null ? 99 : l.current],
-  })), { badge: true, breit: true });
+  })), { badge: true, kompakt: true }),
+  h("p", { class: "muted" }, "Zahlen = sicher beherrschte von allen Silben der Stufe. Blau: wird geübt, grün: abgeschlossen, grau: übersprungen, ○ noch nicht dran, – keine Silben."));
 }
 
 // Silbenstatistik: Silbe, Stufe/Unterkategorie, Ø Lesezeit, Abfragen, erfolgreiche Messungen, Status. filter: "alle" | "mastered" | "not_mastered" | "unrated" | "schwierig"

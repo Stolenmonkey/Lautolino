@@ -372,3 +372,8 @@ table.freigaben.kompakt.badge td:first-child strong { font-size:clamp(1rem, .8re
 table.freigaben.kompakt button.chevbtn { min-width:64px; height:34px; padding:0 12px; font-size:1rem; }
 table.freigaben.kompakt tr.scopedetail > td { padding:0; text-align:left; font-size:inherit; }
 table.freigaben.kompakt .stufenliste .tableframe { margin:8px 0 12px; }
+
+/* Buchstaben-Stufen-Matrix: passt ohne Querscrollen auf den Bildschirm */
+table.freigaben.kompakt.klein { table-layout:auto; width:100%; }
+table.freigaben.kompakt.klein th, table.freigaben.kompakt.klein td { padding:8px 2px; font-size:clamp(.7rem, .55rem + .8vw, .95rem); }
+table.freigaben.kompakt.klein .stage { min-width:0; padding:0 4px; font-size:inherit; white-space:nowrap; }
